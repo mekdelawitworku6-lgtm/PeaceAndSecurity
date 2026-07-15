@@ -1,6 +1,6 @@
 {
-    "name": "EcoGuard Dashboard",
-    "short_name": "EcoGuard",
+    "name": "Peace and Security Dashboard",
+    "short_name": "Peace & Security",
     "icons": [
         {
             "src": "/icon.png",
@@ -13,7 +13,7 @@
             "type": "image/png"
         }
     ],
-    "theme_color": "#00875a",
+    "theme_color": "#0d2d82",
     "background_color": "#ffffff",
     "display": "standalone"
 }

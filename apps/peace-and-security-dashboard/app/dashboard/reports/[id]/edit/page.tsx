@@ -65,7 +65,7 @@ export default function EditReportPage() {
     }
 
     return (
-        <div className="p-6 md:p-10 bg-[#F8FAFC] min-h-screen">
+        <div className="p-6 md:p-10">
             <ReportForm
                 initialData={report}
                 onSubmit={handleSubmit}

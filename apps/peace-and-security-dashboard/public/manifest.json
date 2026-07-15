@@ -1,11 +1,11 @@
 {
-    "name": "EcoGuard Dashboard",
-    "short_name": "EcoGuard",
-    "description": "Environmental monitoring and violation tracking system",
+    "name": "Peace and Security Dashboard",
+    "short_name": "Peace & Security",
+    "description": "Advanced peace and security monitoring system",
     "start_url": "/",
     "display": "standalone",
     "background_color": "#ffffff",
-    "theme_color": "#00875a",
+    "theme_color": "#0d2d82",
     "icons": [
         {
             "src": "/icon.png",
@@ -21,8 +21,8 @@
     "orientation": "portrait-primary",
     "scope": "/",
     "categories": [
-        "environment",
-        "monitoring"
+        "security",
+        "government"
     ],
     "screenshots": []
 }

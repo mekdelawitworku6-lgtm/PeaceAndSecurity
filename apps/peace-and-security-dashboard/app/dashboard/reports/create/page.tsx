@@ -29,7 +29,7 @@ export default function CreateReportPage() {
     }
 
     return (
-        <div className="p-6 md:p-10 bg-[#F8FAFC] min-h-screen space-y-8">
+        <div className="p-6 md:p-10 space-y-8">
             <div className="flex items-center gap-4">
                 <Button
                     variant="ghost"

@@ -1,102 +1,81 @@
-import apiClient from '../api-client';
-import { API_ENDPOINTS } from '../api-config';
-import { ServiceResponse } from '../api-types';
-import { UserResponse, PaginatedResponse, UserFilterParams } from '@/components/types';
+import { mockUsers } from "../mock-store";
+
+// FormData helper
+function fd(fd: FormData, key: string): string {
+  const v = fd.get(key);
+  return v !== null ? String(v) : "";
+}
 
 class UserService {
-    /**
-     * Get all users
-     */
-    async getAllUsers(params?: UserFilterParams): Promise<PaginatedResponse<UserResponse>> {
-        const response = await apiClient.get(API_ENDPOINTS.USERS.GET_ALL, { params });
-        return response.data;
-    }
+  async getAllUsers(params?: any) {
+    return mockUsers.query({
+      page: params?.page,
+      limit: params?.limit,
+      search: params?.search,
+      role: params?.role,
+      status: params?.status,
+    });
+  }
 
-    /**
-     * Create/Register a new user (Internal users by Admin)
-     */
-    async registerUser(formData: FormData): Promise<ServiceResponse<any>> {
-        const response = await apiClient.post<ServiceResponse<any>>(
-            API_ENDPOINTS.USERS.REGISTER,
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }
-        );
-        return response.data;
-    }
+  async registerUser(formData: FormData) {
+    const now = new Date().toISOString();
+    const permissions: string[] = [];
+    formData.forEach((v, k) => {
+      if (k === "permissions") permissions.push(String(v));
+    });
+    const item = {
+      fullName: fd(formData, "fullName"),
+      email: fd(formData, "email"),
+      phoneNumber: fd(formData, "phoneNumber"),
+      role: fd(formData, "role") || "SYSTEM_ADMIN",
+      status: "ACTIVE",
+      isStaffUser: true,
+      permissions,
+      createdAt: now,
+      updatedAt: now,
+    };
+    return mockUsers.create(item);
+  }
 
-    /**
-     * Update user profile (Admin only for arbitrary users)
-     */
-    /**
-     * Update user profile (Admin only for arbitrary users)
-     */
-    async updateUser(id: string, formData: FormData): Promise<ServiceResponse<any>> {
-        const response = await apiClient.patch<ServiceResponse<any>>(
-            `/users/${id}`,
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }
-        );
-        return response.data;
-    }
+  async updateUser(id: string, formData: FormData) {
+    const patch: any = { updatedAt: new Date().toISOString() };
+    const fn = fd(formData, "fullName");
+    if (fn) patch.fullName = fn;
+    const em = fd(formData, "email");
+    if (em) patch.email = em;
+    const ph = fd(formData, "phoneNumber");
+    if (ph) patch.phoneNumber = ph;
+    const rl = fd(formData, "role");
+    if (rl) patch.role = rl;
+    const permissions: string[] = [];
+    formData.forEach((v, k) => {
+      if (k === "permissions") permissions.push(String(v));
+    });
+    if (permissions.length) patch.permissions = permissions;
+    return mockUsers.update(id, patch);
+  }
 
-    /**
-     * Update current user profile
-     */
-    async updateProfile(formData: FormData): Promise<ServiceResponse<any>> {
-        const response = await apiClient.patch<ServiceResponse<any>>(
-            API_ENDPOINTS.USERS.UPDATE_PROFILE,
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }
-        );
-        return response.data;
-    }
+  async updateProfile(formData: FormData) {
+    return this.updateUser("usr-admin-001", formData);
+  }
 
-    /**
-     * Update user status (toggle)
-     */
-    async toggleUserStatus(id: string): Promise<ServiceResponse<any>> {
-        const response = await apiClient.put<ServiceResponse<any>>(
-            API_ENDPOINTS.USERS.TOGGLE_STATUS(id)
-        );
-        return response.data;
-    }
+  async toggleUserStatus(id: string) {
+    mockUsers.toggleStatus(id);
+    return { success: true };
+  }
 
-    async getUserProfile(): Promise<ServiceResponse<any>> {
-        const response = await apiClient.get<ServiceResponse<any>>(
-            API_ENDPOINTS.USERS.GET_PROFILE
-        );
-        return response.data;
-    }
+  async getUserProfile() {
+    return mockUsers.getById("usr-admin-001");
+  }
 
-    /**
-     * Get user by ID
-     */
-    async getUserById(id: string, config?: any): Promise<ServiceResponse<UserResponse>> {
-        const response = await apiClient.get<ServiceResponse<UserResponse>>(
-            API_ENDPOINTS.USERS.GET_BY_ID(id),
-            config
-        );
-        return response.data;
-    }
+  async getUserById(id: string) {
+    return mockUsers.getById(id);
+  }
 
-    async resetUserPassword(id: string): Promise<ServiceResponse<any>> {
-        const response = await apiClient.post<ServiceResponse<any>>(
-            `/users/${id}/reset-password`
-        );
-        return response.data;
-    }
+  async resetUserPassword(id: string) {
+    mockUsers.resetPassword(id);
+    return { success: true };
+  }
 }
 
 export const userService = new UserService();

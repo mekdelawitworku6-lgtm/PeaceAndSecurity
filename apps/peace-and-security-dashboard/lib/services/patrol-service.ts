@@ -1,77 +1,71 @@
-import apiClient from '../api-client';
-import { API_ENDPOINTS } from '../api-config';
-import { ServiceResponse } from '../api-types';
-import { UserResponse, PaginatedResponse, UserFilterParams } from '@/components/types';
+import { mockPatrols } from "../mock-store";
+
+// FormData helper
+function fd(fd: FormData, key: string): string {
+  const v = fd.get(key);
+  return v !== null ? String(v) : "";
+}
 
 class PatrolService {
-    /**
-     * Get all patrols
-     */
-    async getAllPatrols(params?: UserFilterParams): Promise<PaginatedResponse<UserResponse>> {
-        const response = await apiClient.get(API_ENDPOINTS.PATROLS.GET_ALL, { params });
-        return response.data;
-    }
+  async getAllPatrols(params?: any) {
+    return mockPatrols.query({
+      page: params?.page,
+      limit: params?.limit,
+      search: params?.search,
+      status: params?.status,
+    });
+  }
 
-    /**
-     * Register a new patrol officer
-     */
-    async registerPatrol(formData: FormData): Promise<ServiceResponse<any>> {
-        const response = await apiClient.post<ServiceResponse<any>>(
-            API_ENDPOINTS.PATROLS.CREATE,
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }
-        );
-        return response.data;
-    }
+  async registerPatrol(formData: FormData) {
+    const now = new Date().toISOString();
+    const item = {
+      fullName: fd(formData, "fullName"),
+      email: fd(formData, "email"),
+      phoneNumber: fd(formData, "phoneNumber"),
+      role: fd(formData, "role") || "PATROL",
+      status: "ACTIVE",
+      isStaffUser: false,
+      officeAddress: fd(formData, "officeAddress"),
+      officeLatitude: fd(formData, "officeLatitude"),
+      officeLongitude: fd(formData, "officeLongitude"),
+      assignedArea: fd(formData, "assignedArea"),
+      createdAt: now,
+      updatedAt: now,
+    };
+    return mockPatrols.create(item);
+  }
 
-    /**
-     * Update patrol details
-     */
-    async updatePatrol(id: string, formData: FormData): Promise<ServiceResponse<any>> {
-        const response = await apiClient.patch<ServiceResponse<any>>(
-            API_ENDPOINTS.PATROLS.UPDATE(id),
-            formData,
-            {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            }
-        );
-        return response.data;
-    }
+  async updatePatrol(id: string, formData: FormData) {
+    const patch: any = { updatedAt: new Date().toISOString() };
+    const fn = fd(formData, "fullName");
+    if (fn) patch.fullName = fn;
+    const em = fd(formData, "email");
+    if (em) patch.email = em;
+    const ph = fd(formData, "phoneNumber");
+    if (ph) patch.phoneNumber = ph;
+    const oa = fd(formData, "officeAddress");
+    if (oa) patch.officeAddress = oa;
+    const ol = fd(formData, "officeLatitude");
+    if (ol) patch.officeLatitude = ol;
+    const olg = fd(formData, "officeLongitude");
+    if (olg) patch.officeLongitude = olg;
+    const aa = fd(formData, "assignedArea");
+    if (aa) patch.assignedArea = aa;
+    return mockPatrols.update(id, patch);
+  }
 
-    /**
-     * Get patrol by ID
-     */
-    async getPatrolById(id: string, config?: any): Promise<ServiceResponse<UserResponse>> {
-        const response = await apiClient.get<ServiceResponse<UserResponse>>(
-            API_ENDPOINTS.PATROLS.GET_BY_ID(id),
-            config
-        );
-        return response.data;
-    }
+  async getPatrolById(id: string) {
+    return mockPatrols.getById(id);
+  }
 
-    /**
-     * Delete patrol
-     */
-    async deletePatrol(id: string): Promise<ServiceResponse<any>> {
-        const response = await apiClient.delete<ServiceResponse<any>>(
-            API_ENDPOINTS.PATROLS.DELETE(id)
-        );
-        return response.data;
-    }
+  async deletePatrol(id: string) {
+    mockPatrols.toggleStatus(id);
+    return { success: true };
+  }
 
-    async getNearby(params: { latitude: number; longitude: number; radiusKm?: number }): Promise<ServiceResponse<any[]>> {
-        const response = await apiClient.get<ServiceResponse<any[]>>(
-            API_ENDPOINTS.PATROLS.GET_NEARBY,
-            { params }
-        );
-        return response.data;
-    }
+  async getNearby(_params: any) {
+    return { data: [], success: true };
+  }
 }
 
 export const patrolService = new PatrolService();

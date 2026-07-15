@@ -1,39 +1,23 @@
-
-import apiClient from '../api-client';
-import { API_ENDPOINTS } from '../api-config';
-import { ServiceResponse } from '../api-types';
+import { mockReportTypes } from "../mock-store";
 
 class ReportTypeService {
-    async getAll(params?: { search?: string; isActive?: string }): Promise<ServiceResponse<any[]>> {
-        const response = await apiClient.get<ServiceResponse<any[]>>(
-            API_ENDPOINTS.REPORT_TYPES.GET_ALL,
-            { params }
-        );
-        return response.data;
-    }
+  async getAll(params?: { search?: string; isActive?: string }) {
+    return mockReportTypes.getAll(params?.search);
+  }
 
-    async create(data: any): Promise<ServiceResponse<any>> {
-        const response = await apiClient.post<ServiceResponse<any>>(
-            API_ENDPOINTS.REPORT_TYPES.CREATE,
-            data
-        );
-        return response.data;
-    }
+  async create(data: any) {
+    const item = { ...data, isActive: true, createdAt: new Date().toISOString() };
+    return mockReportTypes.create(item);
+  }
 
-    async update(id: string, data: any): Promise<ServiceResponse<any>> {
-        const response = await apiClient.patch<ServiceResponse<any>>(
-            API_ENDPOINTS.REPORT_TYPES.UPDATE(id),
-            data
-        );
-        return response.data;
-    }
+  async update(id: string, data: any) {
+    return mockReportTypes.update(id, { ...data, updatedAt: new Date().toISOString() });
+  }
 
-    async deleteReportType(id: string): Promise<ServiceResponse<any>> {
-        const response = await apiClient.delete<ServiceResponse<any>>(
-            API_ENDPOINTS.REPORT_TYPES.DELETE(id)
-        );
-        return response.data;
-    }
+  async deleteReportType(id: string) {
+    mockReportTypes.delete(id);
+    return { success: true };
+  }
 }
 
 export const reportTypeService = new ReportTypeService();

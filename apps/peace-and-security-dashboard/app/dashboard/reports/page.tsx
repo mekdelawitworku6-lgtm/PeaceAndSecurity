@@ -1,309 +1,520 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useAuth } from "@/app/context/auth-context"
-import { reportService } from "@/lib/services/report-service"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { useState, useMemo } from "react";
+import { useAuth } from "@/app/context/auth-context";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
 import {
-    Search,
-    MapPin,
-    MoreHorizontal,
-    Eye,
-    Edit,
-    Trash2,
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { useRouter } from "next/navigation"
+  Search,
+  RotateCw,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Shield,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Badge } from "@/components/ui/badge"
-import { toast } from "sonner"
-import { DashboardPagination } from "@/components/tables/dashboard-pagination"
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const statusFilters = ["All", "SUBMITTED", "UNDER_REVIEW", "ASSIGNED", "IN_PROGRESS", "RESOLVED", "CLOSED", "REJECTED"]
+// Mock officers for assignment matching Screenshots
+const OFFICERS_LIST = [
+  "Rapid Response Unit 3",
+  "Officer Sara Mulugeta",
+  "Officer Dawit Tesfaye",
+  "Investigation Unit 1",
+  "Officer Getachew K.",
+  "Officer Hanna Tadesse",
+  "Special Events Unit",
+  "Compliance Team 2",
+  "Rapid Response Unit 2",
+];
+
+// Initial mock reports matching Screenshot 3
+const INITIAL_REPORTS = [
+  {
+    id: "RPT-2024-1247",
+    type: "Robbery/Theft",
+    location: "Bole Road, near Atlas Hotel",
+    status: "Active",
+    priority: "High",
+    assignedTo: "Unassigned",
+    date: "2024-07-03 14:32",
+  },
+  {
+    id: "RPT-2024-1246",
+    type: "Illegal Weapons",
+    location: "Piazza, Arada Sub-City",
+    status: "Investigating",
+    priority: "High",
+    assignedTo: "Rapid Response Unit 3",
+    date: "2024-07-03 13:15",
+  },
+  {
+    id: "RPT-2024-1245",
+    type: "Street Begging",
+    location: "Meskel Square",
+    status: "Active",
+    priority: "Medium",
+    assignedTo: "Officer Sara Mulugeta",
+    date: "2024-07-03 11:40",
+  },
+  {
+    id: "RPT-2024-1244",
+    type: "Unlit Area",
+    location: "CMC Road, Jemo",
+    status: "Resolved",
+    priority: "Low",
+    assignedTo: "Officer Dawit Tesfaye",
+    date: "2024-07-03 10:22",
+  },
+  {
+    id: "RPT-2024-1243",
+    type: "Forgery/Fraud",
+    location: "Mexico Square, Kirkos",
+    status: "Investigating",
+    priority: "High",
+    assignedTo: "Investigation Unit 1",
+    date: "2024-07-03 09:05",
+  },
+  {
+    id: "RPT-2024-1242",
+    type: "Security Threat",
+    location: "Bole Atlas Area",
+    status: "Investigating",
+    priority: "High",
+    assignedTo: "Officer Getachew K.",
+    date: "2024-07-03 08:17",
+  },
+  {
+    id: "RPT-2024-1241",
+    type: "Disruptive Activity",
+    location: "Merkato, Addis Ketema",
+    status: "Active",
+    priority: "Medium",
+    assignedTo: "Unassigned",
+    date: "2024-07-02 18:45",
+  },
+  {
+    id: "RPT-2024-1240",
+    type: "Illegal Business",
+    location: "6 Kilo, near University",
+    status: "Investigating",
+    priority: "Medium",
+    assignedTo: "Officer Hanna Tadesse",
+    date: "2024-07-02 16:30",
+  },
+  {
+    id: "RPT-2024-1239",
+    type: "Event Security",
+    location: "Meskel Square",
+    status: "Resolved",
+    priority: "Low",
+    assignedTo: "Special Events Unit",
+    date: "2024-07-02 14:12",
+  },
+  {
+    id: "RPT-2024-1238",
+    type: "Institution Inspection",
+    location: "Kazanchis Business District",
+    status: "Resolved",
+    priority: "Low",
+    assignedTo: "Compliance Team 2",
+    date: "2024-07-02 11:05",
+  },
+  // Extra rows for pagination
+  {
+    id: "RPT-2024-1237",
+    type: "Robbery/Theft",
+    location: "Kality, near Station",
+    status: "Active",
+    priority: "High",
+    assignedTo: "Unassigned",
+    date: "2024-07-01 10:15",
+  },
+  {
+    id: "RPT-2024-1236",
+    type: "Street Begging",
+    location: "Mexico Square",
+    status: "Resolved",
+    priority: "Medium",
+    assignedTo: "Officer Sara Mulugeta",
+    date: "2024-07-01 09:30",
+  },
+  {
+    id: "RPT-2024-1235",
+    type: "Illegal Business",
+    location: "Arat Kilo",
+    status: "Active",
+    priority: "Medium",
+    assignedTo: "Unassigned",
+    date: "2024-06-30 15:45",
+  },
+];
+
+type ReportTab = "all" | "active" | "investigating" | "resolved";
 
 export default function ReportsPage() {
-    const router = useRouter()
-    const { user } = useAuth()
-    const [reports, setReports] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
-    const [activeFilter, setActiveFilter] = useState("All")
-    const [searchQuery, setSearchQuery] = useState("")
+  const [reports, setReports] = useState(INITIAL_REPORTS);
+  const [activeTab, setActiveTab] = useState<ReportTab>("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
-    // Pagination State
-    const [page, setPage] = useState(1)
-    const [limit, setLimit] = useState(10)
-    const [total, setTotal] = useState(0)
-    const [totalPages, setTotalPages] = useState(1)
+  // Assignment Modal state
+  const [selectedReport, setSelectedReport] = useState<typeof INITIAL_REPORTS[0] | null>(null);
+  const [assignee, setAssignee] = useState<string>("");
+  const [dispatchNote, setDispatchNote] = useState<string>("");
 
-    useEffect(() => {
-        loadReports(page)
-        const interval = setInterval(() => loadReports(page), 30000)
-        return () => clearInterval(interval)
-    }, [page, limit, activeFilter, searchQuery])
+  // Filters & Search
+  const filteredReports = useMemo(() => {
+    return reports.filter((report) => {
+      // Tab filter
+      if (activeTab === "active" && report.status !== "Active") return false;
+      if (activeTab === "investigating" && report.status !== "Investigating") return false;
+      if (activeTab === "resolved" && report.status !== "Resolved") return false;
 
-    const loadReports = async (targetPage = 1) => {
-        try {
-            setLoading(true)
-            let params: any = {
-                page: targetPage,
-                limit,
-                status: activeFilter === "All" ? undefined : activeFilter,
-                search: searchQuery || undefined
-            }
+      // Search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        return (
+          report.type.toLowerCase().includes(query) ||
+          report.location.toLowerCase().includes(query) ||
+          report.id.toLowerCase().includes(query)
+        );
+      }
 
-            // If user is a patrol, try to get their location for nearest sorting
-            if (user?.role === 'PATROL') {
-                try {
-                    const pos = await new Promise<GeolocationPosition>((resolve, reject) => {
-                        navigator.geolocation.getCurrentPosition(resolve, reject)
-                    })
-                    params.lat = pos.coords.latitude
-                    params.lng = pos.coords.longitude
-                } catch (e) {
-                    console.log("Location access denied or unavailable")
-                }
-            }
+      return true;
+    });
+  }, [reports, activeTab, searchQuery]);
 
-            const response = await reportService.getAll(params)
-            setReports(response.data || [])
-            setTotal(response.total || (response.data?.length || 0))
-            setTotalPages(response.totalPages || 1)
-        } catch (error) {
-            console.error("Failed to load reports:", error)
-            toast.error("Failed to load reports")
-        } finally {
-            setLoading(false)
+  // Pagination calculation
+  const totalPages = Math.ceil(filteredReports.length / itemsPerPage) || 1;
+  const paginatedReports = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredReports.slice(start, start + itemsPerPage);
+  }, [filteredReports, currentPage]);
+
+  const handleOpenAssignModal = (report: typeof INITIAL_REPORTS[0]) => {
+    setSelectedReport(report);
+    setAssignee(report.assignedTo === "Unassigned" ? "" : report.assignedTo);
+    setDispatchNote("");
+  };
+
+  const handleConfirmAssignment = () => {
+    if (!assignee) {
+      toast.error("Please select an officer or unit");
+      return;
+    }
+
+    setReports((prev) =>
+      prev.map((r) => {
+        if (r.id === selectedReport?.id) {
+          return {
+            ...r,
+            assignedTo: assignee,
+            status: r.status === "Active" ? "Investigating" : r.status, // Transition Active -> Investigating if assigned
+          };
         }
-    }
+        return r;
+      })
+    );
 
-    const getStatusColor = (status: string) => {
-        switch (status?.toUpperCase()) {
-            case 'SUBMITTED': return 'bg-blue-50 text-blue-600 border-blue-100'
-            case 'UNDER_REVIEW': return 'bg-amber-50 text-amber-600 border-amber-100'
-            case 'ASSIGNED': return 'bg-purple-50 text-purple-600 border-purple-100'
-            case 'IN_PROGRESS': return 'bg-indigo-50 text-indigo-600 border-indigo-100'
-            case 'RESOLVED': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
-            case 'CLOSED': return 'bg-slate-50 text-slate-600 border-slate-100'
-            case 'REJECTED': return 'bg-rose-50 text-rose-600 border-rose-100'
-            default: return 'bg-slate-100 text-slate-600 border-slate-200'
-        }
-    }
+    toast.success(`Successfully assigned report to ${assignee}`);
+    setSelectedReport(null);
+  };
 
-    const getSeverityColor = (severity: string) => {
-        switch (severity?.toLowerCase()) {
-            case 'high': return 'bg-rose-50 text-rose-600 border-rose-100'
-            case 'medium': return 'bg-amber-100 text-amber-700 border-amber-100'
-            case 'low': return 'bg-emerald-50 text-emerald-600 border-emerald-100'
-            default: return 'bg-slate-100 text-slate-600 border-slate-200'
-        }
-    }
+  return (
+    <div className="flex flex-col p-6 md:p-8 space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-[#0c2340]">Reports Management</h1>
+      </div>
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this report?")) return
-        try {
-            await reportService.deleteReport(id)
-            toast.success("Report deleted successfully")
-            loadReports()
-        } catch (error) {
-            toast.error("Failed to delete report")
-        }
-    }
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
+        {/* Toolbar (Tabs and Search input side-by-side) */}
+        <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-full border border-slate-100">
+            {(["all", "active", "investigating", "resolved"] as ReportTab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => {
+                  setActiveTab(tab);
+                  setCurrentPage(1);
+                }}
+                className={cn(
+                  "px-4 py-2 rounded-full text-xs font-bold transition-all capitalize whitespace-nowrap",
+                  activeTab === tab
+                    ? "bg-[#0d2d82] text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                {tab === "all" ? "All Reports" : tab}
+              </button>
+            ))}
+          </div>
 
-    const filteredReports = reports
-
-    const handleExportCSV = () => {
-        const headers = ["ID", "Type", "Location", "Status", "Severity", "Assigned To", "Date", "Description"]
-        const csvContent = [
-            headers.join(","),
-            ...filteredReports.map(r => [
-                `REP-${r.id.substring(0, 8).toUpperCase()}`,
-                `"${r.violationType || 'Unknown'}"`,
-                `"${r.location || r.address || 'Unknown'}"`,
-                r.status,
-                r.severity || 'Medium',
-                `"${r.assignedPatrol?.fullName || 'Unassigned'}"`,
-                new Date(r.createdAt).toLocaleDateString(),
-                `"${(r.description || '').replace(/"/g, '""')}"`
-            ].join(","))
-        ].join("\n")
-
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-        const link = document.createElement("a")
-        const url = URL.createObjectURL(blob)
-        link.setAttribute("href", url)
-        link.setAttribute("download", `environmental_reports_${new Date().toISOString().split('T')[0]}.csv`)
-        link.style.visibility = 'hidden'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        toast.success("Report history exported successfully")
-    }
-
-    return (
-        <div className="flex flex-col bg-[#F8FAFC] min-h-screen p-6 md:p-8 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-[#1E293B]">Reporting Management</h1>
-                    <p className="text-sm text-slate-500">Track and manage environmental violation reports.</p>
-                </div>
-                <div className="flex items-center gap-3">
-                    <Button
-                        variant="outline"
-                        onClick={handleExportCSV}
-                        className="rounded-xl font-bold gap-2 border-slate-200"
-                    >
-                        Export CSV
-                    </Button>
-                </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-                {/* Toolbar */}
-                <div className="p-4 border-b border-slate-100 flex flex-col xl:flex-row gap-4 items-center justify-between">
-                    <div className="relative w-full xl:w-80">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <Input
-                            placeholder="Search by type or location..."
-                            className="pl-10 h-10 bg-[#F8FAFC] border-slate-200 rounded-lg text-sm focus:ring-primary/20"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-
-                    <div className="flex items-center gap-1 bg-[#F8FAFC] p-1 rounded-lg border border-slate-100 overflow-x-auto w-full xl:w-auto no-scrollbar">
-                        {statusFilters.map((filter) => (
-                            <button
-                                key={filter}
-                                onClick={() => setActiveFilter(filter)}
-                                className={cn(
-                                    "px-3 py-1.5 rounded-md text-[10px] font-bold transition-all whitespace-nowrap",
-                                    activeFilter === filter
-                                        ? "bg-primary text-white shadow-sm"
-                                        : "text-slate-500 hover:text-primary"
-                                )}
-                            >
-                                {filter}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                {/* Table */}
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
-                        <thead>
-                            <tr className="border-b border-slate-100 bg-slate-50/30">
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Type</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Area</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Location</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Status</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Severity</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Assigned To</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400">Date</th>
-                                <th className="px-6 py-4 text-[10px] font-bold uppercase tracking-wider text-slate-400 text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-50">
-                            {filteredReports.length > 0 ? filteredReports.map((report) => (
-                                <tr
-                                    key={report.id}
-                                    className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
-                                    onClick={() => router.push(`/dashboard/reports/${report.id}`)}
-                                >
-                                    <td className="px-6 py-4">
-                                        <span className="font-semibold text-slate-700 text-sm whitespace-nowrap">{report.violationType || 'Unknown'}</span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <Badge variant="secondary" className="bg-slate-100 text-slate-600 border-none font-bold text-[9px] uppercase">
-                                            {report.noiseAreaType || report.area || 'General Area'}
-                                        </Badge>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <div className="flex items-center gap-1.5 text-slate-500 max-w-[150px]">
-                                            <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                                            <span className="text-[13px] truncate">{report.address || 'Unknown'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border whitespace-nowrap",
-                                            getStatusColor(report.status)
-                                        )}>
-                                            {report.status}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className={cn(
-                                            "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border whitespace-nowrap",
-                                            getSeverityColor(report.severity || 'Medium')
-                                        )}>
-                                            {report.severity || 'Medium'}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-[13px] text-slate-500 font-medium whitespace-nowrap">
-                                        {report.assignedPatrol?.fullName || 'Unassigned'}
-                                    </td>
-                                    <td className="px-6 py-4">
-                                        <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap">
-                                            {new Date(report.createdAt).toLocaleDateString()}
-                                        </span>
-                                    </td>
-                                    <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-40">
-                                                <DropdownMenuItem onClick={() => router.push(`/dashboard/reports/${report.id}`)} className="cursor-pointer gap-2">
-                                                    <Eye className="w-4 h-4" />
-                                                    View Details
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem
-                                                    onClick={() => handleDelete(report.id)}
-                                                    className="cursor-pointer gap-2 text-rose-600 focus:text-rose-600 focus:bg-rose-50"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                    Delete
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </td>
-                                </tr>
-                            )) : !loading && (
-                                <tr>
-                                    <td colSpan={7} className="px-6 py-10 text-center text-slate-400 italic">
-                                        No reports found fitting the criteria.
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-
-                    {loading && (
-                        <div className="p-20 flex flex-col items-center justify-center space-y-4">
-                            <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Fetching reports...</p>
-                        </div>
-                    )}
-                </div>
-            </div>
-
-            <DashboardPagination
-                page={page}
-                totalPages={totalPages}
-                total={total}
-                onPageChange={setPage}
-                limit={limit}
-                onLimitChange={setLimit}
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Input
+              placeholder="Search orders..."
+              className="pl-10 h-10 bg-white border-slate-200 rounded-lg text-sm focus:ring-[#0d2d82]/20"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
             />
+          </div>
         </div>
-    )
+
+        {/* Table View */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-100 bg-slate-50/50">
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Type</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Location</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Status</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Priority</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned To</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Date</th>
+                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {paginatedReports.map((report) => (
+                <tr key={report.id} className="hover:bg-slate-50/40 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex flex-col">
+                      <span className="font-semibold text-slate-800 text-sm">{report.type}</span>
+                      <span className="text-[10px] font-medium text-slate-400 font-mono mt-0.5">{report.id}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-[13px] text-slate-500 font-medium">{report.location}</span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={cn(
+                        "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                        report.status === "Active"
+                          ? "bg-rose-50 text-rose-600 border-rose-100"
+                          : report.status === "Investigating"
+                          ? "bg-amber-50 text-amber-600 border-amber-100"
+                          : "bg-emerald-50 text-emerald-600 border-emerald-100"
+                      )}
+                    >
+                      {report.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1.5">
+                      <div
+                        className={cn(
+                          "w-2 h-2 rounded-full",
+                          report.priority === "High"
+                            ? "bg-red-500"
+                            : report.priority === "Medium"
+                            ? "bg-amber-500"
+                            : "bg-slate-400"
+                        )}
+                      />
+                      <span className="text-[13px] text-slate-700 font-medium">{report.priority}</span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={cn(
+                        "text-[13px]",
+                        report.assignedTo === "Unassigned"
+                          ? "text-slate-400 italic"
+                          : "text-[#0d2d82] font-bold"
+                      )}
+                    >
+                      {report.assignedTo}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="text-[11px] font-semibold text-slate-400">{report.date}</span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    {report.assignedTo === "Unassigned" ? (
+                      <button
+                        onClick={() => handleOpenAssignModal(report)}
+                        className="px-4 py-1.5 bg-[#0d2d82] hover:opacity-95 text-white font-bold text-xs rounded-full shadow-sm"
+                      >
+                        Assign
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenAssignModal(report)}
+                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-full shadow-sm"
+                      >
+                        <RotateCw className="w-3 h-3 text-slate-400" />
+                        Reassign
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+              {paginatedReports.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
+                    No reports found fitting the criteria.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Custom Pagination Footer matching Screenshot 3 */}
+        <div className="p-4 border-t border-slate-100 flex items-center justify-center gap-2 bg-slate-50/20">
+          <button
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-500 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Previous
+          </button>
+
+          {Array.from({ length: totalPages }).map((_, idx) => {
+            const pageNum = idx + 1;
+            // Limit page pagination visualization
+            if (totalPages > 5 && Math.abs(currentPage - pageNum) > 1 && pageNum !== 1 && pageNum !== totalPages) {
+              if (pageNum === 2 || pageNum === totalPages - 1) {
+                return (
+                  <span key={pageNum} className="px-2 text-slate-400 text-xs">
+                    ...
+                  </span>
+                );
+              }
+              return null;
+            }
+
+            return (
+              <button
+                key={pageNum}
+                onClick={() => setCurrentPage(pageNum)}
+                className={cn(
+                  "w-8 h-8 rounded-lg text-xs font-bold transition-all",
+                  currentPage === pageNum
+                    ? "bg-[#e2e8f0] text-slate-800"
+                    : "bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                )}
+              >
+                {pageNum}
+              </button>
+            );
+          })}
+
+          <button
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-xs font-bold text-slate-500 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            Next
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Assign Report Modal popup (Screenshot 4) */}
+      {selectedReport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-0 animate-in zoom-in-95 duration-300 mx-4">
+            {/* Modal Header */}
+            <div className="p-6 pb-4 flex items-center justify-between">
+              <h3 className="text-lg font-bold text-slate-900">Assign Report</h3>
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 pb-6 space-y-5">
+              {/* Highlight Card */}
+              <div className="bg-[#f0f4f9] rounded-xl p-4 flex items-center justify-between">
+                <div className="space-y-1">
+                  <h4 className="font-bold text-slate-800 text-sm leading-tight">
+                    {selectedReport.type}
+                  </h4>
+                  <p className="text-xs text-slate-500">{selectedReport.location}</p>
+                  <p className="text-[10px] font-bold text-slate-400 font-mono leading-none pt-0.5">
+                    {selectedReport.id}
+                  </p>
+                </div>
+                <span
+                  className={cn(
+                    "px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border whitespace-nowrap",
+                    selectedReport.priority === "High"
+                      ? "bg-rose-50 text-rose-600 border-rose-100"
+                      : selectedReport.priority === "Medium"
+                      ? "bg-amber-50 text-amber-600 border-amber-100"
+                      : "bg-slate-50 text-slate-600 border-slate-100"
+                  )}
+                >
+                  {selectedReport.priority} Priority
+                </span>
+              </div>
+
+              {/* Select Assignee */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600">Assign to Officer or Unit</label>
+                <Select value={assignee} onValueChange={setAssignee}>
+                  <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-semibold text-slate-700">
+                    <SelectValue placeholder="Select officer or unit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {OFFICERS_LIST.map((officer) => (
+                      <SelectItem key={officer} value={officer} className="font-semibold text-slate-700">
+                        {officer}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Dispatch Notes */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-600">Dispatch Note (Optional)</label>
+                <textarea
+                  value={dispatchNote}
+                  onChange={(e) => setDispatchNote(e.target.value)}
+                  placeholder="Add any special instructions or context for the assigned officer..."
+                  className="w-full min-h-[90px] rounded-lg border border-slate-200 bg-slate-50/30 p-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#0d2d82]"
+                />
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="p-6 pt-0 flex items-center justify-end gap-3">
+              <button
+                onClick={() => setSelectedReport(null)}
+                className="px-5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-sm rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmAssignment}
+                className="px-5 py-2 bg-[#7a8da5] hover:bg-[#6c7d95] text-white font-bold text-sm rounded-lg shadow-sm transition-colors"
+              >
+                Confirm Assignment
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }

@@ -24,6 +24,7 @@ import { DashboardPagination } from "@/components/tables/dashboard-pagination";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
+import { UserForm } from "@/components/forms/user-form";
 
 export default function UsersPage() {
   const router = useRouter();
@@ -44,6 +45,11 @@ export default function UsersPage() {
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
+
+  // Modal States
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [formLoading, setFormLoading] = useState(false);
 
   useEffect(() => {
     loadData(page);
@@ -93,11 +99,42 @@ export default function UsersPage() {
     }
   };
 
-  const handleAddUser = () => router.push("/dashboard/users/create");
-  const handleEditUser = (user: User) =>
-    router.push(`/dashboard/users/${user.id}/edit`);
+  const handleAddUser = () => {
+    setEditingUser(null);
+    setIsFormOpen(true);
+  };
+
+  const handleEditUser = (user: User) => {
+    setEditingUser(user);
+    setIsFormOpen(true);
+  };
+
   const handleDetailUser = (user: User) =>
     router.push(`/dashboard/users/${user.id}`);
+
+  const handleSaveForm = async (formData: FormData) => {
+    setFormLoading(true);
+    const loadingToast = toast.loading(
+      editingUser ? "Updating user account..." : "Creating user account..."
+    );
+    try {
+      if (editingUser) {
+        await userService.updateUser(editingUser.id, formData);
+        toast.success("User updated successfully", { id: loadingToast });
+      } else {
+        await userService.registerUser(formData);
+        toast.success("User created successfully", { id: loadingToast });
+      }
+      setIsFormOpen(false);
+      setEditingUser(null);
+      loadData(page);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to save user";
+      toast.error(msg, { id: loadingToast });
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   const handleDeleteUser = async (user: User) => {
     if (!confirm("Are you sure you want to toggle this user's status?")) return;
@@ -270,6 +307,16 @@ export default function UsersPage() {
         limit={limit}
         onLimitChange={setLimit}
       />
+
+      {isFormOpen && (
+        <UserForm
+          onOpenChange={setIsFormOpen}
+          onSave={handleSaveForm}
+          initialData={editingUser || undefined}
+          isNew={!editingUser}
+          isLoading={formLoading}
+        />
+      )}
     </div>
   );
 }

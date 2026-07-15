@@ -14,7 +14,7 @@ import { getSocket } from "@/lib/socket"
 import { requestNotificationPermission, onMessageListener } from "@/lib/firebase"
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
-  const storeRef = useRef<AppStore>()
+  const storeRef = useRef<AppStore>(undefined as any)
   if (!storeRef.current) {
     storeRef.current = makeStore()
   }

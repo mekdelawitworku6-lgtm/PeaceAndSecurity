@@ -1,61 +1,203 @@
+"use client";
 
-"use client"
-
-import { useEffect, useState } from "react"
-import { useAuth } from "@/app/context/auth-context"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react";
+import { useAuth } from "@/app/context/auth-context";
+import { useRouter } from "next/navigation";
 import {
-  Users, FileText, AlertTriangle, Camera,
-  CheckCircle2, Clock, ShieldAlert,
-  BarChart3, PieChart as PieChartIcon, Activity,
-  ArrowUpRight, ListMusic, Volume2, Trash2, Wind, Droplets,
-  Eye, MapPin
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { PERMISSIONS } from "@/lib/permissions"
-import { dashboardService, EcoGuardStats } from "@/lib/services/dashboard-service"
-import { Badge } from "@/components/ui/badge"
-import { cn } from "@/lib/utils"
+  FileText,
+  Clock,
+  ArrowUpRight,
+  ArrowDownRight,
+  TrendingUp,
+  Download,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PERMISSIONS } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line, Legend, AreaChart, Area
-} from 'recharts';
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+} from "recharts";
 
-const COLORS = ['var(--primary)', 'oklch(0.6 0.15 180)', 'oklch(0.5 0.15 140)', 'oklch(0.65 0.15 60)', 'oklch(0.7 0.15 30)', 'oklch(0.45 0.15 200)'];
+type TimeRange = "week" | "month" | "year";
 
-function StatCard({ label, value, icon, trend }: { label: string, value: string | number, icon: any, trend?: string }) {
-  return (
-    <div className="flex flex-col p-4 md:p-6 space-y-1 md:space-y-2 hover:bg-muted/30 transition-all duration-300 group">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest text-muted-foreground group-hover:text-primary transition-colors">{label}</span>
-        <div className="text-primary/70 group-hover:text-primary group-hover:scale-110 transition-all duration-300 scale-75 md:scale-100">{icon}</div>
-      </div>
-      <div className="flex items-baseline gap-2">
-        <span className="text-xl md:text-2xl font-black text-foreground tracking-tight">{value}</span>
-        {trend && <span className="text-[9px] md:text-[10px] font-bold text-primary bg-primary/10 px-1 md:px-2 py-0.5 rounded-full border border-primary/10">
-          {trend}
-        </span>}
-      </div>
-    </div>
-  )
-}
+// ── Stat cards per time range ────────────────────────────────────────
+const STAT_CARDS_BY_RANGE: Record<TimeRange, typeof STAT_CARDS_TEMPLATE> = {
+  week: [
+    { label: "Total Reports", value: "87", trend: "+5.2%", isPositive: true },
+    { label: "Active", value: "12", trend: "+2.1%", isPositive: true },
+    { label: "Investigating", value: "23", trend: "-1.8%", isPositive: false },
+    { label: "Total Resolved", value: "52", trend: "+11.3%", isPositive: true },
+  ],
+  month: [
+    { label: "Total Reports", value: "342", trend: "+9.7%", isPositive: true },
+    { label: "Active", value: "48", trend: "+6.3%", isPositive: true },
+    { label: "Investigating", value: "89", trend: "-2.5%", isPositive: false },
+    { label: "Total Resolved", value: "205", trend: "+8.1%", isPositive: true },
+  ],
+  year: [
+    { label: "Total Reports", value: "1,243", trend: "+12.5%", isPositive: true },
+    { label: "Active", value: "89", trend: "+8.5%", isPositive: true },
+    { label: "Investigating", value: "156", trend: "-3.2%", isPositive: false },
+    { label: "Total Resolved", value: "998", trend: "+9.7%", isPositive: true },
+  ],
+};
 
-function SkeletonBox({ className }: { className?: string }) {
-  return <div className={`animate-pulse bg-slate-100 rounded ${className || ''}`} />
-}
+// ── Category bar chart data per time range ───────────────────────────
+const CATEGORY_DATA_BY_RANGE: Record<TimeRange, typeof CATEGORY_DATA_TEMPLATE> = {
+  week: [
+    { name: "Robbery/Theft", count: 18 },
+    { name: "Illegal Weapons", count: 9 },
+    { name: "Forgery/Fraud", count: 14 },
+    { name: "Security Threat", count: 6 },
+    { name: "Street Begging", count: 12 },
+    { name: "Disruptive Activity", count: 8 },
+    { name: "Unfit Area", count: 5 },
+    { name: "Illegal Business", count: 10 },
+    { name: "Event Security", count: 3 },
+    { name: "Institution Inspection", count: 2 },
+  ],
+  month: [
+    { name: "Robbery/Theft", count: 72 },
+    { name: "Illegal Weapons", count: 38 },
+    { name: "Forgery/Fraud", count: 58 },
+    { name: "Security Threat", count: 24 },
+    { name: "Street Begging", count: 52 },
+    { name: "Disruptive Activity", count: 33 },
+    { name: "Unfit Area", count: 27 },
+    { name: "Illegal Business", count: 44 },
+    { name: "Event Security", count: 15 },
+    { name: "Institution Inspection", count: 11 },
+  ],
+  year: [
+    { name: "Robbery/Theft", count: 240 },
+    { name: "Illegal Weapons", count: 125 },
+    { name: "Forgery/Fraud", count: 195 },
+    { name: "Security Threat", count: 80 },
+    { name: "Street Begging", count: 175 },
+    { name: "Disruptive Activity", count: 110 },
+    { name: "Unfit Area", count: 90 },
+    { name: "Illegal Business", count: 145 },
+    { name: "Event Security", count: 50 },
+    { name: "Institution Inspection", count: 35 },
+  ],
+};
+
+// ── Time-series line chart data per time range ───────────────────────
+const TIME_DATA_BY_RANGE: Record<TimeRange, typeof TIME_DATA_TEMPLATE> = {
+  week: [
+    { day: "Mon", count: 15 },
+    { day: "Tue", count: 8 },
+    { day: "Wed", count: 12 },
+    { day: "Thu", count: 7 },
+    { day: "Fri", count: 18 },
+    { day: "Sat", count: 22 },
+    { day: "Sun", count: 5 },
+  ],
+  month: [
+    { day: "Week 1", count: 78 },
+    { day: "Week 2", count: 92 },
+    { day: "Week 3", count: 85 },
+    { day: "Week 4", count: 87 },
+  ],
+  year: [
+    { day: "Jan", count: 85 },
+    { day: "Feb", count: 72 },
+    { day: "Mar", count: 98 },
+    { day: "Apr", count: 105 },
+    { day: "May", count: 112 },
+    { day: "Jun", count: 95 },
+    { day: "Jul", count: 120 },
+    { day: "Aug", count: 108 },
+    { day: "Sep", count: 93 },
+    { day: "Oct", count: 115 },
+    { day: "Nov", count: 130 },
+    { day: "Dec", count: 110 },
+  ],
+};
+
+// ── Recent activity per time range ───────────────────────────────────
+const RECENT_ACTIVITIES_BY_RANGE: Record<TimeRange, typeof RECENT_ACTIVITIES_TEMPLATE> = {
+  week: [
+    {
+      title: "Robbery — Bole Road",
+      subtitle: "by Officer Yamlak F. • 5 minutes ago",
+      action: "Status changed to Investigating",
+    },
+    {
+      title: "Illegal Weapons — Piazza",
+      subtitle: "by Dispatcher Hanan A. • 12 minutes ago",
+      action: "Assigned to Rapid Response Unit 2",
+    },
+    {
+      title: "Unfit Area — CMC Road",
+      subtitle: "by Officer Daniel T. • 35 minutes ago",
+      action: "Marked as Resolved",
+    },
+  ],
+  month: [
+    {
+      title: "Forgery/Fraud — Arat Kilo",
+      subtitle: "by Officer Meron G. • 2 hours ago",
+      action: "Escalated to Investigation Unit",
+    },
+    {
+      title: "Street Begging — Mercato",
+      subtitle: "by Officer Yonas B. • 5 hours ago",
+      action: "Status changed to Investigating",
+    },
+    {
+      title: "Disruptive Activity — Bole Mikael",
+      subtitle: "by Dispatcher Sarah T. • 8 hours ago",
+      action: "Assigned to Patrol Unit 5",
+    },
+    {
+      title: "Robbery — Piazza",
+      subtitle: "by Officer Daniel T. • 1 day ago",
+      action: "Marked as Resolved",
+    },
+  ],
+  year: [
+    {
+      title: "Robbery — Bole Road",
+      subtitle: "by Officer Yamlak F. • 5 minutes ago",
+      action: "Status changed to Investigating",
+    },
+    {
+      title: "Illegal Weapons — Piazza",
+      subtitle: "by Dispatcher Hanan A. • 12 minutes ago",
+      action: "Assigned to Rapid Response Unit 2",
+    },
+    {
+      title: "Unfit Area — CMC Road",
+      subtitle: "by Officer Daniel T. • 35 minutes ago",
+      action: "Marked as Resolved",
+    },
+    {
+      title: "Forgery/Fraud — Arat Kilo",
+      subtitle: "by Officer Meron G. • 2 hours ago",
+      action: "Escalated to Investigation Unit",
+    },
+  ],
+};
+
+// ── Template type helpers (inferred from year data) ──────────────────
+const STAT_CARDS_TEMPLATE = STAT_CARDS_BY_RANGE.year;
+const CATEGORY_DATA_TEMPLATE = CATEGORY_DATA_BY_RANGE.year;
+const TIME_DATA_TEMPLATE = TIME_DATA_BY_RANGE.year;
+const RECENT_ACTIVITIES_TEMPLATE = RECENT_ACTIVITIES_BY_RANGE.year;
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const { user, hasPermission } = useAuth()
-  const [stats, setStats] = useState<EcoGuardStats | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [recentReports, setRecentReports] = useState<any[]>([])
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
+  const router = useRouter();
+  const { user, hasPermission } = useAuth();
+  const [timeRange, setTimeRange] = useState<TimeRange>("month");
 
   useEffect(() => {
     if (!hasPermission(PERMISSIONS.DASHBOARD_VIEW)) {
@@ -63,329 +205,180 @@ export default function DashboardPage() {
     }
   }, [user, hasPermission, router]);
 
-  useEffect(() => {
-    if (user && hasPermission(PERMISSIONS.DASHBOARD_VIEW)) {
-      loadStats()
-      const interval = setInterval(loadStats, 30000)
-      return () => clearInterval(interval)
-    }
-  }, [user])
-
-  const loadStats = async () => {
-    if (!user) return
-    try {
-      const [statsRes, reportsRes] = await Promise.allSettled([
-        dashboardService.getDashboardStats(),
-        dashboardService.getRecentReports()
-      ])
-      if (statsRes.status === 'fulfilled' && statsRes.value?.data) {
-        setStats(statsRes.value.data)
-      }
-      if (reportsRes.status === 'fulfilled' && reportsRes.value?.data) {
-        setRecentReports((reportsRes.value.data || []).slice(0, 5))
-      }
-    } catch (error) {
-      console.error("Failed to load dashboard data:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Render always - use loading state inline for skeleton UI
-
-  // Formatting chart data (safe: stats may be null during loading)
-  const statusData = (stats?.reports?.byStatus || []).map(item => ({
-    name: item.status.replace('_', ' '),
-    value: Number(item.count)
-  }));
-
-  const typeData = (stats?.reports?.byType || []).map(item => ({
-    name: item.name,
-    count: Number(item.count)
-  }));
+  const statCards = STAT_CARDS_BY_RANGE[timeRange];
+  const categoryData = CATEGORY_DATA_BY_RANGE[timeRange];
+  const timeData = TIME_DATA_BY_RANGE[timeRange];
+  const recentActivities = RECENT_ACTIVITIES_BY_RANGE[timeRange];
 
   return (
-    <div className="p-4 md:p-10 space-y-8 md:space-y-10 w-full mx-auto animate-in fade-in duration-700">
-      <div className="flex flex-col gap-1" style={{ minHeight: 0 }}>
-        <h1 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">EcoGuard Overview</h1>
-        <p className="text-xs md:text-sm text-muted-foreground font-medium tracking-tight">Real-time status of environmental monitoring and reports.</p>
+    <div className="p-6 md:p-8 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-[#0c2340] tracking-tight">Dashboard</h1>
+        </div>
+
+        <div className="flex items-center gap-3">
+          {/* Time range tabs */}
+          <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+            {(["week", "month", "year"] as const).map((range) => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                className={cn(
+                  "px-3 py-1.5 rounded-md text-xs font-bold transition-all whitespace-nowrap capitalize",
+                  timeRange === range
+                    ? "bg-[#0d2d82] text-white shadow-sm"
+                    : "text-slate-500 hover:text-slate-800"
+                )}
+              >
+                {range === "week" ? "This Week" : range === "month" ? "This Month" : "This Year"}
+              </button>
+            ))}
+          </div>
+
+          <button className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-600 shadow-sm transition-all">
+            <Download className="w-3.5 h-3.5 text-slate-400" />
+            Export
+          </button>
+        </div>
       </div>
 
-      {/* PRIMARY STATS GRID */}
-      <div className="bg-card rounded-2xl border border-border shadow-sm divide-y sm:divide-y-0 sm:divide-x divide-border grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 w-full overflow-hidden">
-        {hasPermission(PERMISSIONS.REPORT_VIEW) && (
-          loading ? <div className="p-6 space-y-3"><SkeletonBox className="h-3 w-24" /><SkeletonBox className="h-8 w-16" /></div> :
-            <StatCard
-              label="Total Reports"
-              value={stats?.reports?.total ?? 0}
-              icon={<FileText className="w-5 h-5" />}
-              trend={`${stats?.reports?.pending ?? 0} pending`}
-            />
-        )}
-        {hasPermission(PERMISSIONS.REPORT_VIEW) && (
-          loading ? <div className="p-6 space-y-3"><SkeletonBox className="h-3 w-24" /><SkeletonBox className="h-8 w-16" /></div> :
-            <StatCard
-              label="Resolved Reports"
-              value={stats?.reports?.resolved ?? 0}
-              icon={<CheckCircle2 className="w-5 h-5" />}
-            />
-        )}
-        {hasPermission(PERMISSIONS.CAMERA_VIEW) && (
-          loading ? <div className="p-6 space-y-3"><SkeletonBox className="h-3 w-24" /><SkeletonBox className="h-8 w-16" /></div> :
-            <StatCard
-              label="Active Cameras"
-              value={stats?.cameras?.active ?? 0}
-              icon={<Camera className="w-5 h-5" />}
-              trend={`${stats?.cameras?.total ?? 0} total`}
-            />
-        )}
-        {hasPermission(PERMISSIONS.USER_VIEW) && (
-          loading ? <div className="p-6 space-y-3"><SkeletonBox className="h-3 w-24" /><SkeletonBox className="h-8 w-16" /></div> :
-            <StatCard
-              label="System Admins"
-              value={stats?.users?.admins ?? 0}
-              icon={<ShieldAlert className="w-5 h-5" />}
-            />
-        )}
-        {hasPermission(PERMISSIONS.USER_VIEW) && (
-          loading ? <div className="p-6 space-y-3"><SkeletonBox className="h-3 w-24" /><SkeletonBox className="h-8 w-16" /></div> :
-            <StatCard
-              label="Patrol Officers"
-              value={stats?.users?.patrols ?? 0}
-              icon={<Users className="w-5 h-5" />}
-            />
-        )}
-        {hasPermission(PERMISSIONS.USER_VIEW) && (
-          loading ? <div className="p-6 space-y-3"><SkeletonBox className="h-3 w-24" /><SkeletonBox className="h-8 w-16" /></div> :
-            <StatCard
-              label="Registered Citizens"
-              value={stats?.users?.citizens ?? 0}
-              icon={<Users className="w-5 h-5" />}
-            />
-        )}
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {statCards.map((card, idx) => (
+          <Card key={idx} className="border border-slate-100 shadow-sm rounded-2xl bg-white overflow-hidden">
+            <CardContent className="p-6 flex flex-col justify-between h-full">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">{card.label}</span>
+              <div className="flex items-baseline justify-between mt-4">
+                <span className="text-3xl font-black text-[#0c2340] tracking-tight">{card.value}</span>
+                <span
+                  className={cn(
+                    "flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-bold border",
+                    card.isPositive
+                      ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                      : "bg-rose-50 text-rose-600 border-rose-100"
+                  )}
+                >
+                  {card.isPositive ? (
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowDownRight className="w-3.5 h-3.5" />
+                  )}
+                  {card.trend}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-        {/* TREND CHART - NOW AN AREA CHART */}
-        <Card className="xl:col-span-8 border-none shadow-sm ring-1 ring-border bg-card rounded-2xl overflow-hidden">
-          <CardHeader className="border-b border-border px-6 py-5 bg-muted/30 flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-foreground flex items-center gap-2">
-                <Activity className="w-4 h-4" /> Reporting Velocity
-              </CardTitle>
-              <p className="text-[10px] font-bold text-muted-foreground mt-1 uppercase tracking-wider">Volume of environmental reports over the last 7 days</p>
-            </div>
+      {/* Charts section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Reports by Category Bar Chart */}
+        <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="border-b border-slate-50 px-6 py-4">
+            <CardTitle className="text-sm font-bold text-[#0c2340]">Reports by Category</CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="h-[300px] w-full">
-              {loading || !stats ? (
-                <div className="h-full w-full animate-pulse bg-slate-50 rounded-xl" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={stats.reports.trend}>
-                    <defs>
-                      <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="var(--primary)" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis
-                      dataKey="date"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#94a3b8', fontSize: 10 }}
-                      tickFormatter={(value) => mounted ? new Date(value).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric' }) : ""}
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                    <Tooltip
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                      labelStyle={{ fontWeight: 'black', marginBottom: '4px' }}
-                    />
-                    <Area
-                      type="monotone"
-                      dataKey="count"
-                      stroke="var(--primary)"
-                      strokeWidth={4}
-                      fillOpacity={1}
-                      fill="url(#colorCount)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* DISTRIBUTION PIE CHART - STATUS */}
-        <Card className="xl:col-span-4 border-none shadow-sm ring-1 ring-slate-200 bg-white rounded-2xl overflow-hidden">
-          <CardHeader className="border-b border-slate-50 px-6 py-5 bg-slate-50/30">
-            <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
-              <PieChartIcon className="w-4 h-4" /> Status Breakdown
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-8">
-            <div className="h-[300px] w-full">
+          <CardContent className="p-6">
+            <div className="h-[280px] w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={statusData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={80}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {statusData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
+                <BarChart data={categoryData} margin={{ bottom: 20 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 600 }}
+                    angle={-30}
+                    textAnchor="end"
+                    interval={0}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  />
                   <Tooltip
+                    cursor={{ fill: '#f8fafc' }}
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Legend verticalAlign="bottom" height={36} iconType="circle" />
-                </PieChart>
+                  <Bar
+                    dataKey="count"
+                    fill="#0d2d82"
+                    radius={[4, 4, 0, 0]}
+                    barSize={24}
+                  />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
 
-        {/* VIOLATION TYPES BAR CHART - Better for comparison */}
-        <Card className="xl:col-span-12 border-none shadow-sm ring-1 ring-slate-200 bg-white rounded-2xl overflow-hidden">
-          <CardHeader className="border-b border-slate-50 px-6 py-5 bg-slate-50/30">
-            <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
-              <BarChart3 className="w-4 h-4" /> Violation Type Distribution
+        {/* Reports Over Time Line Chart */}
+        <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">
+          <CardHeader className="border-b border-slate-50 px-6 py-4">
+            <CardTitle className="text-sm font-bold text-[#0c2340]">
+              {timeRange === "week" ? "Reports Over Time (7 Days)" : timeRange === "month" ? "Reports Over Time (4 Weeks)" : "Reports Over Time (12 Months)"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="p-8">
-            <div className="h-[350px] w-full">
-              {loading || !stats ? (
-                <div className="h-full w-full animate-pulse bg-slate-50 rounded-xl" />
-              ) : (
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={typeData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
-                    <defs>
-                      <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
-                        <stop offset="100%" stopColor="#2563eb" stopOpacity={0.8} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                    <XAxis
-                      dataKey="name"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fill: '#64748b', fontSize: 11, fontWeight: 600 }}
-                    />
-                    <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
-                    <Tooltip
-                      cursor={{ fill: '#f8fafc' }}
-                      contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                    />
-                    <Bar
-                      dataKey="count"
-                      fill="url(#barGradient)"
-                      radius={[6, 6, 0, 0]}
-                      barSize={40}
-                      animationDuration={1500}
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* RECENT ENVIRONMENTAL REPORTS */}
-        <Card className="xl:col-span-12 border-none shadow-sm ring-1 ring-slate-200 bg-white rounded-2xl overflow-hidden">
-          <CardHeader className="border-b border-slate-50 px-6 py-5 bg-slate-50/30 flex flex-row items-center justify-between">
-            <CardTitle className="text-xs font-black uppercase tracking-[0.2em] text-slate-900 flex items-center gap-2">
-              <FileText className="w-4 h-4" /> Recent Citizen Reports
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-[10px] font-black uppercase tracking-widest text-[#2563eb] hover:bg-[#eff6ff] transition-all"
-              onClick={() => router.push('/dashboard/reports')}
-            >
-              View All Reports <ArrowUpRight className="w-3 h-3 ml-1" />
-            </Button>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead>
-                  <tr className="bg-muted/50 border-b border-border">
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest">Report ID</th>
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest">Type</th>
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest">Location</th>
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest">Assigned Patrol</th>
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest">Date</th>
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest">Status</th>
-                    <th className="px-6 py-4 text-[11px] font-black text-foreground uppercase tracking-widest text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {recentReports.map((report) => (
-                    <tr key={report.id} className="hover:bg-slate-50/80 transition-colors group">
-                      <td className="px-6 py-4 text-xs font-mono font-bold text-slate-500">
-                        {report.caseId || `REP-${report.id.substring(0, 6)}`}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="font-bold text-slate-900 text-sm whitespace-nowrap">{report.violationType}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-1.5 text-slate-500 max-w-[200px]">
-                          <MapPin className="w-3.5 h-3.5 text-slate-400 flex-shrink-0" />
-                          <span className="text-[12px] truncate font-medium">{report.address || 'Unknown Address'}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className="text-xs font-semibold text-slate-600">
-                          {report.assignedPatrol?.fullName || 'Unassigned'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-xs font-medium text-slate-500 italic">
-                        {mounted ? new Date(report.createdAt).toLocaleDateString() : '...'}
-                      </td>
-                      <td className="px-6 py-4">
-                        <Badge className={cn(
-                          "rounded-lg font-black uppercase text-[9px] border px-2 py-0.5",
-                          report.status === 'SUBMITTED' ? "bg-blue-50 text-blue-600 border-blue-100" :
-                            report.status === 'ASSIGNED' ? "bg-purple-50 text-purple-600 border-purple-100" :
-                              report.status === 'IN_PROGRESS' ? "bg-indigo-50 text-indigo-600 border-indigo-100" :
-                                report.status === 'RESOLVED' ? "bg-emerald-50 text-emerald-600 border-emerald-100" :
-                                  "bg-slate-50 text-slate-500 border-slate-100"
-                        )}>
-                          {report.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-slate-100 rounded-full"
-                          onClick={() => router.push(`/dashboard/reports/${report.id}`)}
-                        >
-                          <Eye className="w-4 h-4 text-slate-400 group-hover:text-primary transition-colors" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {recentReports.length === 0 && !loading && (
-                    <tr>
-                      <td colSpan={7} className="px-6 py-12 text-center text-slate-400 font-medium">
-                        No recent reports submitted.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          <CardContent className="p-6">
+            <div className="h-[280px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={timeData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                  <XAxis
+                    dataKey="day"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                    interval={0}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="count"
+                    stroke="#0d2d82"
+                    strokeWidth={2}
+                    dot={{ fill: '#0d2d82', r: 3 }}
+                    activeDot={{ r: 5 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Recent Activity */}
+      <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">
+        <CardHeader className="border-b border-slate-50 px-6 py-4">
+          <CardTitle className="text-sm font-bold text-[#0c2340]">Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent className="p-6 space-y-5">
+          {recentActivities.map((activity, idx) => (
+            <div key={idx} className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-[#0d2d82]">
+                  <Clock className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm text-slate-800">{activity.title}</h4>
+                  <p className="text-xs text-slate-400 mt-0.5">{activity.subtitle}</p>
+                </div>
+              </div>
+              <span className="text-xs font-semibold text-slate-500">{activity.action}</span>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

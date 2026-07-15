@@ -41,7 +41,7 @@ export function DashboardHeader() {
   }, []);
 
   return (
-    <header className="h-16 md:h-20 border-b border-border bg-card flex items-center justify-between px-4 md:px-6 gap-4">
+    <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-6 gap-4 bg-transparent border-none">
       <div className="flex items-center gap-4 flex-1 max-w-md">
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>

@@ -2,6 +2,7 @@ import { Injectable, OnApplicationBootstrap } from "@nestjs/common";
 import { DataSource, Repository } from "typeorm";
 import { User } from "../../modules/user/entities/user.entity";
 import { UserRole, UserStatus } from "../../common/enums/enums";
+import { hashPassword } from "../../common/utils/password.util";
 
 @Injectable()
 export class AdminSeederService implements OnApplicationBootstrap {
@@ -30,6 +31,7 @@ export class AdminSeederService implements OnApplicationBootstrap {
       return;
     }
 
+    const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "admin123";
     const admin = userRepo.create({
       fullName: "System Super Admin",
       phoneNumber: adminPhone,
@@ -39,7 +41,8 @@ export class AdminSeederService implements OnApplicationBootstrap {
       role: UserRole.SYSTEM_SUPER_ADMIN,
       status: UserStatus.ACTIVE,
       isStaffUser: true,
-      isPasswordSet: false,
+      password: await hashPassword(adminPassword),
+      isPasswordSet: true,
       isPhoneVerified: true,
       isEmailVerified: true,
       userCode: await this.generateUserCode(userRepo),

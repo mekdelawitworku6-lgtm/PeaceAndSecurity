@@ -1,6 +1,5 @@
 import type React from "react";
 import { cn } from "@/lib/utils";
-import { EcoLogo } from "@/components/icons/logo";
 
 export function AuthLayout({
   children,
@@ -10,34 +9,20 @@ export function AuthLayout({
   showBranding?: boolean;
 }) {
   return (
-    <div className="flex min-h-screen w-full">
-      {/* Left Panel - Branding */}
-      {showBranding && (
-        <div className="hidden lg:flex w-1/2 bg-[#00875a] relative overflow-hidden flex-col items-center justify-center">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1),transparent)]" />
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/10 blur-[120px] rounded-full animate-pulse" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-400/20 blur-[100px] rounded-full" />
+    <div
+      className="flex min-h-screen w-full items-center justify-center p-4 md:p-8 relative bg-slate-900 overflow-hidden"
+      style={{
+        backgroundImage: `linear-gradient(to bottom, rgba(15, 32, 67, 0.6), rgba(27, 47, 69, 0.7)), url('https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=1920&q=80')`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      {/* Soft overlay gradient to ensure high text contrast and visual depth */}
+      <div className="absolute inset-0 bg-gradient-to-tr from-slate-950/45 via-slate-900/10 to-slate-950/45 z-0" />
 
-          <div className="relative z-10 flex flex-col items-center justify-center p-20 text-white text-center">
-            <div className="scale-[2.5] mb-20">
-              <EcoLogo className="[&_*]:!text-white" />
-            </div>
-            <h1 className="text-4xl font-black tracking-tighter mb-4 text-white">Advanced Environmental Guard</h1>
-            <p className="text-lg font-medium text-emerald-50 max-w-sm leading-relaxed opacity-80">
-              Monitoring and protecting our environment through intelligent data and community action.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {/* Right Panel - Content */}
-      <div
-        className={cn(
-          "flex-1 flex items-center justify-center bg-background p-8",
-          !showBranding && "w-full"
-        )}
-      >
-        <div className="w-full max-w-md space-y-8">{children}</div>
+      {/* Login Card */}
+      <div className="relative z-10 w-full max-w-[680px] bg-white rounded-3xl shadow-[0_25px_50px_-12px_rgba(0,0,0,0.4)] p-8 md:p-14 transition-all duration-300">
+        <div className="w-full">{children}</div>
       </div>
     </div>
   );

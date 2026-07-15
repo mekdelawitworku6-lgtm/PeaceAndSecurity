@@ -2,7 +2,7 @@
 import apiClient from '../api-client';
 import { ServiceResponse } from '../api-types';
 
-export interface EcoGuardStats {
+export interface PeaceSecurityStats {
     reports: {
         total: number;
         resolved: number;
@@ -24,8 +24,8 @@ export interface EcoGuardStats {
 }
 
 class DashboardService {
-    async getDashboardStats(): Promise<ServiceResponse<EcoGuardStats>> {
-        const response = await apiClient.get<ServiceResponse<EcoGuardStats>>('/dashboard/stats');
+    async getDashboardStats(): Promise<ServiceResponse<PeaceSecurityStats>> {
+        const response = await apiClient.get<ServiceResponse<PeaceSecurityStats>>('/dashboard/stats');
         return response.data;
     }
 

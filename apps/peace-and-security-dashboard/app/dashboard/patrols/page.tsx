@@ -26,6 +26,7 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import apiClient from "@/lib/api-client";
+import { UserForm } from "@/components/forms/user-form";
 
 export default function PatrolsPage() {
     const router = useRouter();
@@ -45,6 +46,11 @@ export default function PatrolsPage() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [sortBy, setSortBy] = useState<string>("createdAt");
     const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
+
+    // Modal States
+    const [isFormOpen, setIsFormOpen] = useState(false);
+    const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [formLoading, setFormLoading] = useState(false);
 
     useEffect(() => {
         loadData(page);
@@ -92,11 +98,42 @@ export default function PatrolsPage() {
         }
     };
 
-    const handleAddUser = () => router.push("/dashboard/users/create?role=PATROL");
-    const handleEditUser = (user: User) =>
-        router.push(`/dashboard/users/${user.id}/edit`);
+    const handleAddUser = () => {
+        setEditingUser(null);
+        setIsFormOpen(true);
+    };
+
+    const handleEditUser = (user: User) => {
+        setEditingUser(user);
+        setIsFormOpen(true);
+    };
+
     const handleDetailUser = (user: User) =>
         router.push(`/dashboard/users/${user.id}`);
+
+    const handleSaveForm = async (formData: FormData) => {
+        setFormLoading(true);
+        const loadingToast = toast.loading(
+            editingUser ? "Updating patrol officer..." : "Registering patrol officer..."
+        );
+        try {
+            if (editingUser) {
+                await patrolService.updatePatrol(editingUser.id, formData);
+                toast.success("Patrol officer updated successfully", { id: loadingToast });
+            } else {
+                await patrolService.registerPatrol(formData);
+                toast.success("Patrol officer registered! Credentials sent via SMS.", { id: loadingToast });
+            }
+            setIsFormOpen(false);
+            setEditingUser(null);
+            loadData(page);
+        } catch (err: any) {
+            const msg = err?.response?.data?.message || err?.message || "Failed to save patrol officer";
+            toast.error(msg, { id: loadingToast });
+        } finally {
+            setFormLoading(false);
+        }
+    };
 
     const handleDeleteUser = async (user: User) => {
         if (!confirm("Are you sure you want to toggle this patrol's status?")) return;
@@ -174,7 +211,7 @@ export default function PatrolsPage() {
     return (
         <div className="p-6 space-y-6">
             <PageHeader
-                title="EcoGuard Patrols"
+                title="Patrol Officers"
                 description="Monitor and manage patrol officers using the mobile application."
                 className="flex-col items-start! w-full! gap-4"
             >
@@ -272,6 +309,17 @@ export default function PatrolsPage() {
                 limit={limit}
                 onLimitChange={setLimit}
             />
+
+            {isFormOpen && (
+                <UserForm
+                    onOpenChange={setIsFormOpen}
+                    onSave={handleSaveForm}
+                    initialData={editingUser || undefined}
+                    isNew={!editingUser}
+                    isLoading={formLoading}
+                    defaultRole="PATROL"
+                />
+            )}
         </div>
     );
 }

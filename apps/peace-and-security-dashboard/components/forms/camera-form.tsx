@@ -137,7 +137,7 @@ export function CameraForm({ initialData, onSuccess, onCancel }: CameraFormProps
                         <FormItem>
                             <FormLabel className="font-bold text-slate-700">Stream URL (HLS/RTSP)</FormLabel>
                             <FormControl>
-                                <Input placeholder="https://stream.ecoguard.com/hls/cam01.m3u8" {...field} className="rounded-xl" />
+                                <Input placeholder="https://stream.peaceandsecurity.gov/hls/cam01.m3u8" {...field} className="rounded-xl" />
                             </FormControl>
                             <FormDescription>Live feed URL for real-time monitoring</FormDescription>
                             <FormMessage />

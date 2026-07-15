@@ -43,7 +43,7 @@ export function ServerDown() {
         </Button>
 
         <p className="text-[10px] uppercase tracking-widest font-black text-slate-300 dark:text-slate-600">
-          EcoGuard Security Protocol v1.0
+          Peace & Security Protocol v1.0
         </p>
       </div>
     </div>

@@ -5,7 +5,7 @@ export enum UserStatus {
 }
 
 /**
- * EcoGuard System Roles:
+ * Peace & Security System Roles:
  * - SYSTEM_SUPER_ADMIN: Full system access, can manage all admins
  * - SYSTEM_ADMIN:       Admin access, manages patrols and reports
  * - PATROL:             Field officer, accesses via Patrol mobile app

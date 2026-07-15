@@ -1,24 +1,24 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
+import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
-const outfit = Outfit({
+const inter = Inter({
   subsets: ["latin"],
-  variable: "--font-outfit",
+  variable: "--font-inter",
   display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "EcoGuard | Environmental Monitoring",
-  description: "Advanced environmental monitoring and violation tracking system",
-  generator: "ecoguard.app",
+  title: "Peace & Security | Admin Dashboard",
+  description: "Advanced peace and security monitoring system",
+  generator: "peace-and-security.app",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "EcoGuard",
+    title: "Peace & Security",
   },
   icons: {
     icon: "/icon.png",
@@ -46,7 +46,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${outfit.variable} font-sans antialiased text-foreground bg-background`}
+        className={`${inter.variable} font-sans antialiased text-foreground bg-background`}
         suppressHydrationWarning
       >
         {/* <PWARegistration /> */}

@@ -19,7 +19,7 @@ export default function GlobalError({
                 style={{
                     margin: 0,
                     fontFamily:
-                        "'Outfit', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                        "'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
                     backgroundColor: "#0f172a",
                     color: "#f8fafc",
                     display: "flex",
@@ -41,12 +41,12 @@ export default function GlobalError({
                             width: "80px",
                             height: "80px",
                             borderRadius: "24px",
-                            background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                            background: "linear-gradient(135deg, #0d2d82, #1d4ed8)",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
                             margin: "0 auto 2rem",
-                            boxShadow: "0 20px 40px rgba(34,197,94,0.3)",
+                            boxShadow: "0 20px 40px rgba(13,45,130,0.3)",
                         }}
                     >
                         <svg
@@ -84,7 +84,7 @@ export default function GlobalError({
                             fontSize: "0.95rem",
                         }}
                     >
-                        An unexpected error occurred in the EcoGuard dashboard. Please try
+                        An unexpected error occurred in the Peace and Security dashboard. Please try
                         refreshing the page.
                     </p>
 
@@ -107,7 +107,7 @@ export default function GlobalError({
                         <button
                             onClick={reset}
                             style={{
-                                background: "linear-gradient(135deg, #22c55e, #16a34a)",
+                                background: "linear-gradient(135deg, #0d2d82, #1d4ed8)",
                                 color: "white",
                                 border: "none",
                                 padding: "0.75rem 2rem",
@@ -117,7 +117,7 @@ export default function GlobalError({
                                 cursor: "pointer",
                                 letterSpacing: "0.05em",
                                 textTransform: "uppercase",
-                                boxShadow: "0 8px 20px rgba(34,197,94,0.3)",
+                                boxShadow: "0 8px 20px rgba(13,45,130,0.3)",
                             }}
                         >
                             Try Again

@@ -23,7 +23,7 @@ import { formatDistanceToNow } from "date-fns"
 
 export default function NotificationsTestPage() {
     const { notifications, markAsRead, markAllAsRead } = useNotifContext()
-    const [title, setTitle] = useState("EcoGuard Alert")
+    const [title, setTitle] = useState("Peace & Security Alert")
     const [message, setMessage] = useState("This is a test notification for the mobile app.")
     const [targetRole, setTargetRole] = useState<"PATROL" | "CITIZEN">("PATROL")
     const [sending, setSending] = useState(false)
@@ -63,7 +63,7 @@ export default function NotificationsTestPage() {
     }
 
     return (
-        <div className="p-6 md:p-8 space-y-8 bg-[#F8FAFC] min-h-screen">
+        <div className="p-6 md:p-8 space-y-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Notification Control Center</h1>
