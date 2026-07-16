@@ -28,8 +28,31 @@ import {
 
 type TimeRange = "week" | "month" | "year";
 
+interface StatCard {
+  label: string;
+  value: string;
+  trend: string;
+  isPositive: boolean;
+}
+
+interface CategoryItem {
+  name: string;
+  count: number;
+}
+
+interface TimeDataItem {
+  day: string | number;
+  count: number;
+}
+
+interface ActivityItem {
+  title: string;
+  subtitle: string;
+  action: string;
+}
+
 // ── Stat cards per time range ────────────────────────────────────────
-const STAT_CARDS_BY_RANGE: Record<TimeRange, typeof STAT_CARDS_TEMPLATE> = {
+const STAT_CARDS_BY_RANGE: Record<TimeRange, StatCard[]> = {
   week: [
     { label: "Total Reports", value: "87", trend: "+5.2%", isPositive: true },
     { label: "Active", value: "12", trend: "+2.1%", isPositive: true },
@@ -51,7 +74,7 @@ const STAT_CARDS_BY_RANGE: Record<TimeRange, typeof STAT_CARDS_TEMPLATE> = {
 };
 
 // ── Category bar chart data per time range ───────────────────────────
-const CATEGORY_DATA_BY_RANGE: Record<TimeRange, typeof CATEGORY_DATA_TEMPLATE> = {
+const CATEGORY_DATA_BY_RANGE: Record<TimeRange, CategoryItem[]> = {
   week: [
     { name: "Robbery/Theft", count: 18 },
     { name: "Illegal Weapons", count: 9 },
@@ -91,7 +114,7 @@ const CATEGORY_DATA_BY_RANGE: Record<TimeRange, typeof CATEGORY_DATA_TEMPLATE> =
 };
 
 // ── Time-series line chart data per time range ───────────────────────
-const TIME_DATA_BY_RANGE: Record<TimeRange, typeof TIME_DATA_TEMPLATE> = {
+const TIME_DATA_BY_RANGE: Record<TimeRange, TimeDataItem[]> = {
   week: [
     { day: "Mon", count: 15 },
     { day: "Tue", count: 8 },
@@ -124,7 +147,7 @@ const TIME_DATA_BY_RANGE: Record<TimeRange, typeof TIME_DATA_TEMPLATE> = {
 };
 
 // ── Recent activity per time range ───────────────────────────────────
-const RECENT_ACTIVITIES_BY_RANGE: Record<TimeRange, typeof RECENT_ACTIVITIES_TEMPLATE> = {
+const RECENT_ACTIVITIES_BY_RANGE: Record<TimeRange, ActivityItem[]> = {
   week: [
     {
       title: "Robbery — Bole Road",
@@ -187,12 +210,6 @@ const RECENT_ACTIVITIES_BY_RANGE: Record<TimeRange, typeof RECENT_ACTIVITIES_TEM
     },
   ],
 };
-
-// ── Template type helpers (inferred from year data) ──────────────────
-const STAT_CARDS_TEMPLATE = STAT_CARDS_BY_RANGE.year;
-const CATEGORY_DATA_TEMPLATE = CATEGORY_DATA_BY_RANGE.year;
-const TIME_DATA_TEMPLATE = TIME_DATA_BY_RANGE.year;
-const RECENT_ACTIVITIES_TEMPLATE = RECENT_ACTIVITIES_BY_RANGE.year;
 
 export default function DashboardPage() {
   const router = useRouter();

@@ -31,14 +31,14 @@ export default function EditUserPage() {
             setLoading(true);
             // Try regular user first
             try {
-                const response = await userService.getUserById(id, { skipToast: true });
+                const response = await userService.getUserById(id);
                 if (response && response.data) {
                     setUser(response.data);
                     return;
                 }
             } catch (err) {
                 // If not found, try patrol
-                const patrolResp = await patrolService.getPatrolById(id, { skipToast: true });
+                const patrolResp = await patrolService.getPatrolById(id);
                 if (patrolResp && patrolResp.data) {
                     setUser(patrolResp.data);
                     return;

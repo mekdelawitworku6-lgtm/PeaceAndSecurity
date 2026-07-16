@@ -352,9 +352,9 @@ export const mockCitizens = {
 
 // Report Types
 export const mockReportTypes = {
-  getAll: (search?: string) => {
+  getAll: (searchTerm?: string) => {
     let items = getAll<any>(KEYS.reportTypes, SEED_REPORT_TYPES);
-    if (search) items = search(items, search, ["name", "description"]);
+    if (searchTerm) items = search(items, searchTerm, ["name", "description"]);
     return { data: items, total: items.length };
   },
   getById: (id: string) => getById<any>(KEYS.reportTypes, id),

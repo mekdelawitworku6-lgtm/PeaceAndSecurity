@@ -47,14 +47,14 @@ export default function UserDetailPage() {
       setLoading(true);
       // Try regular user first
       try {
-        const response = await userService.getUserById(id as string, { skipToast: true });
+        const response = await userService.getUserById(id as string);
         if (response && response.data) {
           setUser(response.data);
           return;
         }
       } catch (err) {
         // If not found, try patrol
-        const patrolResp = await patrolService.getPatrolById(id as string, { skipToast: true });
+        const patrolResp = await patrolService.getPatrolById(id as string);
         if (patrolResp && patrolResp.data) {
           setUser(patrolResp.data);
           return;

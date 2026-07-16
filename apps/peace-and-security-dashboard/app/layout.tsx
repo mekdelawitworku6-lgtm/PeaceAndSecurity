@@ -1,14 +1,7 @@
 import type React from "react";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "Peace & Security | Admin Dashboard",
@@ -46,7 +39,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${inter.variable} font-sans antialiased text-foreground bg-background`}
+        className="font-sans antialiased text-foreground bg-background"
         suppressHydrationWarning
       >
         {/* <PWARegistration /> */}
