@@ -1,12 +1,7 @@
-import apiClient from "../api-client";
-import { API_ENDPOINTS } from "../api-config";
-import {
-  ServiceResponse,
-  LoginResponse,
-  BackendUser,
-} from "../api-types";
+import { ServiceResponse } from "../api-types";
 import { User } from "../auth";
 import { UserRole } from "../enums";
+import { mockUsers } from "../mock-store";
 
 export interface LoginCredentials {
   email?: string;
@@ -15,150 +10,87 @@ export interface LoginCredentials {
 }
 
 class AuthService {
-  /**
-   * Login with email or phone number
-   */
   async login(
     credentials: LoginCredentials
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-    const response = await apiClient.post<ServiceResponse<LoginResponse>>(
-      API_ENDPOINTS.AUTH.USER_LOGIN,
-      credentials
-    );
+    const identifier = credentials.email || credentials.phoneNumber || "";
+    const found = mockUsers.findByCredentials(identifier, credentials.password);
 
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.message || "Login failed");
+    if (!found) {
+      throw new Error("Invalid email/phone or password");
     }
 
-    const { accessToken, refreshToken, user: backendUser } = response.data.data;
+    if (found.status === "DISABLED") {
+      throw new Error("Account is disabled");
+    }
 
-    // Store tokens
+    const accessToken = "mock-access-" + found.id;
+    const refreshToken = "mock-refresh-" + found.id;
+
     localStorage.setItem("accessToken", accessToken);
     localStorage.setItem("refreshToken", refreshToken);
 
-    // Transform backend user to frontend user format
-    const user = this.transformBackendUser(backendUser);
+    const user: User = {
+      id: found.id,
+      email: found.email || found.phoneNumber || "",
+      fullName: found.fullName,
+      role: found.role as UserRole,
+      phoneNumber: found.phoneNumber,
+      profileImage: found.profileImage,
+      permissions: found.permissions || [],
+      createdAt: found.createdAt || new Date().toISOString(),
+      isPasswordSet: found.isPasswordSet,
+      isPhoneVerified: found.isPhoneVerified ?? true,
+      isEmailVerified: found.isEmailVerified ?? false,
+    };
 
     return { user, accessToken, refreshToken };
   }
 
-  /**
-   * Pre-login check to see if password is set
-   */
   async preLogin(
     email?: string,
     phoneNumber?: string
   ): Promise<{ isPasswordSet: boolean; setPasswordToken?: string }> {
-    const response = await apiClient.post<
-      ServiceResponse<{ isPasswordSet: boolean; resetToken?: string }>
-    >(API_ENDPOINTS.AUTH.USER_PRE_LOGIN, { email, phoneNumber });
-
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.message || "Pre-login failed");
-    }
-
+    const identifier = email || phoneNumber || "";
+    const items = mockUsers.getAll();
+    const found = items.find(
+      (u) => u.email === identifier || u.phoneNumber === identifier
+    );
+    if (!found) throw new Error("User not found");
     return {
-      isPasswordSet: response.data.data.isPasswordSet,
-      setPasswordToken: response.data.data.resetToken,
+      isPasswordSet: found.isPasswordSet ?? false,
+      setPasswordToken: found.isPasswordSet ? undefined : "mock-set-password-token",
     };
   }
 
-  /**
-   * Set user password using token
-   */
   async setPassword(
-    token: string,
+    _token: string,
     password: string
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-    const response = await apiClient.post<ServiceResponse<LoginResponse>>(
-      API_ENDPOINTS.AUTH.USER_SET_PASSWORD,
-      { password },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-
-    if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.message || "Failed to set password");
-    }
-
-    const { accessToken, refreshToken, user: backendUser } = response.data.data;
-
-    // Store tokens
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
-
-    // Transform backend user to frontend user format
-    const user = this.transformBackendUser(backendUser);
-
-    return { user, accessToken, refreshToken };
+    throw new Error("Password setting not available in offline mode");
   }
 
-  /**
-   * Transform backend user to frontend user format
-   */
-  private transformBackendUser(backendUser: any): User {
-    if (!backendUser) {
-      throw new Error("User data is missing from backend response");
-    }
-
-    // Map backend role to frontend role
-    const role = backendUser.role as UserRole;
-
-    return {
-      id: backendUser.id,
-      email: backendUser.email || backendUser.phoneNumber || "",
-      fullName: backendUser.fullName,
-      role,
-      phoneNumber: backendUser.phoneNumber,
-      profileImage: backendUser.profileImage,
-      permissions: backendUser.permissions || [],
-      createdAt: backendUser.createdAt || new Date().toISOString(),
-      isPasswordSet: backendUser.isPasswordSet,
-      isPhoneVerified: backendUser.isPhoneVerified,
-      isEmailVerified: backendUser.isEmailVerified,
-    };
-  }
-
-  /**
-   * Logout
-   */
   logout(): void {
     localStorage.removeItem("accessToken");
     localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
   }
 
-  /**
-   * Get current user profile
-   */
   async getCurrentUser(): Promise<User | null> {
     try {
-      const response = await apiClient.get<ServiceResponse<BackendUser>>(
-        API_ENDPOINTS.USERS.GET_PROFILE
-      );
-
-      if (!response.data.success || !response.data.data) {
-        return null;
-      }
-
-      return this.transformBackendUser(response.data.data);
-    } catch (error) {
+      const stored = localStorage.getItem("user");
+      if (stored) return JSON.parse(stored);
+      return null;
+    } catch {
       return null;
     }
   }
 
-  /**
-   * Change user password
-   */
-  async changePassword(currentPassword: string, newPassword: string): Promise<ServiceResponse<any>> {
-    const response = await apiClient.patch<ServiceResponse<any>>(
-      API_ENDPOINTS.AUTH.USER_PASSWORD_CHANGE,
-      { currentPassword, newPassword }
-    );
-    return response.data;
+  async changePassword(
+    _currentPassword: string,
+    _newPassword: string
+  ): Promise<ServiceResponse<any>> {
+    return { success: true, message: "Password changed (mock)" };
   }
 }
 

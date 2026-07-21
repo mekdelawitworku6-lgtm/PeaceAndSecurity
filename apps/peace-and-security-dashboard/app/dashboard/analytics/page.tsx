@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter } from "next/navigation";
-import { Download } from "lucide-react";
+import { Download, FileText } from "lucide-react";
 import { PERMISSIONS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
@@ -20,11 +20,14 @@ export default function AnalyticsPage() {
   const { user, hasPermission } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
 
-  // Auth access check
   if (!hasPermission(PERMISSIONS.DASHBOARD_VIEW)) {
     router.replace("/dashboard/reports");
     return null;
   }
+
+  const handleExportPDF = () => {
+    window.print();
+  };
 
   return (
     <div className="p-6 md:p-8 space-y-6">
@@ -53,22 +56,13 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          {/* Export Action */}
-          <button className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-600 shadow-sm transition-all">
+          <button
+            onClick={handleExportPDF}
+            className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-600 shadow-sm transition-all"
+          >
             <Download className="w-3.5 h-3.5 text-slate-400" />
             Export
           </button>
-
-          {/* User profile avatar info badge */}
-          <div className="flex items-center gap-2.5 border-l border-slate-200 pl-4">
-            <div className="w-8 h-8 rounded-full bg-[#0d2d82] flex items-center justify-center text-white text-xs font-bold">
-              AT
-            </div>
-            <div className="flex flex-col leading-none">
-              <span className="text-xs font-bold text-slate-800">Com. Abebe T</span>
-              <span className="text-[10px] font-semibold text-slate-400 mt-0.5">Super Admin</span>
-            </div>
-          </div>
         </div>
       </div>
 

@@ -22,6 +22,7 @@ import {
   ChevronRight,
   MapPin,
   Navigation,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getImageUrl, cn } from "@/lib/utils";
@@ -62,6 +63,7 @@ export function UserForm({
   const [officeLatitude, setOfficeLatitude] = useState("");
   const [officeLongitude, setOfficeLongitude] = useState("");
   const [assignedArea, setAssignedArea] = useState("");
+  const [subCity, setSubCity] = useState("");
 
   const isPatrol = role === UserRole.PATROL;
 
@@ -80,6 +82,7 @@ export function UserForm({
       setOfficeLatitude(String((initialData as any).officeLatitude || ""));
       setOfficeLongitude(String((initialData as any).officeLongitude || ""));
       setAssignedArea((initialData as any).assignedArea || "");
+      setSubCity((initialData as any).subCity || "");
       if (
         initialData.profileImage &&
         typeof initialData.profileImage === "string"
@@ -147,7 +150,7 @@ export function UserForm({
     if (email.trim()) formData.append("email", email);
     formData.append("phoneNumber", `+251${phoneNumber}`);
     formData.append("role", role);
-    formData.append("isStaffUser", "true");
+    formData.append("isStaffUser", isPatrol ? "false" : "true");
 
     if (profileImage) {
       formData.append("profileImage", profileImage);
@@ -158,6 +161,7 @@ export function UserForm({
       if (officeLatitude.trim()) formData.append("officeLatitude", officeLatitude.trim());
       if (officeLongitude.trim()) formData.append("officeLongitude", officeLongitude.trim());
       if (assignedArea.trim()) formData.append("assignedArea", assignedArea.trim());
+      if (subCity.trim()) formData.append("subCity", subCity.trim());
     }
 
     if (!isPatrol && permissions.length > 0) {
@@ -297,6 +301,23 @@ export function UserForm({
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                     <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                    Sub-City <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={subCity} onValueChange={setSubCity}>
+                    <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                      <SelectValue placeholder="Select sub-city" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {["Bole", "Arada", "Kirkos", "Yeka", "Addis Ketema", "Lideta", "Nifas Silk Lafto", "Kolfe Keranio", "Gulele", "Akaki Kality", "Lemi Kura"].map((sc) => (
+                        <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                    <Building2 className="h-3.5 w-3.5 text-slate-400" />
                     Station Address
                   </Label>
                   <Input

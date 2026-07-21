@@ -227,6 +227,103 @@ export default function DashboardPage() {
   const timeData = TIME_DATA_BY_RANGE[timeRange];
   const recentActivities = RECENT_ACTIVITIES_BY_RANGE[timeRange];
 
+  const handleExportCSV = () => {
+    const lines: string[] = [];
+    lines.push("Peace & Security Dashboard Report");
+    lines.push(`Time Range: ${timeRange}`);
+    lines.push(`Generated: ${new Date().toLocaleString()}`);
+    lines.push("");
+    lines.push("--- Summary ---");
+    lines.push("Metric,Value,Trend");
+    statCards.forEach((c) => lines.push(`"${c.label}","${c.value}","${c.trend}"`));
+    lines.push("");
+    lines.push("--- Reports by Category ---");
+    lines.push("Category,Count");
+    categoryData.forEach((c) => lines.push(`"${c.name}",${c.count}`));
+    lines.push("");
+    lines.push("--- Reports Over Time ---");
+    lines.push("Period,Count");
+    timeData.forEach((t) => lines.push(`"${t.day}",${t.count}`));
+    lines.push("");
+    lines.push("--- Recent Activity ---");
+    lines.push("Title,Subtitle,Action");
+    recentActivities.forEach((a) => lines.push(`"${a.title}","${a.subtitle}","${a.action}"`));
+
+    const blob = new Blob([lines.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `peace-security-dashboard-${timeRange}-${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportPDF = () => {
+    const content = `
+      <html>
+      <head>
+        <title>Peace & Security Dashboard Report</title>
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #1e293b; }
+          h1 { font-size: 22px; color: #0c2340; margin-bottom: 4px; }
+          h2 { font-size: 16px; color: #0d2d82; margin-top: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 6px; }
+          .meta { font-size: 12px; color: #64748b; margin-bottom: 20px; }
+          table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+          th, td { border: 1px solid #e2e8f0; padding: 8px 12px; text-align: left; font-size: 12px; }
+          th { background: #f8fafc; font-weight: bold; color: #0c2340; }
+          .stat-grid { display: flex; gap: 12px; flex-wrap: wrap; }
+          .stat-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; min-width: 140px; }
+          .stat-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: bold; }
+          .stat-value { font-size: 22px; font-weight: 900; color: #0c2340; margin-top: 4px; }
+          .stat-trend { font-size: 11px; margin-top: 2px; }
+          .trend-up { color: #059669; }
+          .trend-down { color: #dc2626; }
+        </style>
+      </head>
+      <body>
+        <h1>Peace & Security Dashboard</h1>
+        <div class="meta">Time Range: ${timeRange.charAt(0).toUpperCase() + timeRange.slice(1)} | Generated: ${new Date().toLocaleString()}</div>
+
+        <h2>Summary</h2>
+        <div class="stat-grid">
+          ${statCards.map((c) => `
+            <div class="stat-card">
+              <div class="stat-label">${c.label}</div>
+              <div class="stat-value">${c.value}</div>
+              <div class="stat-trend ${c.isPositive ? "trend-up" : "trend-down"}">${c.isPositive ? "+" : ""}${c.trend}</div>
+            </div>
+          `).join("")}
+        </div>
+
+        <h2>Reports by Category</h2>
+        <table>
+          <tr><th>Category</th><th>Count</th></tr>
+          ${categoryData.map((c) => `<tr><td>${c.name}</td><td>${c.count}</td></tr>`).join("")}
+        </table>
+
+        <h2>Reports Over Time</h2>
+        <table>
+          <tr><th>Period</th><th>Count</th></tr>
+          ${timeData.map((t) => `<tr><td>${t.day}</td><td>${t.count}</td></tr>`).join("")}
+        </table>
+
+        <h2>Recent Activity</h2>
+        <table>
+          <tr><th>Event</th><th>Details</th><th>Action</th></tr>
+          ${recentActivities.map((a) => `<tr><td>${a.title}</td><td>${a.subtitle}</td><td>${a.action}</td></tr>`).join("")}
+        </table>
+      </body>
+      </html>
+    `;
+    const printWindow = window.open("", "_blank");
+    if (printWindow) {
+      printWindow.document.write(content);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 500);
+    }
+  };
+
   return (
     <div className="p-6 md:p-8 space-y-6">
       {/* Header */}
@@ -254,10 +351,28 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          <button className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-600 shadow-sm transition-all">
-            <Download className="w-3.5 h-3.5 text-slate-400" />
-            Export
-          </button>
+          <div className="relative group">
+            <button className="flex items-center gap-1.5 px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-lg text-xs font-bold text-slate-600 shadow-sm transition-all">
+              <Download className="w-3.5 h-3.5 text-slate-400" />
+              Export
+            </button>
+            <div className="absolute right-0 top-full mt-1 w-44 bg-white border border-slate-200 rounded-xl shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50 overflow-hidden">
+              <button
+                onClick={handleExportCSV}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                <FileText className="w-3.5 h-3.5 text-slate-400" />
+                Export as CSV
+              </button>
+              <button
+                onClick={handleExportPDF}
+                className="w-full flex items-center gap-2 px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-colors border-t border-slate-100"
+              >
+                <FileText className="w-3.5 h-3.5 text-rose-400" />
+                Export as PDF
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

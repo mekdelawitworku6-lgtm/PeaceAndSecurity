@@ -2,7 +2,6 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
 import { User } from '@/lib/auth'
 import { UserRole } from '@/lib/enums'
 import { DEFAULT_PERMISSIONS_BY_ROLE } from '@/lib/permissions'
-import { API_CONFIG } from '@/lib/api-config'
 
 interface AuthState {
   user: User | null
@@ -19,21 +18,7 @@ const initialState: AuthState = {
 }
 
 export const checkServer = createAsyncThunk('auth/checkServer', async () => {
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 1500)
-  try {
-    await fetch(`${API_CONFIG.BASE_URL}auth/user/pre-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'superadmin@peaceandsecurity.com' }),
-      signal: controller.signal,
-    })
-    clearTimeout(timeoutId)
-    return true
-  } catch {
-    clearTimeout(timeoutId)
-    return false
-  }
+  return true
 })
 
 export const initAuth = createAsyncThunk('auth/init', async () => {

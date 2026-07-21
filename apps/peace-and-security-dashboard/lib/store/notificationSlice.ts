@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import apiClient from '@/lib/api-client'
+import { mockNotifications } from '@/lib/mock-store'
 
 export interface Notification {
   id: string
@@ -24,10 +24,17 @@ const initialState: NotificationState = {
 }
 
 export const loadNotifications = createAsyncThunk('notifications/load', async () => {
-  const res = await apiClient.get('/notifications')
-  const notifications = res.data?.data || res.data || []
-  const countRes = await apiClient.get('/notifications/unread-count')
-  const unreadCount = countRes.data?.data?.count ?? countRes.data?.count ?? 0
+  const all = mockNotifications.getAll()
+  const notifications = all.map((n: any) => ({
+    id: n.id,
+    title: n.title,
+    message: n.message,
+    type: n.type,
+    data: n.data || null,
+    isRead: n.read ?? false,
+    createdAt: n.createdAt,
+  }))
+  const unreadCount = notifications.filter((n) => !n.isRead).length
   return { notifications, unreadCount }
 })
 
@@ -70,11 +77,10 @@ const notificationSlice = createSlice({
 
 export const { addNotification, setUnreadCount, markAsRead, markAllAsRead } = notificationSlice.actions
 
-// Thunks for API calls
 export const markNotificationAsRead = createAsyncThunk(
   'notifications/markRead',
   async (id: string, { dispatch }) => {
-    await apiClient.post(`/notifications/${id}/mark-read`)
+    mockNotifications.markAsRead(id)
     dispatch(markAsRead(id))
   }
 )
@@ -82,12 +88,11 @@ export const markNotificationAsRead = createAsyncThunk(
 export const markAllNotificationsAsRead = createAsyncThunk(
   'notifications/markAllRead',
   async (_, { dispatch }) => {
-    await apiClient.post('/notifications/mark-all-read')
+    mockNotifications.markAllRead()
     dispatch(markAllAsRead())
   }
 )
 
-// Selectors
 export const selectNotifications = (state: { notifications: NotificationState }) => state.notifications.notifications
 export const selectUnreadCount = (state: { notifications: NotificationState }) => state.notifications.unreadCount
 export const selectNotificationsLoading = (state: { notifications: NotificationState }) => state.notifications.loading

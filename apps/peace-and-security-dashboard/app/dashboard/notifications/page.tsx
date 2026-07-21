@@ -16,7 +16,7 @@ import {
     Search
 } from "lucide-react"
 import { toast } from "sonner"
-import apiClient from "@/lib/api-client"
+import { mockNotifications } from "@/lib/mock-store"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
@@ -38,11 +38,13 @@ export default function NotificationsTestPage() {
         setSending(true)
         const loadingToast = toast.loading(`Broadcasting to all ${targetRole.toLowerCase()}s...`)
         try {
-            await apiClient.post("/notifications/broadcast", {
-                role: targetRole,
+            mockNotifications.create({
                 title,
                 message,
-                type: "GENERAL"
+                type: "GENERAL",
+                targetRole,
+                createdAt: new Date().toISOString(),
+                read: false,
             })
             toast.success("Broadcast successful", { id: loadingToast })
         } catch (error: any) {
@@ -55,7 +57,13 @@ export default function NotificationsTestPage() {
     const handleTestSelf = async () => {
         const loadingToast = toast.loading("Sending test to self...")
         try {
-            await apiClient.get("/notifications/test-notify")
+            mockNotifications.create({
+                title: "Test Notification",
+                message: "This is a self-test notification.",
+                type: "SYSTEM",
+                createdAt: new Date().toISOString(),
+                read: false,
+            })
             toast.success("Self-test triggered", { id: loadingToast })
         } catch (error: any) {
             toast.error("Self-test failed", { id: loadingToast })

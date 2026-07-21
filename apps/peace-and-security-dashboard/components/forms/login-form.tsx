@@ -128,6 +128,7 @@ export function LoginForm() {
               if (errors.password) setErrors({ ...errors, password: "" });
             }}
             disabled={loading}
+            autoComplete="current-password"
             className={`h-12 bg-white border border-slate-200 rounded-xl px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all ${
               errors.password ? "border-destructive bg-destructive/5" : ""
             }`}

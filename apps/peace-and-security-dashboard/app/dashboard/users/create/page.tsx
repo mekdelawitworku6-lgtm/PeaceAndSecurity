@@ -3,11 +3,11 @@ import { UserRole } from "@/lib/auth";
 
 import { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import apiClient from "@/lib/api-client";
-import { API_ENDPOINTS } from "@/lib/api-config";
 import { toast } from "sonner";
 import { useAuth } from "@/app/context/auth-context";
 import { UserForm } from "@/components/forms/user-form";
+import { userService } from "@/lib/services/user-service";
+import { patrolService } from "@/lib/services/patrol-service";
 
 export default function CreateUserPage() {
     const router = useRouter();
@@ -31,17 +31,11 @@ export default function CreateUserPage() {
         );
 
         try {
-            // Route to appropriate backend endpoint based on role
-            let endpoint: string;
             if (role === UserRole.PATROL) {
-                endpoint = API_ENDPOINTS.PATROLS.CREATE;
+                await patrolService.registerPatrol(data);
             } else {
-                endpoint = API_ENDPOINTS.USERS.REGISTER;
+                await userService.registerUser(data);
             }
-
-            await apiClient.post(endpoint, data, {
-                headers: { "Content-Type": "multipart/form-data" },
-            });
 
             const successMsg =
                 role === UserRole.PATROL

@@ -18,6 +18,7 @@ class PatrolService {
 
   async registerPatrol(formData: FormData) {
     const now = new Date().toISOString();
+    const sc = fd(formData, "subCity");
     const item = {
       fullName: fd(formData, "fullName"),
       email: fd(formData, "email"),
@@ -28,7 +29,8 @@ class PatrolService {
       officeAddress: fd(formData, "officeAddress"),
       officeLatitude: fd(formData, "officeLatitude"),
       officeLongitude: fd(formData, "officeLongitude"),
-      assignedArea: fd(formData, "assignedArea"),
+      assignedArea: sc || fd(formData, "assignedArea"),
+      subCity: sc,
       createdAt: now,
       updatedAt: now,
     };

@@ -25,8 +25,8 @@ import { DashboardPagination } from "@/components/tables/dashboard-pagination";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import apiClient from "@/lib/api-client";
 import { UserForm } from "@/components/forms/user-form";
+import { mockNotifications } from "@/lib/mock-store";
 
 export default function PatrolsPage() {
     const router = useRouter();
@@ -176,12 +176,12 @@ export default function PatrolsPage() {
 
         const loadingToast = toast.loading("Sending push notification...");
         try {
-            await apiClient.post("/notifications/send", {
-                targetId: user.id,
-                role: "PATROL",
+            mockNotifications.create({
                 title,
                 message,
-                type: "GENERAL"
+                type: "GENERAL",
+                createdAt: new Date().toISOString(),
+                read: false,
             });
             toast.success("Push notification sent successfully", { id: loadingToast });
         } catch (err: any) {
