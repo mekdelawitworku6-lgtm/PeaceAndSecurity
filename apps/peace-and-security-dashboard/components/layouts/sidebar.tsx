@@ -17,6 +17,8 @@ import {
   Shield,
   MessageSquare,
   ClipboardList,
+  Tag,
+  UserCog,
 } from "lucide-react";
 
 const navigationItems = [
@@ -38,6 +40,18 @@ const navigationItems = [
     href: "/dashboard/patrols",
     icon: Users,
     permission: PERMISSIONS.USER_VIEW,
+  },
+  {
+    label: "User Management",
+    href: "/dashboard/user-management",
+    icon: UserCog,
+    permission: PERMISSIONS.USER_CREATE,
+  },
+  {
+    label: "Report Categories",
+    href: "/dashboard/report-types",
+    icon: Tag,
+    permission: PERMISSIONS.REPORT_VIEW,
   },
   {
     label: "Geographic Units",

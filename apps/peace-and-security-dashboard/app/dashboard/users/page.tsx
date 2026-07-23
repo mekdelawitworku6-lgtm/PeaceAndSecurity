@@ -136,14 +136,15 @@ export default function UsersPage() {
   };
 
   const handleDeleteUser = async (user: User) => {
-    if (!confirm("Are you sure you want to toggle this user's status?")) return;
-    const loadingToast = toast.loading("Updating user status...");
+    if (!confirm(`Are you sure you want to delete ${user.fullName}? This cannot be undone.`)) return;
+    const loadingToast = toast.loading("Deleting user...");
     try {
-      await userService.toggleUserStatus(user.id);
-      loadData();
-      toast.success("User status updated successfully", { id: loadingToast });
-    } catch {
-      toast.error("Failed to update user status", { id: loadingToast });
+      await userService.deleteUser(user.id);
+      toast.success("User deleted successfully", { id: loadingToast });
+      loadData(page);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || err?.message || "Failed to delete user";
+      toast.error(msg, { id: loadingToast });
     }
   };
 

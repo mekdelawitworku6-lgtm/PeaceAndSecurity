@@ -5,6 +5,7 @@ import {
   Get,
   Put,
   Post,
+  Delete,
   Param,
   Query,
   UseGuards,
@@ -154,6 +155,14 @@ export class UserController {
   @ApiResponse({ status: 200, description: "User status updated successfully" })
   async toggleUserStatus(@Param("id") id: string) {
     return this.userService.toggleUserStatus(id);
+  }
+
+  @Delete(":id")
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN)
+  @ApiOperation({ summary: "Delete user (Super Admin only)" })
+  @ApiResponse({ status: 200, description: "User deleted successfully" })
+  async deleteUser(@Param("id") id: string) {
+    return this.userService.deleteUser(id);
   }
 
   @Patch(":id")

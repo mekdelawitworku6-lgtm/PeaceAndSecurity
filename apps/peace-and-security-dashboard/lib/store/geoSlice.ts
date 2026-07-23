@@ -25,9 +25,11 @@ export const fetchCities = createAsyncThunk(
   }
 )
 
+type GeoPayload = { name: string; code: string; nameAm?: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean };
+
 export const createCity = createAsyncThunk(
   'geo/createCity',
-  async (data: { name: string; nameAm?: string }) => {
+  async (data: GeoPayload) => {
     const response = await geoService.createCity(data)
     return response.data
   }
@@ -35,7 +37,7 @@ export const createCity = createAsyncThunk(
 
 export const updateCity = createAsyncThunk(
   'geo/updateCity',
-  async ({ id, data }: { id: string; data: { name?: string; nameAm?: string } }) => {
+  async ({ id, data }: { id: string; data: Partial<GeoPayload> }) => {
     const response = await geoService.updateCity(id, data)
     return response.data
   }
@@ -67,7 +69,7 @@ export const fetchSubcitiesByCity = createAsyncThunk(
 
 export const createSubcity = createAsyncThunk(
   'geo/createSubcity',
-  async (data: { name: string; nameAm?: string; cityId: string }) => {
+  async (data: GeoPayload & { cityId: string }) => {
     const response = await geoService.createSubcity(data)
     return response.data
   }
@@ -75,7 +77,7 @@ export const createSubcity = createAsyncThunk(
 
 export const updateSubcity = createAsyncThunk(
   'geo/updateSubcity',
-  async ({ id, data }: { id: string; data: { name?: string; nameAm?: string; cityId?: string } }) => {
+  async ({ id, data }: { id: string; data: Partial<GeoPayload & { cityId?: string }> }) => {
     const response = await geoService.updateSubcity(id, data)
     return response.data
   }
@@ -107,7 +109,7 @@ export const fetchWoredasBySubcity = createAsyncThunk(
 
 export const createWoreda = createAsyncThunk(
   'geo/createWoreda',
-  async (data: { name: string; nameAm?: string; subcityId: string }) => {
+  async (data: GeoPayload & { subcityId: string }) => {
     const response = await geoService.createWoreda(data)
     return response.data
   }
@@ -115,7 +117,7 @@ export const createWoreda = createAsyncThunk(
 
 export const updateWoreda = createAsyncThunk(
   'geo/updateWoreda',
-  async ({ id, data }: { id: string; data: { name?: string; nameAm?: string; subcityId?: string } }) => {
+  async ({ id, data }: { id: string; data: Partial<GeoPayload & { subcityId?: string }> }) => {
     const response = await geoService.updateWoreda(id, data)
     return response.data
   }

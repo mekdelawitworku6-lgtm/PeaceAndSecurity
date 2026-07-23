@@ -6,6 +6,7 @@ import {
   IsString,
   IsArray,
   IsUUID,
+  MinLength,
 } from "class-validator";
 import { Transform } from "class-transformer";
 import { UserRole } from "../../../common/enums/enums";
@@ -28,6 +29,12 @@ export class CreateUserDto {
   @IsOptional()
   @IsEmail({}, { message: "Invalid email address" })
   email?: string;
+
+  @ApiProperty({ example: "SecurePass123", required: false, description: "Password for the new user. If not provided, user must set password on first login." })
+  @IsOptional()
+  @IsString()
+  @MinLength(6, { message: "Password must be at least 6 characters" })
+  password?: string;
 
   @ApiProperty({
     enum: Object.values(UserRole),

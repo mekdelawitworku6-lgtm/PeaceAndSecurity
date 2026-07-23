@@ -3,6 +3,7 @@ import {
   Get,
   Param,
   Query,
+  Res,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -10,6 +11,7 @@ import {
   ApiOperation,
   ApiBearerAuth,
 } from "@nestjs/swagger";
+import { Response } from "express";
 import { AuditService } from "./audit.service";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
@@ -52,20 +54,24 @@ export class AuditController {
     return this.auditService.findAll(query);
   }
 
-  @Get(":id")
-  @Roles(
-    UserRole.SYSTEM_SUPER_ADMIN,
-    UserRole.SYSTEM_ADMIN,
-    UserRole.PEACE_SUPER_ADMIN,
-    UserRole.PEACE_OFFICER_SUBCITY,
-    UserRole.PEACE_OFFICER_WOREDA,
-    UserRole.POLICE_COMMANDER_CITY,
-    UserRole.POLICE_COMMANDER_SUBCITY,
-    UserRole.POLICE_COMMANDER_WOREDA,
-  )
-  @ApiOperation({ summary: "Get single audit log with full diff" })
-  async findOne(@Param("id") id: string) {
-    return this.auditService.findOne(id);
+  @Get("export/csv")
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ summary: "Export audit logs as CSV" })
+  async exportCsv(
+    @Query() query: { entity?: string; action?: string; startDate?: string; endDate?: string },
+    @Res() res: Response,
+  ) {
+    return this.auditService.exportCsv(query, res);
+  }
+
+  @Get("export/pdf")
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ summary: "Export audit logs as PDF (printable HTML)" })
+  async exportPdf(
+    @Query() query: { entity?: string; action?: string; startDate?: string; endDate?: string },
+    @Res() res: Response,
+  ) {
+    return this.auditService.exportPdf(query, res);
   }
 
   @Get("entity/:type/:id")
@@ -85,5 +91,21 @@ export class AuditController {
     @Param("id") id: string,
   ) {
     return this.auditService.getEntityTrail(type, id);
+  }
+
+  @Get(":id")
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
+  @ApiOperation({ summary: "Get single audit log with full diff" })
+  async findOne(@Param("id") id: string) {
+    return this.auditService.findOne(id);
   }
 }

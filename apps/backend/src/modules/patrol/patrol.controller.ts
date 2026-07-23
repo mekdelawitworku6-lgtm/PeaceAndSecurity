@@ -22,6 +22,7 @@ import { UpdateLocationDto } from "./dto/update-location.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
+import { NoBypass } from "../../common/decorators/no-bypass.decorator";
 import { UserRole } from "../../common/enums/enums";
 import {
   ApiBearerAuth,
@@ -44,8 +45,9 @@ export class PatrolController {
    * Accepts multipart/form-data (for profile image upload) or JSON.
    */
   @Post()
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: "Register a new patrol officer (Admin Dashboard)" })
+  @NoBypass()
+  @Roles(UserRole.PEACE_OFFICER_WOREDA, UserRole.POLICE_COMMANDER_WOREDA)
+  @ApiOperation({ summary: "Register a new patrol officer (Woreda Officers only)" })
   @ApiResponse({
     status: 201,
     description: "Patrol officer registered successfully.",

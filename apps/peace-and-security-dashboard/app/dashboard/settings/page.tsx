@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/auth-context";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { fetchUsers, registerUser, toggleUserStatus, selectUsers, selectUsersLoading } from "@/lib/store/usersSlice";
-import { fetchReportTypes, createReportType, deleteReportType as deleteReportTypeThunk, selectReportTypes, selectReportTypesLoading } from "@/lib/store/reportTypesSlice";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,8 +12,6 @@ import { toast } from "sonner";
 import {
   Loader2,
   Save,
-  Plus,
-  Trash2,
   X,
   Send,
   UserPlus,
@@ -28,9 +25,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import apiClient from "@/lib/api-client";
 
-type SettingsTab = "general" | "team" | "categories";
+type SettingsTab = "general" | "team";
 
 function GeneralSettingsTab() {
   const [bureauName, setBureauName] = useState("Addis Ababa City Peace and Security Administration Bureau");
@@ -103,22 +99,20 @@ function TeamRolesTab() {
   const team = useAppSelector(selectUsers);
   const loading = useAppSelector(selectUsersLoading);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "" });
+  const [inviteForm, setInviteForm] = useState({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "", password: "" });
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    dispatch(fetchUsers({ limit: 50, role: "SYSTEM_SUPER_ADMIN", isStaffUser: true }));
+    dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
   }, [dispatch]);
-
-  useEffect(() => {
-    if (team.length === 0) {
-      dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
-    }
-  }, [dispatch, team.length]);
 
   const handleInvite = async () => {
     if (!inviteForm.fullName || !inviteForm.email) {
       toast.error("Please fill in all required fields");
+      return;
+    }
+    if (!inviteForm.password || inviteForm.password.length < 6) {
+      toast.error("Password must be at least 6 characters");
       return;
     }
     setSending(true);
@@ -127,14 +121,15 @@ function TeamRolesTab() {
       formData.append("fullName", inviteForm.fullName);
       formData.append("email", inviteForm.email);
       formData.append("role", inviteForm.role);
+      formData.append("password", inviteForm.password);
       if (inviteForm.phoneNumber) formData.append("phoneNumber", inviteForm.phoneNumber);
       await dispatch(registerUser(formData)).unwrap();
       setShowInvite(false);
-      setInviteForm({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "" });
-      toast.success("User invited successfully! Credentials sent via email.");
+      setInviteForm({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "", password: "" });
+      toast.success("User created successfully");
       dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
     } catch (err: any) {
-      toast.error(err?.message || "Failed to invite user");
+      toast.error(err?.message || "Failed to create user");
     } finally {
       setSending(false);
     }
@@ -237,8 +232,8 @@ function TeamRolesTab() {
             <div className="p-6 border-b border-slate-100">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-bold text-slate-900">Invite New User</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">They will receive credentials to access the system.</p>
+                  <h3 className="text-lg font-bold text-slate-900">Create New User</h3>
+                  <p className="text-xs text-slate-400 mt-0.5">Set up account access for a new user.</p>
                 </div>
                 <button onClick={() => setShowInvite(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
               </div>
@@ -260,8 +255,14 @@ function TeamRolesTab() {
                   <Select value={inviteForm.role} onValueChange={(v) => setInviteForm({ ...inviteForm, role: v })}>
                     <SelectTrigger className="h-11 rounded-lg border-slate-200"><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
                       <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
-                      <SelectItem value="SYSTEM_SUPER_ADMIN">Super Admin</SelectItem>
+                      <SelectItem value="PEACE_SUPER_ADMIN">Peace Super Admin</SelectItem>
+                      <SelectItem value="PEACE_OFFICER_SUBCITY">Peace Officer Subcity</SelectItem>
+                      <SelectItem value="PEACE_OFFICER_WOREDA">Peace Officer Woreda</SelectItem>
+                      <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
+                      <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
+                      <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -270,158 +271,22 @@ function TeamRolesTab() {
                   <Input value={inviteForm.phoneNumber} onChange={(e) => setInviteForm({ ...inviteForm, phoneNumber: e.target.value })} placeholder="+2519..." className="h-11 rounded-lg border-slate-200" />
                 </div>
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">Password <span className="text-red-500">*</span></Label>
+                <Input type="password" value={inviteForm.password} onChange={(e) => setInviteForm({ ...inviteForm, password: e.target.value })} placeholder="Min. 6 characters" className="h-11 rounded-lg border-slate-200" />
+              </div>
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                 <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                  The user will be registered in the system and receive their credentials via the configured notification channel.
+                  The user will be created with the provided password and can log in immediately.
                 </p>
               </div>
             </div>
             <div className="p-6 border-t border-slate-100 flex items-center justify-between">
               <Button onClick={handleInvite} disabled={sending} className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm">
                 {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                Send Invitation
+                Create User
               </Button>
               <Button variant="ghost" onClick={() => setShowInvite(false)} className="h-11 rounded-lg font-bold text-sm text-slate-500">Cancel</Button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function IncidentCategoriesTab() {
-  const dispatch = useAppDispatch();
-  const categories = useAppSelector(selectReportTypes);
-  const loading = useAppSelector(selectReportTypesLoading);
-  const [showAdd, setShowAdd] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: "", description: "" });
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    dispatch(fetchReportTypes());
-  }, [dispatch]);
-
-  const handleAddCategory = async () => {
-    if (!newCategory.name) {
-      toast.error("Category name is required");
-      return;
-    }
-    setSaving(true);
-    try {
-      await dispatch(createReportType({ name: newCategory.name, description: newCategory.description, isActive: true })).unwrap();
-      setShowAdd(false);
-      setNewCategory({ name: "", description: "" });
-      toast.success("Category added successfully");
-      dispatch(fetchReportTypes());
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to add category");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleDeleteCategory = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"? This may affect existing reports.`)) return;
-    try {
-      await dispatch(deleteReportTypeThunk(id)).unwrap();
-      toast.success("Category deleted");
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to delete category");
-    }
-  };
-
-  const getIcon = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.includes("noise")) return "🔊";
-    if (n.includes("litter") || n.includes("dump")) return "🗑️";
-    if (n.includes("vandal")) return "🔨";
-    if (n.includes("air")) return "💨";
-    if (n.includes("water")) return "💧";
-    if (n.includes("soil")) return "🌱";
-    if (n.includes("forest") || n.includes("tree")) return "🌳";
-    if (n.includes("hazard") || n.includes("waste")) return "☣️";
-    if (n.includes("wild") || n.includes("poach")) return "🦁";
-    return "📋";
-  };
-
-  const getBg = (name: string) => {
-    const n = name.toLowerCase();
-    if (n.includes("noise")) return "bg-rose-100";
-    if (n.includes("litter") || n.includes("dump")) return "bg-amber-100";
-    if (n.includes("vandal")) return "bg-purple-100";
-    if (n.includes("air")) return "bg-slate-100";
-    if (n.includes("water")) return "bg-blue-100";
-    if (n.includes("soil")) return "bg-green-100";
-    if (n.includes("forest") || n.includes("tree")) return "bg-emerald-100";
-    if (n.includes("hazard") || n.includes("waste")) return "bg-orange-100";
-    if (n.includes("wild") || n.includes("poach")) return "bg-yellow-100";
-    return "bg-cyan-100";
-  };
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-bold text-slate-900">Incident Categories</h2>
-        <Button onClick={() => setShowAdd(true)} className="h-10 rounded-lg px-5 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Category
-        </Button>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {categories.map((cat: any) => (
-            <div key={cat.id} className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors shadow-sm">
-              <div className="flex items-center gap-3">
-                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm", getBg(cat.name))}>
-                  {getIcon(cat.name)}
-                </div>
-                <div>
-                  <span className="font-bold text-sm text-slate-800">{cat.name}</span>
-                  {cat.description && <p className="text-xs text-slate-400 mt-0.5 max-w-[200px] truncate">{cat.description}</p>}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full", cat.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
-                  {cat.isActive ? "Active" : "Inactive"}
-                </span>
-                <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {showAdd && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-0 animate-in zoom-in-95 duration-300">
-            <div className="p-6 border-b border-slate-100">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-bold text-slate-900">Add New Category</h3>
-                <button onClick={() => setShowAdd(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
-              </div>
-            </div>
-            <div className="p-6 space-y-5">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-600">Category Name <span className="text-red-500">*</span></Label>
-                <Input value={newCategory.name} onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })} placeholder="e.g. Robbery/Theft" className="h-11 rounded-lg border-slate-200" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-600">Description</Label>
-                <textarea value={newCategory.description} onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })} placeholder="Brief description of this category..." className="w-full min-h-[80px] rounded-lg border border-slate-200 p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-              </div>
-            </div>
-            <div className="p-6 border-t border-slate-100 flex items-center justify-between">
-              <Button onClick={handleAddCategory} disabled={saving} className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm">
-                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-                Add Category
-              </Button>
-              <Button variant="ghost" onClick={() => setShowAdd(false)} className="h-11 rounded-lg font-bold text-sm text-slate-500">Cancel</Button>
             </div>
           </div>
         </div>
@@ -441,7 +306,6 @@ export default function SettingsPage() {
   const tabs: { key: SettingsTab; label: string }[] = [
     { key: "general", label: "General" },
     { key: "team", label: "Team & Roles" },
-    { key: "categories", label: "Incident Categories" },
   ];
 
   return (
@@ -464,7 +328,6 @@ export default function SettingsPage() {
       <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm">
         {activeTab === "general" && <GeneralSettingsTab />}
         {activeTab === "team" && <TeamRolesTab />}
-        {activeTab === "categories" && <IncidentCategoriesTab />}
       </div>
     </div>
   );

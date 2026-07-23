@@ -62,7 +62,11 @@ export class UserService {
       );
     }
 
-    const isStaff = true; // All users in the `users` table are staff/admin
+    const isStaff = true;
+
+    const passwordHash = dto.password
+      ? await hashPassword(dto.password)
+      : undefined;
 
     const user = this.userRepository.create({
       fullName: dto.fullName,
@@ -73,10 +77,11 @@ export class UserService {
       isStaffUser: isStaff,
       profileImage: dto.profileImage,
       permissions: dto.permissions || [],
-      status: UserStatus.PENDING,
-      isPasswordSet: false,
-      isPhoneVerified: false,
-      isEmailVerified: false,
+      status: dto.password ? UserStatus.ACTIVE : UserStatus.PENDING,
+      password: passwordHash,
+      isPasswordSet: !!dto.password,
+      isPhoneVerified: !!normalizedPhone,
+      isEmailVerified: !!normalizedEmail,
       cityId: dto.cityId,
       subcityId: dto.subcityId,
       woredaId: dto.woredaId,
@@ -84,16 +89,15 @@ export class UserService {
 
     const saved = await this.userRepository.save(user);
 
-    // Notify via SMS
-    try {
-      if (saved.phoneNumber) {
+    if (!dto.password && saved.phoneNumber) {
+      try {
         await sendSMS({
           recipient: saved.phoneNumber,
-          messageBody: `[EcoGuard] Your admin account has been created.\nEmail: ${saved.email ?? "N/A"}\nPlease login to the dashboard and set your password.`,
+          messageBody: `Your admin account has been created.\nEmail: ${saved.email ?? "N/A"}\nPlease login to the dashboard and set your password.`,
         });
+      } catch {
+        console.error("Failed to send registration SMS");
       }
-    } catch {
-      console.error("Failed to send registration SMS");
     }
 
     return successResponse("Admin user created successfully.", {
@@ -104,6 +108,7 @@ export class UserService {
       email: saved.email,
       role: saved.role,
       status: saved.status,
+      isPasswordSet: saved.isPasswordSet,
     });
   }
 
@@ -177,6 +182,10 @@ export class UserService {
         "user.permissions",
         "user.createdAt",
         "user.updatedAt",
+        "user.cityId",
+        "user.subcityId",
+        "user.woredaId",
+        "user.isPasswordSet",
       ]);
 
     // Dashboard displays admin roles only — exclude patrol/citizen
@@ -275,6 +284,21 @@ export class UserService {
     );
   }
 
+  /* ---------------- DELETE USER (super admin only) ---------------- */
+  async deleteUser(
+    id: string,
+  ): Promise<ServiceResponse> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) throw new NotFoundException("User not found");
+
+    if (user.role === UserRole.SYSTEM_SUPER_ADMIN) {
+      throw new BadRequestException("Cannot delete a Super Admin user");
+    }
+
+    await this.userRepository.remove(user);
+    return successResponse("User deleted successfully", { id });
+  }
+
   /* ---------------- RESET PASSWORD BY ADMIN (dashboard users only) ---------------- */
   async resetUserPassword(
     adminId: string,
@@ -311,7 +335,7 @@ export class UserService {
       if (recipient) {
         await sendSMS({
           recipient,
-          messageBody: `[EcoGuard] Your password has been reset by admin. Temporary password: ${tempPassword}\nPlease login to the dashboard and change your password immediately.`,
+          messageBody: `Your password has been reset by admin. Temporary password: ${tempPassword}\nPlease login to the dashboard and change your password immediately.`,
         }).catch(() => void 0);
       }
     }

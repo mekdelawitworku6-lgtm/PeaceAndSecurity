@@ -1,11 +1,10 @@
-import { IsString, IsOptional, IsBoolean, IsEnum, IsNumber } from "class-validator";
+import { IsString, IsOptional, IsBoolean, IsNumber } from "class-validator";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { ReportTypeEnum } from "../../../common/enums/enums";
 
 export class CreateReportTypeDto {
-    @ApiProperty({ example: "NOISE", enum: ReportTypeEnum, description: "Name of the violation type" })
-    @IsEnum(ReportTypeEnum)
-    name: ReportTypeEnum;
+    @ApiProperty({ example: "Robbery/Theft", description: "Name of the violation type" })
+    @IsString()
+    name: string;
 
     @ApiPropertyOptional({ example: "Loud music or construction noise", description: "Detailed description" })
     @IsString()
@@ -27,10 +26,10 @@ export class CreateReportTypeDto {
 }
 
 export class UpdateReportTypeDto {
-    @ApiPropertyOptional({ enum: ReportTypeEnum })
-    @IsEnum(ReportTypeEnum)
+    @ApiPropertyOptional()
+    @IsString()
     @IsOptional()
-    name?: ReportTypeEnum;
+    name?: string;
 
     @ApiPropertyOptional()
     @IsString()

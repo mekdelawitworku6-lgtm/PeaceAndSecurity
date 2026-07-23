@@ -271,7 +271,7 @@ export default function PatrolsPage() {
                     </div>
 
                     {/* Right: Add Button */}
-                    {hasPermission(PERMISSIONS.USER_CREATE) && user?.role === UserRole.SYSTEM_ADMIN ? (
+                    {[UserRole.PEACE_OFFICER_WOREDA, UserRole.POLICE_COMMANDER_WOREDA].includes(user?.role as UserRole) ? (
                         <Button
                             onClick={handleAddUser}
                             className="h-11 rounded px-6 bg-primary hover:opacity-90 font-bold shadow-lg shadow-primary/20 shrink-0 w-full xl:w-auto"
@@ -279,19 +279,6 @@ export default function PatrolsPage() {
                             <Plus className="h-4 w-4 mr-2" />
                             Register Patrol
                         </Button>
-                    ) : hasPermission(PERMISSIONS.USER_CREATE) ? (
-                        <div className="relative group">
-                            <Button
-                                disabled
-                                className="h-11 rounded px-6 opacity-50 cursor-not-allowed shrink-0 w-full xl:w-auto"
-                            >
-                                <Plus className="h-4 w-4 mr-2" />
-                                Register Patrol
-                            </Button>
-                            <div className="absolute right-0 top-full mt-2 w-72 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-                                Patrol officer registration is restricted to System Admin only. Please contact a System Admin to register patrol officers.
-                            </div>
-                        </div>
                     ) : null}
                 </div>
             </PageHeader>

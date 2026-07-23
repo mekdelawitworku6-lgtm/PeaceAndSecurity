@@ -7,6 +7,7 @@ import {
 import { Reflector } from "@nestjs/core";
 import { UserRole } from "../enums/enums";
 import { ROLES_KEY } from "../decorators/roles.decorator";
+import { NO_BYPASS_KEY } from "../decorators/no-bypass.decorator";
 import { errorResponse, ServiceResponse } from "../types/service-response";
 
 @Injectable()
@@ -20,6 +21,11 @@ export class RolesGuard implements CanActivate {
         [context.getHandler(), context.getClass()],
       );
 
+      const noBypass = this.reflector.getAllAndOverride<boolean>(
+        NO_BYPASS_KEY,
+        [context.getHandler(), context.getClass()],
+      );
+
       const request = context.switchToHttp().getRequest();
 
       if (!requiredRoles) {
@@ -29,7 +35,9 @@ export class RolesGuard implements CanActivate {
       const user = request.user;
 
       // Super admins, system admins, and city-level officers are always allowed
+      // UNLESS the endpoint is marked @NoBypass()
       if (
+        !noBypass &&
         user &&
         (user.role === UserRole.SYSTEM_SUPER_ADMIN ||
           user.role === UserRole.SYSTEM_ADMIN ||

@@ -59,8 +59,10 @@ export const API_ENDPOINTS = {
         GET_PROFILE: 'users/profile',
         UPDATE_PROFILE: 'users/profile',
         GET_BY_ID: (id: string) => `users/${id}`,
+        UPDATE: (id: string) => `users/${id}`,
         TOGGLE_STATUS: (id: string) => `users/${id}/toggle-status`,
         RESET_PASSWORD: (id: string) => `users/${id}/reset-password`,
+        DELETE: (id: string) => `users/${id}`,
     },
 
     // ── Reports ───────────────────────────────────────────────────────
@@ -177,8 +179,9 @@ export const API_ENDPOINTS = {
     AUDIT_LOGS: {
         GET_ALL: 'audit-logs',
         GET_BY_ID: (id: string) => `audit-logs/${id}`,
-        GET_BY_ENTITY: (entityName: string) => `audit-logs/entity/${entityName}`,
-        EXPORT: 'audit-logs/export',
+        GET_BY_ENTITY: (entity: string, entityId: string) => `audit-logs/entity/${entity}/${entityId}`,
+        EXPORT_CSV: 'audit-logs/export/csv',
+        EXPORT_PDF: 'audit-logs/export/pdf',
     },
 
     // ── Analytics ─────────────────────────────────────────────────────

@@ -23,7 +23,7 @@ const initialState: AuditState = {
 
 export const fetchAuditLogs = createAsyncThunk(
   'audit/fetchAll',
-  async (params?: { page?: number; limit?: number; entityName?: string; entityId?: string; action?: string; performedByUserId?: string; from?: string; to?: string }) => {
+  async (params?: { page?: number; limit?: number; entity?: string; entityId?: string; action?: string; performedByUserId?: string; startDate?: string; endDate?: string }) => {
     const response = await auditService.getAll(params)
     return response.data
   }

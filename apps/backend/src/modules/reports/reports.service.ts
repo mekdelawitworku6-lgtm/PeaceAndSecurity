@@ -622,7 +622,7 @@ export class ReportsService {
         if (recipient) {
           await sendSMS({
             recipient,
-            messageBody: `[EcoGuard] Urgent Case Assigned: ${report.address || "New location"}. Report: ${report.violationType || "Environmental Violation"}. Please check your patrol app.`,
+            messageBody: `Urgent Case Assigned: ${report.address || "New location"}. Report: ${report.violationType || "Environmental Violation"}. Please check your patrol app.`,
           });
         }
       } catch (error) {

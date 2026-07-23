@@ -6,20 +6,14 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
 } from "typeorm";
-import { ReportTypeEnum } from "../../../common/enums/enums";
 
 @Entity("report_types")
 export class ReportType {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({
-    type: "enum",
-    enum: ReportTypeEnum,
-    default: ReportTypeEnum.OTHERS,
-    unique: true,
-  })
-  name: ReportTypeEnum;
+  @Column({ type: "varchar", length: 255, unique: true })
+  name: string;
 
   @Column({ type: "text", nullable: true })
   description: string;

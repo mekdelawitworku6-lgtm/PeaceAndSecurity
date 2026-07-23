@@ -119,7 +119,7 @@ export class AuthService {
 
       sendSMS({
         recipient: normalizedPhone,
-        messageBody: `[EcoGuard] Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
+        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
       const registrationToken = signRegistrationToken(this.jwtService, {
@@ -306,7 +306,7 @@ export class AuthService {
           if (recipient) {
             sendSMS({
               recipient,
-              messageBody: `[EcoGuard] Your PIN has been set by the administrator. Your login PIN is: ${pin}. Please change it after your first login.`,
+              messageBody: `Your PIN has been set by the administrator. Your login PIN is: ${pin}. Please change it after your first login.`,
             }).catch(() => void 0);
           }
         }
@@ -329,7 +329,7 @@ export class AuthService {
           if (recipient) {
             sendSMS({
               recipient,
-              messageBody: `[EcoGuard] Your PIN has been set by the administrator. Your login PIN is: ${pin}. Please change it after your first login.`,
+              messageBody: `Your PIN has been set by the administrator. Your login PIN is: ${pin}. Please change it after your first login.`,
             }).catch(() => void 0);
           }
         }
@@ -454,7 +454,7 @@ export class AuthService {
 
       sendSMS({
         recipient,
-        messageBody: `[EcoGuard] Your ${messageAction} code is ${otp.otpCode}. It expires in 2 minutes.`,
+        messageBody: `Your ${messageAction} code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
       const tokenSigner =
@@ -722,7 +722,7 @@ export class AuthService {
 
       sendSMS({
         recipient: phone,
-        messageBody: `[EcoGuard] Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
+        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
       return successResponse("OTP resent successfully");
@@ -898,7 +898,7 @@ export class AuthService {
       const recipient = normalizedPhone;
       sendSMS({
         recipient,
-        messageBody: `[EcoGuard] Your password reset code is ${otp.otpCode}. It expires in 2 minutes.`,
+        messageBody: `Your password reset code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
       const resetToken = signPasswordResetToken(this.jwtService, {
@@ -1020,7 +1020,7 @@ export class AuthService {
 
       if (user.status === UserStatus.DISABLED)
         return errorResponse(
-          "Your account is disabled. Please contact EcoGuard support.",
+          "Your account is disabled. Please contact the System Administrator.",
         );
 
       if (user.isPasswordSet)
@@ -1079,7 +1079,7 @@ export class AuthService {
 
       sendSMS({
         recipient: normalizedPhone,
-        messageBody: `[EcoGuard] Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
+        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
       const registrationToken = signRegistrationToken(this.jwtService, {
@@ -1134,7 +1134,7 @@ export class AuthService {
 
       sendSMS({
         recipient: normalizedPhone,
-        messageBody: `[EcoGuard] Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
+        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
       const registrationToken = signRegistrationToken(this.jwtService, {
@@ -1193,7 +1193,7 @@ export class AuthService {
       if (!user) throw new UnauthorizedException("Invalid credentials");
       if (user.status === UserStatus.DISABLED)
         return errorResponse(
-          "Your account is disabled. Please contact EcoGuard support.",
+          "Your account is disabled. Please contact the System Administrator.",
         );
 
       // Patrol and Citizen use PIN login through their own endpoints

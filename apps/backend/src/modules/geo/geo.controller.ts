@@ -74,6 +74,13 @@ export class GeoController {
     return this.geoService.getAllSubcities();
   }
 
+  @Post("subcities")
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN, UserRole.PEACE_OFFICER_SUBCITY, UserRole.POLICE_COMMANDER_CITY, UserRole.POLICE_COMMANDER_SUBCITY)
+  @ApiOperation({ summary: "Create a subcity" })
+  async createSubcityFlat(@Body() dto: CreateSubcityDto) {
+    return this.geoService.createSubcity(dto);
+  }
+
   @Post("cities/:cityId/subcities")
   @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN, UserRole.PEACE_OFFICER_SUBCITY, UserRole.POLICE_COMMANDER_CITY, UserRole.POLICE_COMMANDER_SUBCITY)
   @ApiOperation({ summary: "Create a subcity in a city" })
@@ -119,9 +126,16 @@ export class GeoController {
     return this.geoService.getAllWoredas();
   }
 
+  @Post("woredas")
+  @Roles(UserRole.POLICE_COMMANDER_SUBCITY, UserRole.PEACE_OFFICER_WOREDA)
+  @ApiOperation({ summary: "Create a woreda (subcity-level roles only)" })
+  async createWoredaFlat(@Body() dto: CreateWoredaDto) {
+    return this.geoService.createWoreda(dto);
+  }
+
   @Post("subcities/:subcityId/woredas")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN, UserRole.PEACE_OFFICER_SUBCITY, UserRole.POLICE_COMMANDER_CITY, UserRole.POLICE_COMMANDER_SUBCITY)
-  @ApiOperation({ summary: "Create a woreda in a subcity" })
+  @Roles(UserRole.POLICE_COMMANDER_SUBCITY, UserRole.PEACE_OFFICER_WOREDA)
+  @ApiOperation({ summary: "Create a woreda in a subcity (subcity-level roles only)" })
   async createWoreda(
     @Param("subcityId") subcityId: string,
     @Body() dto: CreateWoredaDto,

@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Download, Filter, ChevronLeft, ChevronRight } from "lucide-react";
+import { Download, Filter, ChevronLeft, ChevronRight, FileText, FileDown } from "lucide-react";
 
 export default function AuditLogsPage() {
   const dispatch = useAppDispatch();
@@ -39,19 +39,20 @@ export default function AuditLogsPage() {
     dispatch(fetchAuditLogs({
       page,
       limit,
-      entityName: entityFilter || undefined,
+      entity: entityFilter || undefined,
       action: actionFilter || undefined,
-      from: fromDate || undefined,
-      to: toDate || undefined,
+      startDate: fromDate || undefined,
+      endDate: toDate || undefined,
     }));
   }, [dispatch, page, entityFilter, actionFilter, fromDate, toDate]);
 
-  const handleExport = async () => {
+  const handleExportCsv = async () => {
     try {
-      const response = await auditService.exportLogs({
-        from: fromDate || undefined,
-        to: toDate || undefined,
-        entityName: entityFilter || undefined,
+      const response = await auditService.exportCsv({
+        entity: entityFilter || undefined,
+        action: actionFilter || undefined,
+        startDate: fromDate || undefined,
+        endDate: toDate || undefined,
       });
       const blob = new Blob([response.data], { type: "text/csv" });
       const url = window.URL.createObjectURL(blob);
@@ -60,7 +61,29 @@ export default function AuditLogsPage() {
       a.download = `audit-logs-${new Date().toISOString().slice(0, 10)}.csv`;
       a.click();
       window.URL.revokeObjectURL(url);
-      toast.success("Exported successfully");
+      toast.success("CSV exported successfully");
+    } catch (e: any) {
+      toast.error(e?.message || "Export failed");
+    }
+  };
+
+  const handleExportPdf = async () => {
+    try {
+      const response = await auditService.exportPdf({
+        entity: entityFilter || undefined,
+        action: actionFilter || undefined,
+        startDate: fromDate || undefined,
+        endDate: toDate || undefined,
+      });
+      const blob = new Blob([response.data], { type: "text/html" });
+      const url = window.URL.createObjectURL(blob);
+      const printWindow = window.open(url, "_blank");
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      toast.success("PDF exported successfully");
     } catch (e: any) {
       toast.error(e?.message || "Export failed");
     }
@@ -83,19 +106,24 @@ export default function AuditLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Audit Logs</h1>
-        <Button onClick={handleExport} variant="outline">
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={handleExportCsv} variant="outline" size="sm">
+            <FileText className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+          <Button onClick={handleExportPdf} variant="outline" size="sm">
+            <FileDown className="mr-2 h-4 w-4" />
+            Export PDF
+          </Button>
+        </div>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap gap-4 items-end">
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-1 block">Entity</label>
-              <Select value={entityFilter} onValueChange={(v) => { setEntityFilter(v === "all" ? "" : v); setPage(1); }}>
+              <Select value={entityFilter || "all"} onValueChange={(v) => { setEntityFilter(v === "all" ? "" : v); setPage(1); }}>
                 <SelectTrigger><SelectValue placeholder="All entities" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All entities</SelectItem>
@@ -107,7 +135,7 @@ export default function AuditLogsPage() {
             </div>
             <div className="flex-1 min-w-[200px]">
               <label className="text-sm font-medium mb-1 block">Action</label>
-              <Select value={actionFilter} onValueChange={(v) => { setActionFilter(v === "all" ? "" : v); setPage(1); }}>
+              <Select value={actionFilter || "all"} onValueChange={(v) => { setActionFilter(v === "all" ? "" : v); setPage(1); }}>
                 <SelectTrigger><SelectValue placeholder="All actions" /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All actions</SelectItem>
@@ -129,7 +157,6 @@ export default function AuditLogsPage() {
         </CardContent>
       </Card>
 
-      {/* Logs Table */}
       <Card>
         <CardHeader>
           <CardTitle>Audit Trail ({total} entries)</CardTitle>
@@ -145,15 +172,18 @@ export default function AuditLogsPage() {
                 <div key={log.id} className="border rounded-lg p-3 space-y-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     {getActionBadge(log.action)}
-                    <span className="font-medium text-sm">{log.entityName}</span>
+                    <span className="font-medium text-sm">{log.entity}</span>
                     <span className="text-xs text-muted-foreground">ID: {log.entityId?.slice(0, 8)}</span>
                     <span className="text-xs text-muted-foreground ml-auto">
-                      {new Date(log.performedAt).toLocaleString()}
+                      {new Date(log.timestamp).toLocaleString()}
                     </span>
                   </div>
                   <p className="text-sm text-muted-foreground">
-                    By: {log.performedByUser?.fullName || log.performedByUserId} • {log.ipAddress}
+                    By: {log.actorName || log.actorId} &bull; {log.actorRole || ""} &bull; {log.ipAddress}
                   </p>
+                  {log.description && (
+                    <p className="text-xs text-muted-foreground">{log.description}</p>
+                  )}
                   {log.oldValues && (
                     <details className="text-xs">
                       <summary className="cursor-pointer text-muted-foreground">Changes</summary>
@@ -167,7 +197,6 @@ export default function AuditLogsPage() {
             </div>
           )}
 
-          {/* Pagination */}
           {total > limit && (
             <div className="flex items-center justify-between mt-4 pt-4 border-t">
               <p className="text-sm text-muted-foreground">

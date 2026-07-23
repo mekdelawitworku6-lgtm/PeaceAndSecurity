@@ -12,12 +12,12 @@ class GeoService {
     return response.data;
   }
 
-  async createCity(data: { name: string; nameAm?: string }) {
+  async createCity(data: { name: string; code: string; nameAm?: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean }) {
     const response = await apiClient.post(API_ENDPOINTS.GEO.CITIES.CREATE, data);
     return response.data;
   }
 
-  async updateCity(id: string, data: { name?: string; nameAm?: string }) {
+  async updateCity(id: string, data: { name?: string; code?: string; nameAm?: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean }) {
     const response = await apiClient.patch(API_ENDPOINTS.GEO.CITIES.UPDATE(id), data);
     return response.data;
   }
@@ -42,12 +42,12 @@ class GeoService {
     return response.data;
   }
 
-  async createSubcity(data: { name: string; nameAm?: string; cityId: string }) {
+  async createSubcity(data: { name: string; code: string; nameAm?: string; cityId: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean }) {
     const response = await apiClient.post(API_ENDPOINTS.GEO.SUBCITIES.CREATE, data);
     return response.data;
   }
 
-  async updateSubcity(id: string, data: { name?: string; nameAm?: string; cityId?: string }) {
+  async updateSubcity(id: string, data: { name?: string; code?: string; nameAm?: string; cityId?: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean }) {
     const response = await apiClient.patch(API_ENDPOINTS.GEO.SUBCITIES.UPDATE(id), data);
     return response.data;
   }
@@ -72,12 +72,12 @@ class GeoService {
     return response.data;
   }
 
-  async createWoreda(data: { name: string; nameAm?: string; subcityId: string }) {
+  async createWoreda(data: { name: string; code: string; nameAm?: string; subcityId: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean }) {
     const response = await apiClient.post(API_ENDPOINTS.GEO.WOREDAS.CREATE, data);
     return response.data;
   }
 
-  async updateWoreda(id: string, data: { name?: string; nameAm?: string; subcityId?: string }) {
+  async updateWoreda(id: string, data: { name?: string; code?: string; nameAm?: string; subcityId?: string; description?: string; latitude?: number; longitude?: number; isActive?: boolean }) {
     const response = await apiClient.patch(API_ENDPOINTS.GEO.WOREDAS.UPDATE(id), data);
     return response.data;
   }

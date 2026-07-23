@@ -23,6 +23,8 @@ import {
   MapPin,
   Navigation,
   Building2,
+  Lock,
+  Building,
 } from "lucide-react";
 import { toast } from "sonner";
 import { getImageUrl, cn } from "@/lib/utils";
@@ -31,6 +33,15 @@ import {
   PERMISSION_CATEGORIES,
   DEFAULT_PERMISSIONS_BY_ROLE,
 } from "@/lib/permissions";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import {
+  fetchCities,
+  fetchSubcities,
+  fetchWoredas,
+  selectCities,
+  selectSubcities,
+  selectWoredas,
+} from "@/lib/store/geoSlice";
 
 type Props = {
   onOpenChange: (open: boolean) => void;
@@ -52,37 +63,58 @@ export function UserForm({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState<UserRole>((defaultRole as UserRole) || UserRole.SYSTEM_ADMIN);
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [preview, setPreview] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Patrol-specific fields
   const [officeAddress, setOfficeAddress] = useState("");
   const [officeLatitude, setOfficeLatitude] = useState("");
   const [officeLongitude, setOfficeLongitude] = useState("");
   const [assignedArea, setAssignedArea] = useState("");
   const [subCity, setSubCity] = useState("");
 
+  const [cityId, setCityId] = useState("");
+  const [subcityId, setSubcityId] = useState("");
+  const [woredaId, setWoredaId] = useState("");
+
+  const geoDispatch = useAppDispatch();
+  const cities = useAppSelector(selectCities);
+  const subcities = useAppSelector(selectSubcities);
+  const woredas = useAppSelector(selectWoredas);
+
+  useEffect(() => {
+    geoDispatch(fetchCities());
+    geoDispatch(fetchSubcities());
+    geoDispatch(fetchWoredas());
+  }, [geoDispatch]);
+
   const isPatrol = role === UserRole.PATROL;
+  const isGeoRole = [
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  ].includes(role);
 
   useEffect(() => {
     if (initialData) {
       setFullName(initialData.fullName || "");
       setEmail(initialData.email || "");
-      let phone = initialData.phoneNumber || "";
-      if (phone.startsWith("+251")) phone = phone.substring(4);
-      else if (phone.startsWith("251")) phone = phone.substring(3);
-      else if (phone.startsWith("0")) phone = phone.substring(1);
-
-      setPhoneNumber(phone);
+      setPhoneNumber(initialData.phoneNumber || "");
       setRole((initialData.role as UserRole) || UserRole.SYSTEM_ADMIN);
       setOfficeAddress((initialData as any).officeAddress || "");
       setOfficeLatitude(String((initialData as any).officeLatitude || ""));
       setOfficeLongitude(String((initialData as any).officeLongitude || ""));
       setAssignedArea((initialData as any).assignedArea || "");
       setSubCity((initialData as any).subCity || "");
+      setCityId((initialData as any).cityId || "");
+      setSubcityId((initialData as any).subcityId || "");
+      setWoredaId((initialData as any).woredaId || "");
       if (
         initialData.profileImage &&
         typeof initialData.profileImage === "string"
@@ -116,10 +148,16 @@ export function UserForm({
     if (!isPatrol && !email.trim()) newErrors.email = "Email is required";
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
-    } else if (phoneNumber.length !== 9) {
-      newErrors.phoneNumber = "Enter exactly 9 digits";
-    } else if (!/^[97]/.test(phoneNumber)) {
-      newErrors.phoneNumber = "Must start with 9 or 7";
+    } else if (phoneNumber.replace(/\D/g, "").length < 9) {
+      newErrors.phoneNumber = "Phone number must be at least 9 digits";
+    }
+
+    if (isNew && !isPatrol) {
+      if (!password.trim()) {
+        newErrors.password = "Password is required";
+      } else if (password.length < 6) {
+        newErrors.password = "Password must be at least 6 characters";
+      }
     }
 
     if (isPatrol) {
@@ -148,9 +186,21 @@ export function UserForm({
     const formData = new FormData();
     formData.append("fullName", fullName);
     if (email.trim()) formData.append("email", email);
-    formData.append("phoneNumber", `+251${phoneNumber}`);
+
+    let phone = phoneNumber.trim();
+    if (!phone.startsWith("+")) {
+      if (phone.startsWith("0")) phone = phone.substring(1);
+      if (phone.startsWith("251")) phone = `+${phone}`;
+      else phone = `+251${phone}`;
+    }
+    formData.append("phoneNumber", phone);
+
     formData.append("role", role);
     formData.append("isStaffUser", isPatrol ? "false" : "true");
+
+    if (isNew && !isPatrol && password.trim()) {
+      formData.append("password", password);
+    }
 
     if (profileImage) {
       formData.append("profileImage", profileImage);
@@ -168,13 +218,18 @@ export function UserForm({
       permissions.forEach((p) => formData.append("permissions", p));
     }
 
+    if (isGeoRole) {
+      if (cityId) formData.append("cityId", cityId);
+      if (subcityId) formData.append("subcityId", subcityId);
+      if (woredaId) formData.append("woredaId", woredaId);
+    }
+
     onSave(formData);
   };
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl flex flex-col max-h-[90vh] overflow-hidden animate-in zoom-in-95 duration-200">
-        {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 shrink-0">
           <div>
             <h2 className="text-lg font-bold text-slate-900">
@@ -196,9 +251,7 @@ export function UserForm({
           </button>
         </div>
 
-        {/* Modal Content - Scrollable Form */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* Identity Image */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
               <UserIcon className="h-3.5 w-3.5 text-slate-400" />
@@ -235,7 +288,6 @@ export function UserForm({
             </div>
           </div>
 
-          {/* Form Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1.5 sm:col-span-2">
               <Label className="text-xs font-bold text-slate-600">Full Name <span className="text-red-500">*</span></Label>
@@ -272,29 +324,123 @@ export function UserForm({
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-600">Phone Number <span className="text-red-500">*</span></Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 pointer-events-none">
-                  🇪🇹 +251
-                </span>
+              <Input
+                className={cn(
+                  "h-10 rounded-lg border-slate-200",
+                  errors.phoneNumber && "border-red-500 focus-visible:ring-red-100"
+                )}
+                placeholder="+251912345678"
+                value={phoneNumber}
+                onChange={(e) => {
+                  setPhoneNumber(e.target.value);
+                  if (errors.phoneNumber) setErrors({ ...errors, phoneNumber: "" });
+                }}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-600">Role <span className="text-red-500">*</span></Label>
+              <Select value={role} onValueChange={(v) => {
+                setRole(v as UserRole);
+                setCityId("");
+                setSubcityId("");
+                setWoredaId("");
+              }}>
+                <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
+                  <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
+                  <SelectItem value="PEACE_SUPER_ADMIN">Peace Super Admin</SelectItem>
+                  <SelectItem value="PEACE_OFFICER_SUBCITY">Peace Officer Subcity</SelectItem>
+                  <SelectItem value="PEACE_OFFICER_WOREDA">Peace Officer Woreda</SelectItem>
+                  <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
+                  <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
+                  <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {isNew && !isPatrol && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                  <Lock className="h-3.5 w-3.5 text-slate-400" />
+                  Password <span className="text-red-500">*</span>
+                </Label>
                 <Input
+                  type="password"
                   className={cn(
-                    "h-10 rounded-lg border-slate-200 pl-16",
-                    errors.phoneNumber && "border-red-500 focus-visible:ring-red-100"
+                    "h-10 rounded-lg border-slate-200",
+                    errors.password && "border-red-500 focus-visible:ring-red-100"
                   )}
-                  placeholder="912345678"
-                  value={phoneNumber}
+                  placeholder="Min. 6 characters"
+                  value={password}
                   onChange={(e) => {
-                    let val = e.target.value.replace(/\D/g, "");
-                    if (val.startsWith("0")) val = val.substring(1);
-                    if (val.startsWith("251")) val = val.substring(3);
-                    if (val.length <= 9) {
-                      setPhoneNumber(val);
-                      if (errors.phoneNumber) setErrors({ ...errors, phoneNumber: "" });
-                    }
+                    setPassword(e.target.value);
+                    if (errors.password) setErrors({ ...errors, password: "" });
                   }}
                 />
+                {errors.password && (
+                  <p className="text-[11px] text-red-500 font-medium">{errors.password}</p>
+                )}
               </div>
-            </div>
+            )}
+
+            {isGeoRole && (
+              <div className="sm:col-span-2 space-y-3 pt-2 border-t border-slate-100">
+                <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                  <Building className="h-3.5 w-3.5 text-slate-400" />
+                  Geographic Assignment
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-slate-500">City</Label>
+                    <Select value={cityId} onValueChange={setCityId}>
+                      <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                        <SelectValue placeholder="Select city" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {cities.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-slate-500">Subcity</Label>
+                    <Select value={subcityId} onValueChange={setSubcityId}>
+                      <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                        <SelectValue placeholder="Select subcity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {subcities
+                          .filter((s: any) => !cityId || s.cityId === cityId)
+                          .map((s: any) => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold text-slate-500">Woreda</Label>
+                    <Select value={woredaId} onValueChange={setWoredaId}>
+                      <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                        <SelectValue placeholder="Select woreda" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {woredas
+                          .filter((w: any) => !subcityId || w.subcityId === subcityId)
+                          .map((w: any) => (
+                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400">Assign this officer to a specific geographic area.</p>
+              </div>
+            )}
 
             {isPatrol && (
               <>
@@ -370,7 +516,6 @@ export function UserForm({
           </div>
         </div>
 
-        {/* Modal Footer */}
         <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end gap-3 shrink-0">
           <button
             onClick={() => onOpenChange(false)}

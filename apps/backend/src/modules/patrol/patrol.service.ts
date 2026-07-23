@@ -64,7 +64,7 @@ export class PatrolService {
 
     sendSMS({
       recipient: normalizedPhone,
-      messageBody: `[EcoGuard] Welcome, ${dto.fullName}! Your patrol account has been created by the administrator. Please download the EcoGuard Patrol app and set your login PIN using your phone number.`,
+      messageBody: `Welcome, ${dto.fullName}! Your patrol account has been created by the administrator. Please download the the Patrol app and set your login PIN using your phone number.`,
     }).catch(() => void 0);
 
     const { pin, ...result } = saved as any;
