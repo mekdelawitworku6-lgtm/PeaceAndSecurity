@@ -120,6 +120,71 @@ export const API_ENDPOINTS = {
         UPDATE: (id: string) => `citizens/${id}`,
         DELETE: (id: string) => `citizens/${id}`,
     },
+
+    // ── Geographic Units ──────────────────────────────────────────────
+    GEO: {
+        CITIES: {
+            GET_ALL: 'geo/cities',
+            GET_BY_ID: (id: string) => `geo/cities/${id}`,
+            CREATE: 'geo/cities',
+            UPDATE: (id: string) => `geo/cities/${id}`,
+            DELETE: (id: string) => `geo/cities/${id}`,
+        },
+        SUBCITIES: {
+            GET_ALL: 'geo/subcities',
+            GET_BY_ID: (id: string) => `geo/subcities/${id}`,
+            GET_BY_CITY: (cityId: string) => `geo/subcities?cityId=${cityId}`,
+            CREATE: 'geo/subcities',
+            UPDATE: (id: string) => `geo/subcities/${id}`,
+            DELETE: (id: string) => `geo/subcities/${id}`,
+        },
+        WOREDAS: {
+            GET_ALL: 'geo/woredas',
+            GET_BY_ID: (id: string) => `geo/woredas/${id}`,
+            GET_BY_SUBCITY: (subcityId: string) => `geo/woredas?subcityId=${subcityId}`,
+            CREATE: 'geo/woredas',
+            UPDATE: (id: string) => `geo/woredas/${id}`,
+            DELETE: (id: string) => `geo/woredas/${id}`,
+        },
+    },
+
+    // ── Patrol Teams ──────────────────────────────────────────────────
+    PATROL_TEAMS: {
+        GET_ALL: 'patrol-teams',
+        GET_BY_ID: (id: string) => `patrol-teams/${id}`,
+        CREATE: 'patrol-teams',
+        UPDATE: (id: string) => `patrol-teams/${id}`,
+        DELETE: (id: string) => `patrol-teams/${id}`,
+        ADD_MEMBERS: (id: string) => `patrol-teams/${id}/members`,
+        REMOVE_MEMBER: (id: string, userId: string) => `patrol-teams/${id}/members/${userId}`,
+    },
+
+    // ── Chat / Conversations ──────────────────────────────────────────
+    CHAT: {
+        CONVERSATIONS: {
+            GET_ALL: 'chat/conversations',
+            GET_BY_ID: (id: string) => `chat/conversations/${id}`,
+            CREATE: 'chat/conversations',
+        },
+        MESSAGES: {
+            GET_ALL: (conversationId: string) => `chat/conversations/${conversationId}/messages`,
+            SEND: (conversationId: string) => `chat/conversations/${conversationId}/messages`,
+        },
+        WS_GATEWAY: 'chat',
+    },
+
+    // ── Audit Logs ────────────────────────────────────────────────────
+    AUDIT_LOGS: {
+        GET_ALL: 'audit-logs',
+        GET_BY_ID: (id: string) => `audit-logs/${id}`,
+        GET_BY_ENTITY: (entityName: string) => `audit-logs/entity/${entityName}`,
+        EXPORT: 'audit-logs/export',
+    },
+
+    // ── Analytics ─────────────────────────────────────────────────────
+    ANALYTICS: {
+        GET: (timeRange: string) => `dashboard/analytics?timeRange=${timeRange}`,
+    },
 } as const;
 
 export const getApiBaseUrl = () => {

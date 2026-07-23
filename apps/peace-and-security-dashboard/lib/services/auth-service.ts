@@ -1,7 +1,8 @@
-import { ServiceResponse } from "../api-types";
-import { User } from "../auth";
-import { UserRole } from "../enums";
-import { mockUsers } from "../mock-store";
+import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
+import { ServiceResponse } from '../api-types';
+import { User } from '../auth';
+import { UserRole } from '../enums';
 
 export interface LoginCredentials {
   email?: string;
@@ -13,36 +14,31 @@ class AuthService {
   async login(
     credentials: LoginCredentials
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-    const identifier = credentials.email || credentials.phoneNumber || "";
-    const found = mockUsers.findByCredentials(identifier, credentials.password);
+    const body: any = { password: credentials.password };
+    if (credentials.email) body.email = credentials.email;
+    if (credentials.phoneNumber) body.phoneNumber = credentials.phoneNumber;
 
-    if (!found) {
-      throw new Error("Invalid email/phone or password");
-    }
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.USER_LOGIN, body);
+    const { accessToken, refreshToken, user: rawUser } = response.data.data;
 
-    if (found.status === "DISABLED") {
-      throw new Error("Account is disabled");
-    }
-
-    const accessToken = "mock-access-" + found.id;
-    const refreshToken = "mock-refresh-" + found.id;
-
-    localStorage.setItem("accessToken", accessToken);
-    localStorage.setItem("refreshToken", refreshToken);
+    localStorage.setItem('accessToken', accessToken);
+    localStorage.setItem('refreshToken', refreshToken);
 
     const user: User = {
-      id: found.id,
-      email: found.email || found.phoneNumber || "",
-      fullName: found.fullName,
-      role: found.role as UserRole,
-      phoneNumber: found.phoneNumber,
-      profileImage: found.profileImage,
-      permissions: found.permissions || [],
-      createdAt: found.createdAt || new Date().toISOString(),
-      isPasswordSet: found.isPasswordSet,
-      isPhoneVerified: found.isPhoneVerified ?? true,
-      isEmailVerified: found.isEmailVerified ?? false,
+      id: rawUser.id,
+      email: rawUser.email || '',
+      fullName: rawUser.fullName || '',
+      role: rawUser.role as UserRole,
+      phoneNumber: rawUser.phoneNumber,
+      profileImage: rawUser.profileImage,
+      permissions: rawUser.permissions || [],
+      createdAt: rawUser.createdAt || new Date().toISOString(),
+      isPasswordSet: rawUser.isPasswordSet ?? true,
+      isPhoneVerified: rawUser.isPhoneVerified ?? false,
+      isEmailVerified: rawUser.isEmailVerified ?? false,
     };
+
+    localStorage.setItem('user', JSON.stringify(user));
 
     return { user, accessToken, refreshToken };
   }
@@ -51,34 +47,30 @@ class AuthService {
     email?: string,
     phoneNumber?: string
   ): Promise<{ isPasswordSet: boolean; setPasswordToken?: string }> {
-    const identifier = email || phoneNumber || "";
-    const items = mockUsers.getAll();
-    const found = items.find(
-      (u) => u.email === identifier || u.phoneNumber === identifier
-    );
-    if (!found) throw new Error("User not found");
-    return {
-      isPasswordSet: found.isPasswordSet ?? false,
-      setPasswordToken: found.isPasswordSet ? undefined : "mock-set-password-token",
-    };
+    const body: any = {};
+    if (email) body.email = email;
+    if (phoneNumber) body.phoneNumber = phoneNumber;
+
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.USER_PRE_LOGIN, body);
+    return response.data.data;
   }
 
   async setPassword(
     _token: string,
-    password: string
+    _password: string
   ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
-    throw new Error("Password setting not available in offline mode");
+    throw new Error('Password setting not available');
   }
 
   logout(): void {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
   }
 
   async getCurrentUser(): Promise<User | null> {
     try {
-      const stored = localStorage.getItem("user");
+      const stored = localStorage.getItem('user');
       if (stored) return JSON.parse(stored);
       return null;
     } catch {
@@ -87,10 +79,14 @@ class AuthService {
   }
 
   async changePassword(
-    _currentPassword: string,
-    _newPassword: string
+    currentPassword: string,
+    newPassword: string
   ): Promise<ServiceResponse<any>> {
-    return { success: true, message: "Password changed (mock)" };
+    const response = await apiClient.post(API_ENDPOINTS.AUTH.USER_PASSWORD_CHANGE, {
+      currentPassword,
+      newPassword,
+    });
+    return response.data;
   }
 }
 

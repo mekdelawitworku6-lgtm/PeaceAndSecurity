@@ -59,6 +59,17 @@ export class Report extends BaseEntity {
   @Column({ nullable: true })
   area: string;
 
+  // ─── Geographic Hierarchy ─────────────────────────────────
+
+  @Column({ nullable: true })
+  cityId: string;
+
+  @Column({ nullable: true })
+  subcityId: string;
+
+  @Column({ nullable: true })
+  woredaId: string;
+
   // Evidence from Citizen App — split by media type for gallery rendering
   @Column("text", { array: true, default: [] })
   imageUrls: string[];

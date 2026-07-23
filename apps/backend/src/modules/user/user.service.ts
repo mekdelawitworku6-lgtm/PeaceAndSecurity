@@ -77,6 +77,9 @@ export class UserService {
       isPasswordSet: false,
       isPhoneVerified: false,
       isEmailVerified: false,
+      cityId: dto.cityId,
+      subcityId: dto.subcityId,
+      woredaId: dto.woredaId,
     });
 
     const saved = await this.userRepository.save(user);

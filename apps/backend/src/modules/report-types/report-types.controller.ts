@@ -25,7 +25,7 @@ export class ReportTypesController {
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN, UserRole.POLICE_COMMANDER_CITY)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Create a new report type (Admin only)" })
   async create(@Body() dto: CreateReportTypeDto) {
@@ -49,7 +49,7 @@ export class ReportTypesController {
 
   @Patch(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN, UserRole.POLICE_COMMANDER_CITY)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Update a report type (Admin only)" })
   async update(@Param("id") id: string, @Body() dto: UpdateReportTypeDto) {
@@ -59,7 +59,7 @@ export class ReportTypesController {
 
   @Delete(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN, UserRole.POLICE_COMMANDER_CITY)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Delete a report type (Admin only)" })
   async remove(@Param("id") id: string) {

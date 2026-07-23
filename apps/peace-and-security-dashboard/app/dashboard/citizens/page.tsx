@@ -25,7 +25,7 @@ import { DashboardPagination } from "@/components/tables/dashboard-pagination";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
-import { mockNotifications } from "@/lib/mock-store";
+import apiClient from "@/lib/api-client";
 
 export default function CitizensPage() {
     const router = useRouter();
@@ -138,12 +138,10 @@ export default function CitizensPage() {
 
         const loadingToast = toast.loading("Sending push notification...");
         try {
-            mockNotifications.create({
+            await apiClient.post("notifications/broadcast", {
                 title,
                 message,
-                type: "GENERAL",
-                createdAt: new Date().toISOString(),
-                read: false,
+                targetRole: "CITIZEN",
             });
             toast.success("Push notification sent successfully", { id: loadingToast });
         } catch (err: any) {

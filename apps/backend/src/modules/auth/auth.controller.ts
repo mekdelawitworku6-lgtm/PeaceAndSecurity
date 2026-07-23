@@ -185,6 +185,16 @@ export class AuthController {
     );
   }
 
+  @Public()
+  @Post("refresh")
+  @ApiOperation({
+    summary: "Refresh access token (alias — supports all user types)",
+  })
+  @ApiResponse({ status: 200, description: "Token refreshed successfully" })
+  async refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refreshUserToken(dto.refreshToken);
+  }
+
   // --------- PATROL AUTH FLOW ---------
 
   @Public()
@@ -286,6 +296,7 @@ export class AuthController {
       dto.fullName,
       dto.phoneNumber,
       file,
+      dto.pin,
     );
   }
 

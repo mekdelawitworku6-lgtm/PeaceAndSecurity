@@ -1,149 +1,87 @@
-import { mockReports } from "../mock-store";
-import { ServiceResponse } from "../api-types";
-
-function fd(formData: FormData, key: string): string {
-  const v = formData.get(key);
-  return v !== null ? String(v) : "";
-}
+import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
+import { ServiceResponse } from '../api-types';
 
 class ReportService {
   async getAll(params?: any): Promise<ServiceResponse<any[]>> {
-    const result = mockReports.query({
-      page: params?.page,
-      limit: params?.limit,
-      search: params?.search,
-      status: params?.status,
-      severity: params?.severity,
-    });
-    return {
-      success: true,
-      message: "ok",
-      data: result.data,
-      total: result.total,
-      page: result.page,
-      limit: result.limit,
-      totalPages: result.totalPages,
-    };
+    const response = await apiClient.get(API_ENDPOINTS.REPORTS.GET_ALL, { params });
+    return response.data;
   }
 
   async getNearby(params?: { radiusKm?: number; status?: string }): Promise<ServiceResponse<any>> {
-    const all = mockReports.getAll();
-    let filtered = all;
-    if (params?.status) filtered = filtered.filter((r) => r.status === params.status);
-    return { success: true, message: "ok", data: filtered.slice(0, 20) };
+    const response = await apiClient.get(API_ENDPOINTS.REPORTS.GET_NEARBY, { params });
+    return response.data;
   }
 
   async getMyReports(): Promise<ServiceResponse<any[]>> {
-    const all = mockReports.getAll();
-    return { success: true, message: "ok", data: all.slice(0, 10) };
+    const response = await apiClient.get(API_ENDPOINTS.REPORTS.MY_REPORTS);
+    return response.data;
   }
 
   async trackReport(caseId: string): Promise<ServiceResponse<any>> {
-    const all = mockReports.getAll();
-    const report = all.find((r) => r.caseId === caseId);
-    if (!report) return { success: false, message: "Report not found" };
-    return { success: true, message: "ok", data: report };
+    const response = await apiClient.get(API_ENDPOINTS.REPORTS.TRACK(caseId));
+    return response.data;
   }
 
   async create(formData: FormData): Promise<ServiceResponse<any>> {
-    const now = new Date().toISOString();
-    const item = {
-      caseId: `CASE-${new Date().getFullYear()}-${String(Math.floor(Math.random() * 9999)).padStart(4, "0")}`,
-      reportTypeId: fd(formData, "reportTypeId"),
-      violationType: fd(formData, "violationType") || "Others",
-      reportDescription: fd(formData, "reportDescription") || fd(formData, "description"),
-      address: fd(formData, "address"),
-      area: fd(formData, "area"),
-      latitude: parseFloat(fd(formData, "latitude")) || 9.0,
-      longitude: parseFloat(fd(formData, "longitude")) || 38.7,
-      status: "SUBMITTED",
-      severity: fd(formData, "severity") || "Medium",
-      decibelLevel: parseFloat(fd(formData, "decibelLevel")) || undefined,
-      noiseAreaType: fd(formData, "noiseAreaType") || undefined,
-      noisePollutionStatus: fd(formData, "noisePollutionStatus") || undefined,
-      isAnonymous: fd(formData, "isAnonymous") === "true",
-      reporterPhoneNumber: fd(formData, "reporterPhoneNumber"),
-      reporter: null,
-      assignedPatrol: null,
-      createdAt: now,
-      updatedAt: now,
-      imageUrls: [],
-      videoUrls: [],
-      audioUrls: [],
-      evidenceUrls: [],
-      patrolImageUrls: [],
-      patrolVideoUrls: [],
-      patrolAudioUrls: [],
-      patrolEvidenceUrls: [],
-    };
-    const created = mockReports.create(item);
-    return { success: true, message: "Report created", data: created };
+    const response = await apiClient.post(API_ENDPOINTS.REPORTS.CREATE, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   }
 
   async getById(id: string): Promise<ServiceResponse<any>> {
-    const report = mockReports.getById(id);
-    if (!report) return { success: false, message: "Report not found" };
-    return { success: true, message: "ok", data: report };
+    const response = await apiClient.get(API_ENDPOINTS.REPORTS.GET_BY_ID(id));
+    return response.data;
   }
 
   async getHistory(id: string): Promise<ServiceResponse<any[]>> {
-    const history = mockReports.getHistory(id);
-    return { success: true, message: "ok", data: history };
+    const response = await apiClient.get(API_ENDPOINTS.REPORTS.GET_HISTORY(id));
+    return response.data;
   }
 
   async updateReport(id: string, data: any): Promise<ServiceResponse<any>> {
-    const updated = mockReports.update(id, { ...data, updatedAt: new Date().toISOString() });
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Report updated", data: updated };
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.UPDATE(id), data);
+    return response.data;
   }
 
   async deleteReport(id: string): Promise<ServiceResponse<any>> {
-    mockReports.delete(id);
-    return { success: true, message: "Report deleted" };
+    const response = await apiClient.delete(API_ENDPOINTS.REPORTS.DELETE(id));
+    return response.data;
   }
 
   async assignPatrol(reportId: string, patrolId: string): Promise<ServiceResponse<any>> {
-    const { mockPatrols } = await import("../mock-store");
-    const patrol = mockPatrols.getById(patrolId);
-    const updated = mockReports.update(reportId, {
-      status: "ASSIGNED",
-      assignedPatrol: patrol ? { id: patrol.id, fullName: patrol.fullName, assignedArea: patrol.assignedArea } : null,
-      updatedAt: new Date().toISOString(),
-    });
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Patrol assigned", data: updated };
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.ASSIGN(reportId), { patrolId });
+    return response.data;
   }
 
   async acceptReport(reportId: string): Promise<ServiceResponse<any>> {
-    const updated = mockReports.update(reportId, { status: "IN_PROGRESS", updatedAt: new Date().toISOString() });
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Report accepted", data: updated };
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.ACCEPT(reportId));
+    return response.data;
   }
 
-  async submitFollowUp(reportId: string, _formData: FormData): Promise<ServiceResponse<any>> {
-    const updated = mockReports.update(reportId, { status: "RESOLVED", updatedAt: new Date().toISOString() });
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Follow-up submitted", data: updated };
+  async submitFollowUp(reportId: string, formData: FormData): Promise<ServiceResponse<any>> {
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.FOLLOW_UP(reportId), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   }
 
   async closeReport(reportId: string): Promise<ServiceResponse<any>> {
-    const updated = mockReports.update(reportId, { status: "CLOSED", updatedAt: new Date().toISOString() });
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Report closed", data: updated };
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.CLOSE(reportId));
+    return response.data;
   }
 
   async reviewReport(id: string, status: string, rejectionReason?: string): Promise<ServiceResponse<any>> {
-    const patch: any = { status: status.toUpperCase(), updatedAt: new Date().toISOString() };
-    if (rejectionReason) patch.rejectionReason = rejectionReason;
-    const updated = mockReports.update(id, patch);
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Report reviewed", data: updated };
+    const body: any = { status: status.toUpperCase() };
+    if (rejectionReason) body.rejectionReason = rejectionReason;
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.REVIEW(id), body);
+    return response.data;
   }
 
   async escalateReport(id: string, notes: string): Promise<ServiceResponse<any>> {
-    const updated = mockReports.update(id, { escalationNotes: notes, updatedAt: new Date().toISOString() });
-    if (!updated) return { success: false, message: "Report not found" };
-    return { success: true, message: "Report escalated", data: updated };
+    const response = await apiClient.patch(API_ENDPOINTS.REPORTS.ESCALATE(id), { notes });
+    return response.data;
   }
 }
 

@@ -2,7 +2,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { reportTypeService } from "@/lib/services/report-type-service"
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks"
+import { fetchReportTypes, deleteReportType as deleteReportTypeThunk, selectReportTypes, selectReportTypesLoading } from "@/lib/store/reportTypesSlice"
 import { Button } from "@/components/ui/button"
 import {
     Plus,
@@ -29,38 +30,23 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 
 export default function ReportTypesPage() {
-    const [reportTypes, setReportTypes] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+    const dispatch = useAppDispatch()
+    const reportTypes = useAppSelector(selectReportTypes)
+    const loading = useAppSelector(selectReportTypesLoading)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isDetailOpen, setIsDetailOpen] = useState(false)
     const [selectedReportType, setSelectedReportType] = useState<any>(null)
     const [searchTerm, setSearchTerm] = useState("")
 
     useEffect(() => {
-        loadReportTypes()
-    }, [searchTerm])
-
-    const loadReportTypes = async () => {
-        try {
-            setLoading(true)
-            const response = await reportTypeService.getAll({
-                search: searchTerm || undefined
-            })
-            setReportTypes(response.data || [])
-        } catch (error) {
-            console.error("Failed to load report types:", error)
-            toast.error("Failed to load report categories")
-        } finally {
-            setLoading(false)
-        }
-    }
+        dispatch(fetchReportTypes({ search: searchTerm || undefined }))
+    }, [dispatch, searchTerm])
 
     const handleDelete = async (type: any) => {
         if (!confirm(`Are you sure you want to delete ${type.name}? This might affect existing reports.`)) return
         try {
-            await reportTypeService.deleteReportType(type.id)
+            await dispatch(deleteReportTypeThunk(type.id)).unwrap()
             toast.success("Report type deleted")
-            loadReportTypes()
         } catch (error) {
             toast.error("Failed to delete")
         }
@@ -104,7 +90,7 @@ export default function ReportTypesPage() {
                                 initialData={selectedReportType}
                                 onSuccess={() => {
                                     setIsDialogOpen(false)
-                                    loadReportTypes()
+                                    dispatch(fetchReportTypes({ search: searchTerm || undefined }))
                                 }}
                                 onCancel={() => setIsDialogOpen(false)}
                             />
@@ -188,4 +174,3 @@ export default function ReportTypesPage() {
         </div>
     )
 }
-

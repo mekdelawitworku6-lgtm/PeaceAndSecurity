@@ -65,7 +65,17 @@ export class ReportsController {
 
   @Get()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PATROL)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PATROL,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiBearerAuth()
   async findAll(@Query() query: any) {
     return this.reportsService.findAll(query);
@@ -132,7 +142,13 @@ export class ReportsController {
 
   @Patch(":id/assign")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiBearerAuth()
   async assign(@Param("id") id: string, @Body() dto: AssignPatrolDto) {
     const report = await this.reportsService.assignPatrol(id, dto.patrolId);
@@ -186,7 +202,17 @@ export class ReportsController {
 
   @Patch(":id/close")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.PATROL, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN)
+  @Roles(
+    UserRole.PATROL,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiBearerAuth()
   async close(@Param("id") id: string, @Request() req: any) {
     const report = await this.reportsService.closeReport(
@@ -199,7 +225,14 @@ export class ReportsController {
 
   @Patch(":id/review")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+  )
   @ApiBearerAuth()
   async review(
     @Param("id") id: string,
@@ -234,7 +267,12 @@ export class ReportsController {
 
   @Delete(":id")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.POLICE_COMMANDER_CITY,
+  )
   @ApiBearerAuth()
   @ApiOperation({ summary: "Delete a report (Admin only)" })
   async remove(@Param("id") id: string) {
@@ -244,7 +282,12 @@ export class ReportsController {
 
   @Get("export/csv")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.POLICE_COMMANDER_CITY,
+  )
   @ApiBearerAuth()
   @ApiOperation({ summary: "Export reports to CSV (Admin only)" })
   async exportCsv(@Query() query: any) {

@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit'
-import { mockNotifications } from '@/lib/mock-store'
+import apiClient from '@/lib/api-client'
 
 export interface Notification {
   id: string
@@ -24,19 +24,35 @@ const initialState: NotificationState = {
 }
 
 export const loadNotifications = createAsyncThunk('notifications/load', async () => {
-  const all = mockNotifications.getAll()
-  const notifications = all.map((n: any) => ({
+  const response = await apiClient.get('notifications')
+  const notifications = response.data.data.map((n: any) => ({
     id: n.id,
     title: n.title,
     message: n.message,
     type: n.type,
     data: n.data || null,
-    isRead: n.read ?? false,
+    isRead: n.isRead ?? n.read ?? false,
     createdAt: n.createdAt,
   }))
-  const unreadCount = notifications.filter((n) => !n.isRead).length
+  const unreadCount = notifications.filter((n: Notification) => !n.isRead).length
   return { notifications, unreadCount }
 })
+
+export const markNotificationAsRead = createAsyncThunk(
+  'notifications/markRead',
+  async (id: string, { dispatch }) => {
+    await apiClient.post(`notifications/${id}/mark-read`)
+    dispatch(markAsRead(id))
+  }
+)
+
+export const markAllNotificationsAsRead = createAsyncThunk(
+  'notifications/markAllRead',
+  async (_, { dispatch }) => {
+    await apiClient.post('notifications/mark-all-read')
+    dispatch(markAllAsRead())
+  }
+)
 
 const notificationSlice = createSlice({
   name: 'notifications',
@@ -76,22 +92,6 @@ const notificationSlice = createSlice({
 })
 
 export const { addNotification, setUnreadCount, markAsRead, markAllAsRead } = notificationSlice.actions
-
-export const markNotificationAsRead = createAsyncThunk(
-  'notifications/markRead',
-  async (id: string, { dispatch }) => {
-    mockNotifications.markAsRead(id)
-    dispatch(markAsRead(id))
-  }
-)
-
-export const markAllNotificationsAsRead = createAsyncThunk(
-  'notifications/markAllRead',
-  async (_, { dispatch }) => {
-    mockNotifications.markAllRead()
-    dispatch(markAllAsRead())
-  }
-)
 
 export const selectNotifications = (state: { notifications: NotificationState }) => state.notifications.notifications
 export const selectUnreadCount = (state: { notifications: NotificationState }) => state.notifications.unreadCount

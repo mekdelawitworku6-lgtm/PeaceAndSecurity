@@ -79,7 +79,6 @@ export default function UsersPage() {
         endDate: dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
         sortBy,
         sortOrder,
-        isStaffUser: true,
       });
 
       // Backend returns paginated response: { data, total, totalPages, ... }

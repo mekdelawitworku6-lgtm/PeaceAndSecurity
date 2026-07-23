@@ -2,7 +2,8 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { cameraService } from "@/lib/services/camera-service"
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks"
+import { fetchCameras, createCamera, deleteCamera, selectCameras, selectCamerasLoading } from "@/lib/store/camerasSlice"
 import { Button } from "@/components/ui/button"
 import {
     Camera,
@@ -34,8 +35,9 @@ import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 
 export default function CamerasPage() {
-    const [cameras, setCameras] = useState<any[]>([])
-    const [loading, setLoading] = useState(true)
+    const dispatch = useAppDispatch()
+    const cameras = useAppSelector(selectCameras)
+    const loading = useAppSelector(selectCamerasLoading)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [selectedCamera, setSelectedCamera] = useState<any>(null)
     const [view, setView] = useState<'grid' | 'map'>('grid')
@@ -50,27 +52,14 @@ export default function CamerasPage() {
     }))
 
     useEffect(() => {
-        loadCameras()
-    }, [])
-
-    const loadCameras = async () => {
-        try {
-            setLoading(true)
-            const response = await cameraService.getAll()
-            setCameras(response.data || [])
-        } catch (error) {
-            console.error("Failed to load cameras:", error)
-        } finally {
-            setLoading(false)
-        }
-    }
+        dispatch(fetchCameras())
+    }, [dispatch])
 
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this camera?")) return
         try {
-            await cameraService.deleteCamera(id)
+            await dispatch(deleteCamera(id)).unwrap()
             toast.success("Camera removed")
-            loadCameras()
         } catch (error) {
             toast.error("Failed to delete")
         }
@@ -111,7 +100,7 @@ export default function CamerasPage() {
                             initialData={selectedCamera}
                             onSuccess={() => {
                                 setIsDialogOpen(false)
-                                loadCameras()
+                                dispatch(fetchCameras())
                             }}
                             onCancel={() => setIsDialogOpen(false)}
                         />

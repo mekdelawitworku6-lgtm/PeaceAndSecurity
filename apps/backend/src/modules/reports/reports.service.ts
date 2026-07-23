@@ -505,6 +505,17 @@ export class ReportsService {
       qb.andWhere("report.area ILIKE :area", { area: `%${query.area}%` });
     }
 
+    // ─── Geographic Scoping ─────────────────────────────────
+    if (query?.cityId) {
+      qb.andWhere("report.cityId = :cityId", { cityId: query.cityId });
+    }
+    if (query?.subcityId) {
+      qb.andWhere("report.subcityId = :subcityId", { subcityId: query.subcityId });
+    }
+    if (query?.woredaId) {
+      qb.andWhere("report.woredaId = :woredaId", { woredaId: query.woredaId });
+    }
+
     const [data, total] = await qb
       .orderBy("report.createdAt", "DESC")
       .skip(skip)

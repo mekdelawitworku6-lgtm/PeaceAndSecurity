@@ -62,4 +62,14 @@ export class Patrol extends BaseEntity {
 
   @Column({ nullable: true })
   fcmToken: string;
+
+  // ─── Geographic Hierarchy ─────────────────────────────────
+
+  /** Woreda this patrol officer belongs to */
+  @Column({ nullable: true })
+  woredaId: string;
+
+  /** Patrol team this officer belongs to */
+  @Column({ nullable: true })
+  teamId: string;
 }

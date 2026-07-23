@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useAuth } from "@/app/context/auth-context";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Search,
@@ -12,7 +9,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  Shield,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -22,8 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import {
+  fetchReports,
+  selectReports,
+  selectReportsLoading,
+  assignPatrol,
+} from "@/lib/store/reportsSlice";
 
-// Mock officers for assignment matching Screenshots
+// Static officers list for assignment modal (could come from API later)
 const OFFICERS_LIST = [
   "Rapid Response Unit 3",
   "Officer Sara Mulugeta",
@@ -36,151 +40,34 @@ const OFFICERS_LIST = [
   "Rapid Response Unit 2",
 ];
 
-// Initial mock reports matching Screenshot 3
-const INITIAL_REPORTS = [
-  {
-    id: "RPT-2024-1247",
-    type: "Robbery/Theft",
-    location: "Bole Road, near Atlas Hotel",
-    status: "Active",
-    priority: "High",
-    assignedTo: "Unassigned",
-    date: "2024-07-03 14:32",
-  },
-  {
-    id: "RPT-2024-1246",
-    type: "Illegal Weapons",
-    location: "Piazza, Arada Sub-City",
-    status: "Investigating",
-    priority: "High",
-    assignedTo: "Rapid Response Unit 3",
-    date: "2024-07-03 13:15",
-  },
-  {
-    id: "RPT-2024-1245",
-    type: "Street Begging",
-    location: "Meskel Square",
-    status: "Active",
-    priority: "Medium",
-    assignedTo: "Officer Sara Mulugeta",
-    date: "2024-07-03 11:40",
-  },
-  {
-    id: "RPT-2024-1244",
-    type: "Unlit Area",
-    location: "CMC Road, Jemo",
-    status: "Resolved",
-    priority: "Low",
-    assignedTo: "Officer Dawit Tesfaye",
-    date: "2024-07-03 10:22",
-  },
-  {
-    id: "RPT-2024-1243",
-    type: "Forgery/Fraud",
-    location: "Mexico Square, Kirkos",
-    status: "Investigating",
-    priority: "High",
-    assignedTo: "Investigation Unit 1",
-    date: "2024-07-03 09:05",
-  },
-  {
-    id: "RPT-2024-1242",
-    type: "Security Threat",
-    location: "Bole Atlas Area",
-    status: "Investigating",
-    priority: "High",
-    assignedTo: "Officer Getachew K.",
-    date: "2024-07-03 08:17",
-  },
-  {
-    id: "RPT-2024-1241",
-    type: "Disruptive Activity",
-    location: "Merkato, Addis Ketema",
-    status: "Active",
-    priority: "Medium",
-    assignedTo: "Unassigned",
-    date: "2024-07-02 18:45",
-  },
-  {
-    id: "RPT-2024-1240",
-    type: "Illegal Business",
-    location: "6 Kilo, near University",
-    status: "Investigating",
-    priority: "Medium",
-    assignedTo: "Officer Hanna Tadesse",
-    date: "2024-07-02 16:30",
-  },
-  {
-    id: "RPT-2024-1239",
-    type: "Event Security",
-    location: "Meskel Square",
-    status: "Resolved",
-    priority: "Low",
-    assignedTo: "Special Events Unit",
-    date: "2024-07-02 14:12",
-  },
-  {
-    id: "RPT-2024-1238",
-    type: "Institution Inspection",
-    location: "Kazanchis Business District",
-    status: "Resolved",
-    priority: "Low",
-    assignedTo: "Compliance Team 2",
-    date: "2024-07-02 11:05",
-  },
-  // Extra rows for pagination
-  {
-    id: "RPT-2024-1237",
-    type: "Robbery/Theft",
-    location: "Kality, near Station",
-    status: "Active",
-    priority: "High",
-    assignedTo: "Unassigned",
-    date: "2024-07-01 10:15",
-  },
-  {
-    id: "RPT-2024-1236",
-    type: "Street Begging",
-    location: "Mexico Square",
-    status: "Resolved",
-    priority: "Medium",
-    assignedTo: "Officer Sara Mulugeta",
-    date: "2024-07-01 09:30",
-  },
-  {
-    id: "RPT-2024-1235",
-    type: "Illegal Business",
-    location: "Arat Kilo",
-    status: "Active",
-    priority: "Medium",
-    assignedTo: "Unassigned",
-    date: "2024-06-30 15:45",
-  },
-];
-
 type ReportTab = "all" | "active" | "investigating" | "resolved";
 
 export default function ReportsPage() {
-  const [reports, setReports] = useState(INITIAL_REPORTS);
+  const dispatch = useAppDispatch();
+  const reports = useAppSelector(selectReports);
+  const loading = useAppSelector(selectReportsLoading);
+
   const [activeTab, setActiveTab] = useState<ReportTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
   // Assignment Modal state
-  const [selectedReport, setSelectedReport] = useState<typeof INITIAL_REPORTS[0] | null>(null);
+  const [selectedReport, setSelectedReport] = useState<(typeof reports)[0] | null>(null);
   const [assignee, setAssignee] = useState<string>("");
   const [dispatchNote, setDispatchNote] = useState<string>("");
 
+  useEffect(() => {
+    dispatch(fetchReports());
+  }, [dispatch]);
+
   // Filters & Search
   const filteredReports = useMemo(() => {
-    return reports.filter((report) => {
-      // Tab filter
+    return reports.filter((report: any) => {
       if (activeTab === "active" && report.status !== "Active") return false;
       if (activeTab === "investigating" && report.status !== "Investigating") return false;
       if (activeTab === "resolved" && report.status !== "Resolved") return false;
 
-      // Search query
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
@@ -194,14 +81,13 @@ export default function ReportsPage() {
     });
   }, [reports, activeTab, searchQuery]);
 
-  // Pagination calculation
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage) || 1;
   const paginatedReports = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredReports.slice(start, start + itemsPerPage);
   }, [filteredReports, currentPage]);
 
-  const handleOpenAssignModal = (report: typeof INITIAL_REPORTS[0]) => {
+  const handleOpenAssignModal = (report: (typeof reports)[0]) => {
     setSelectedReport(report);
     setAssignee(report.assignedTo === "Unassigned" ? "" : report.assignedTo);
     setDispatchNote("");
@@ -213,21 +99,15 @@ export default function ReportsPage() {
       return;
     }
 
-    setReports((prev) =>
-      prev.map((r) => {
-        if (r.id === selectedReport?.id) {
-          return {
-            ...r,
-            assignedTo: assignee,
-            status: r.status === "Active" ? "Investigating" : r.status, // Transition Active -> Investigating if assigned
-          };
-        }
-        return r;
+    dispatch(assignPatrol({ reportId: selectedReport!.id, patrolId: assignee }))
+      .unwrap()
+      .then(() => {
+        toast.success(`Successfully assigned report to ${assignee}`);
+        setSelectedReport(null);
       })
-    );
-
-    toast.success(`Successfully assigned report to ${assignee}`);
-    setSelectedReport(null);
+      .catch(() => {
+        toast.error("Failed to assign report. Please try again.");
+      });
   };
 
   return (
@@ -273,106 +153,116 @@ export default function ReportsPage() {
           </div>
         </div>
 
+        {/* Loading State */}
+        {loading && reports.length === 0 && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="w-6 h-6 text-[#0d2d82] animate-spin" />
+            <span className="ml-2 text-sm text-slate-500 font-medium">Loading reports...</span>
+          </div>
+        )}
+
         {/* Table View */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-slate-100 bg-slate-50/50">
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Type</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Location</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Status</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Priority</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned To</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Date</th>
-                <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
-              {paginatedReports.map((report) => (
-                <tr key={report.id} className="hover:bg-slate-50/40 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex flex-col">
-                      <span className="font-semibold text-slate-800 text-sm">{report.type}</span>
-                      <span className="text-[10px] font-medium text-slate-400 font-mono mt-0.5">{report.id}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[13px] text-slate-500 font-medium">{report.location}</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={cn(
-                        "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
-                        report.status === "Active"
-                          ? "bg-rose-50 text-rose-600 border-rose-100"
-                          : report.status === "Investigating"
-                          ? "bg-amber-50 text-amber-600 border-amber-100"
-                          : "bg-emerald-50 text-emerald-600 border-emerald-100"
-                      )}
-                    >
-                      {report.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-1.5">
-                      <div
+        {!loading || reports.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-slate-100 bg-slate-50/50">
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Type</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Location</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Status</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Priority</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Assigned To</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400">Date</th>
+                  <th className="px-6 py-4 text-[10px] font-black uppercase tracking-wider text-slate-400 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-50">
+                {paginatedReports.map((report: any) => (
+                  <tr key={report.id} className="hover:bg-slate-50/40 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-slate-800 text-sm">{report.type}</span>
+                        <span className="text-[10px] font-medium text-slate-400 font-mono mt-0.5">{report.id}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[13px] text-slate-500 font-medium">{report.location}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
                         className={cn(
-                          "w-2 h-2 rounded-full",
-                          report.priority === "High"
-                            ? "bg-red-500"
-                            : report.priority === "Medium"
-                            ? "bg-amber-500"
-                            : "bg-slate-400"
+                          "px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider border",
+                          report.status === "Active"
+                            ? "bg-rose-50 text-rose-600 border-rose-100"
+                            : report.status === "Investigating"
+                            ? "bg-amber-50 text-amber-600 border-amber-100"
+                            : "bg-emerald-50 text-emerald-600 border-emerald-100"
                         )}
-                      />
-                      <span className="text-[13px] text-slate-700 font-medium">{report.priority}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={cn(
-                        "text-[13px]",
-                        report.assignedTo === "Unassigned"
-                          ? "text-slate-400 italic"
-                          : "text-[#0d2d82] font-bold"
+                      >
+                        {report.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-1.5">
+                        <div
+                          className={cn(
+                            "w-2 h-2 rounded-full",
+                            report.priority === "High"
+                              ? "bg-red-500"
+                              : report.priority === "Medium"
+                              ? "bg-amber-500"
+                              : "bg-slate-400"
+                          )}
+                        />
+                        <span className="text-[13px] text-slate-700 font-medium">{report.priority}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span
+                        className={cn(
+                          "text-[13px]",
+                          report.assignedTo === "Unassigned"
+                            ? "text-slate-400 italic"
+                            : "text-[#0d2d82] font-bold"
+                        )}
+                      >
+                        {report.assignedTo}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="text-[11px] font-semibold text-slate-400">{report.date}</span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {report.assignedTo === "Unassigned" ? (
+                        <button
+                          onClick={() => handleOpenAssignModal(report)}
+                          className="px-4 py-1.5 bg-[#0d2d82] hover:opacity-95 text-white font-bold text-xs rounded-full shadow-sm"
+                        >
+                          Assign
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => handleOpenAssignModal(report)}
+                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-full shadow-sm"
+                        >
+                          <RotateCw className="w-3 h-3 text-slate-400" />
+                          Reassign
+                        </button>
                       )}
-                    >
-                      {report.assignedTo}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[11px] font-semibold text-slate-400">{report.date}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    {report.assignedTo === "Unassigned" ? (
-                      <button
-                        onClick={() => handleOpenAssignModal(report)}
-                        className="px-4 py-1.5 bg-[#0d2d82] hover:opacity-95 text-white font-bold text-xs rounded-full shadow-sm"
-                      >
-                        Assign
-                      </button>
-                    ) : (
-                      <button
-                        onClick={() => handleOpenAssignModal(report)}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-full shadow-sm"
-                      >
-                        <RotateCw className="w-3 h-3 text-slate-400" />
-                        Reassign
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-              {paginatedReports.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
-                    No reports found fitting the criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                    </td>
+                  </tr>
+                ))}
+                {paginatedReports.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-12 text-center text-slate-400 italic">
+                      No reports found fitting the criteria.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
 
         {/* Custom Pagination Footer matching Screenshot 3 */}
         <div className="p-4 border-t border-slate-100 flex items-center justify-center gap-2 bg-slate-50/20">

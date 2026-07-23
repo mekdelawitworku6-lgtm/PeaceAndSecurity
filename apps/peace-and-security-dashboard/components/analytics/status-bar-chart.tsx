@@ -5,42 +5,32 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 type TimeRange = "week" | "month" | "year";
 
-const DATA_BY_RANGE: Record<TimeRange, { name: string; count: number }[]> = {
-  week: [
-    { name: "Mon", count: 34 },
-    { name: "Tue", count: 39 },
-    { name: "Wed", count: 36 },
-    { name: "Thu", count: 41 },
-    { name: "Fri", count: 50 },
-    { name: "Sat", count: 48 },
-    { name: "Sun", count: 31 },
-  ],
-  month: [
-    { name: "Week 1", count: 78 },
-    { name: "Week 2", count: 92 },
-    { name: "Week 3", count: 85 },
-    { name: "Week 4", count: 87 },
-  ],
-  year: [
-    { name: "Jan", count: 340 },
-    { name: "Feb", count: 390 },
-    { name: "Mar", count: 360 },
-    { name: "Apr", count: 410 },
-    { name: "May", count: 500 },
-    { name: "Jun", count: 480 },
-    { name: "Jul", count: 520 },
-    { name: "Aug", count: 470 },
-    { name: "Sep", count: 430 },
-    { name: "Oct", count: 490 },
-    { name: "Nov", count: 530 },
-    { name: "Dec", count: 510 },
-  ],
+type Props = {
+  timeRange: TimeRange;
+  data?: { period: string; status: string; count: string }[];
 };
 
-type Props = { timeRange: TimeRange };
+const STATUS_COLORS: Record<string, string> = {
+  SUBMITTED: "#f59e0b",
+  UNDER_REVIEW: "#0ea5e9",
+  ASSIGNED: "#8b5cf6",
+  IN_PROGRESS: "#0d2d82",
+  RESOLVED: "#10b981",
+  CLOSED: "#6b7280",
+};
 
-export function StatusBarChart({ timeRange }: Props) {
-  const data = DATA_BY_RANGE[timeRange];
+export function StatusBarChart({ timeRange, data = [] }: Props) {
+  // Group by period and aggregate counts
+  const periodMap = new Map<string, number>();
+  data.forEach((d) => {
+    const current = periodMap.get(d.period) || 0;
+    periodMap.set(d.period, current + Number(d.count));
+  });
+
+  const chartData = Array.from(periodMap.entries()).map(([period, count]) => ({
+    name: period,
+    count,
+  }));
 
   return (
     <Card className="border border-slate-100 shadow-sm bg-white rounded-2xl overflow-hidden">
@@ -50,7 +40,7 @@ export function StatusBarChart({ timeRange }: Props) {
       <CardContent className="p-6">
         <div className="h-[280px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ left: -20, bottom: 0 }}>
+            <BarChart data={chartData} margin={{ left: -20, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
               <XAxis
                 dataKey="name"

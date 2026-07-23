@@ -1,10 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
 import { UserRole, UserStatus } from "../../../common/enums/enums";
 import { BaseEntity } from "../../../common/baseentity/base.entity";
 
 /**
  * User entity — stored in the `users` table.
- * Represents DASHBOARD users only: System Super Admin and System Admin.
+ * Represents DASHBOARD users: admins, peace officers, and police commanders.
  * Patrol officers → patrols table (Patrol entity)
  * Citizen app users → citizens table (Citizen entity)
  */
@@ -62,4 +62,22 @@ export class User extends BaseEntity {
 
   @Column({ nullable: true })
   fcmToken: string;
+
+  // ─── Geographic Hierarchy ─────────────────────────────────
+
+  /** City this user belongs to (for PEACE_SUPER_ADMIN, POLICE_COMMANDER_CITY) */
+  @Column({ nullable: true })
+  cityId: string;
+
+  /** Subcity this user belongs to (for PEACE_OFFICER_SUBCITY, POLICE_COMMANDER_SUBCITY) */
+  @Column({ nullable: true })
+  subcityId: string;
+
+  /** Woreda this user belongs to (for PEACE_OFFICER_WOREDA, POLICE_COMMANDER_WOREDA) */
+  @Column({ nullable: true })
+  woredaId: string;
+
+  /** Who created this user */
+  @Column({ nullable: true })
+  createdByUserId: string;
 }

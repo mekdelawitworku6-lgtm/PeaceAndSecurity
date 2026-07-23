@@ -1,72 +1,41 @@
-import { mockPatrols } from "../mock-store";
-
-// FormData helper
-function fd(fd: FormData, key: string): string {
-  const v = fd.get(key);
-  return v !== null ? String(v) : "";
-}
+import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 class PatrolService {
   async getAllPatrols(params?: any) {
-    return mockPatrols.query({
-      page: params?.page,
-      limit: params?.limit,
-      search: params?.search,
-      status: params?.status,
-    });
+    const response = await apiClient.get(API_ENDPOINTS.PATROLS.GET_ALL, { params });
+    return response.data;
   }
 
   async registerPatrol(formData: FormData) {
-    const now = new Date().toISOString();
-    const sc = fd(formData, "subCity");
-    const item = {
-      fullName: fd(formData, "fullName"),
-      email: fd(formData, "email"),
-      phoneNumber: fd(formData, "phoneNumber"),
-      role: fd(formData, "role") || "PATROL",
-      status: "ACTIVE",
-      isStaffUser: false,
-      officeAddress: fd(formData, "officeAddress"),
-      officeLatitude: fd(formData, "officeLatitude"),
-      officeLongitude: fd(formData, "officeLongitude"),
-      assignedArea: sc || fd(formData, "assignedArea"),
-      subCity: sc,
-      createdAt: now,
-      updatedAt: now,
-    };
-    return mockPatrols.create(item);
+    const response = await apiClient.post(API_ENDPOINTS.PATROLS.CREATE, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   }
 
   async updatePatrol(id: string, formData: FormData) {
-    const patch: any = { updatedAt: new Date().toISOString() };
-    const fn = fd(formData, "fullName");
-    if (fn) patch.fullName = fn;
-    const em = fd(formData, "email");
-    if (em) patch.email = em;
-    const ph = fd(formData, "phoneNumber");
-    if (ph) patch.phoneNumber = ph;
-    const oa = fd(formData, "officeAddress");
-    if (oa) patch.officeAddress = oa;
-    const ol = fd(formData, "officeLatitude");
-    if (ol) patch.officeLatitude = ol;
-    const olg = fd(formData, "officeLongitude");
-    if (olg) patch.officeLongitude = olg;
-    const aa = fd(formData, "assignedArea");
-    if (aa) patch.assignedArea = aa;
-    return mockPatrols.update(id, patch);
+    const body: any = {};
+    formData.forEach((v, k) => {
+      body[k] = String(v);
+    });
+    const response = await apiClient.patch(API_ENDPOINTS.PATROLS.UPDATE(id), body);
+    return response.data;
   }
 
   async getPatrolById(id: string) {
-    return mockPatrols.getById(id);
+    const response = await apiClient.get(API_ENDPOINTS.PATROLS.GET_BY_ID(id));
+    return response.data;
   }
 
   async deletePatrol(id: string) {
-    mockPatrols.toggleStatus(id);
-    return { success: true };
+    const response = await apiClient.delete(API_ENDPOINTS.PATROLS.DELETE(id));
+    return response.data;
   }
 
-  async getNearby(_params: any) {
-    return { data: [], success: true };
+  async getNearby(params: any) {
+    const response = await apiClient.get(API_ENDPOINTS.PATROLS.GET_NEARBY, { params });
+    return response.data;
   }
 }
 

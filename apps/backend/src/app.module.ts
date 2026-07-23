@@ -19,6 +19,9 @@ import { ReportTypesModule } from "./modules/report-types/report-types.module";
 import { CamerasModule } from "./modules/cameras/cameras.module";
 
 import { MediaModule } from "./modules/media/media.module";
+import { GeoModule } from "./modules/geo/geo.module";
+import { ChatModule } from "./modules/chat/chat.module";
+import { AuditModule } from "./modules/audit/audit.module";
 
 @Module({
   imports: [
@@ -68,6 +71,9 @@ import { MediaModule } from "./modules/media/media.module";
     ReportTypesModule,
     CamerasModule,
     MediaModule,
+    GeoModule,
+    ChatModule,
+    AuditModule,
   ],
   providers: [],
   exports: [],

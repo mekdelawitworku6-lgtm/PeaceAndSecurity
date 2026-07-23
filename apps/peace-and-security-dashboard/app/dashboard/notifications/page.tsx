@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useNotifications as useNotifContext } from "@/app/context/notification-context"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,18 +16,25 @@ import {
     Search
 } from "lucide-react"
 import { toast } from "sonner"
-import { mockNotifications } from "@/lib/mock-store"
+import apiClient from "@/lib/api-client"
+import { useAppDispatch } from "@/lib/store/hooks"
+import { loadNotifications } from "@/lib/store/notificationSlice"
 import { Badge } from "@/components/ui/badge"
 import { cn } from "@/lib/utils"
 import { formatDistanceToNow } from "date-fns"
 
 export default function NotificationsTestPage() {
     const { notifications, markAsRead, markAllAsRead } = useNotifContext()
+    const dispatch = useAppDispatch()
     const [title, setTitle] = useState("Peace & Security Alert")
     const [message, setMessage] = useState("This is a test notification for the mobile app.")
     const [targetRole, setTargetRole] = useState<"PATROL" | "CITIZEN">("PATROL")
     const [sending, setSending] = useState(false)
     const [filter, setFilter] = useState("all")
+
+    useEffect(() => {
+        dispatch(loadNotifications())
+    }, [dispatch])
 
     const handleBroadcast = async () => {
         if (!title || !message) {
@@ -38,15 +45,9 @@ export default function NotificationsTestPage() {
         setSending(true)
         const loadingToast = toast.loading(`Broadcasting to all ${targetRole.toLowerCase()}s...`)
         try {
-            mockNotifications.create({
-                title,
-                message,
-                type: "GENERAL",
-                targetRole,
-                createdAt: new Date().toISOString(),
-                read: false,
-            })
+            await apiClient.post('notifications/broadcast', { title, message, targetRole })
             toast.success("Broadcast successful", { id: loadingToast })
+            dispatch(loadNotifications())
         } catch (error: any) {
             toast.error(error?.message || "Broadcast failed", { id: loadingToast })
         } finally {
@@ -57,14 +58,13 @@ export default function NotificationsTestPage() {
     const handleTestSelf = async () => {
         const loadingToast = toast.loading("Sending test to self...")
         try {
-            mockNotifications.create({
+            await apiClient.post('notifications/broadcast', {
                 title: "Test Notification",
                 message: "This is a self-test notification.",
-                type: "SYSTEM",
-                createdAt: new Date().toISOString(),
-                read: false,
+                targetRole: "PATROL"
             })
             toast.success("Self-test triggered", { id: loadingToast })
+            dispatch(loadNotifications())
         } catch (error: any) {
             toast.error("Self-test failed", { id: loadingToast })
         }

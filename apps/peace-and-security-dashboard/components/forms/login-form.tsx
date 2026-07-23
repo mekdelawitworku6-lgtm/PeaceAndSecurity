@@ -5,6 +5,9 @@ import type React from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/app/context/auth-context";
+import { useAppSelector } from "@/lib/store/hooks";
+import { selectLoginError, clearLoginError } from "@/lib/store/authSlice";
+import { useAppDispatch } from "@/lib/store/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle } from "lucide-react";
@@ -18,6 +21,8 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, user, loading: authLoading } = useAuth();
+  const loginError = useAppSelector(selectLoginError);
+  const dispatch = useAppDispatch();
   const router = useRouter();
 
   useEffect(() => {
@@ -25,6 +30,13 @@ export function LoginForm() {
       router.push("/dashboard");
     }
   }, [user, authLoading, router]);
+
+  useEffect(() => {
+    if (loginError) {
+      setError(loginError);
+      dispatch(clearLoginError());
+    }
+  }, [loginError, dispatch]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

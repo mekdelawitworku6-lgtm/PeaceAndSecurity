@@ -4,36 +4,29 @@ import { Card, CardContent } from "@/components/ui/card";
 
 type TimeRange = "week" | "month" | "year";
 
-interface StatItem {
-  label: string;
-  value: string;
+interface Stats {
+  totalReports: number;
+  highPriorityReports: number;
+  avgResponseTime: string;
+  topLocation: string;
 }
 
-const STATS_BY_RANGE: Record<TimeRange, StatItem[]> = {
-  week: [
-    { label: "Total Reports", value: "87" },
-    { label: "High Priority Reports", value: "14" },
-    { label: "Avg. Response Time", value: "12 min" },
-    { label: "Top Location", value: "Bole Sub-City" },
-  ],
-  month: [
-    { label: "Total Reports", value: "312" },
-    { label: "High Priority Reports", value: "68" },
-    { label: "Avg. Response Time", value: "18 min" },
-    { label: "Top Location", value: "Bole Sub-City" },
-  ],
-  year: [
-    { label: "Total Reports", value: "3,847" },
-    { label: "High Priority Reports", value: "812" },
-    { label: "Avg. Response Time", value: "22 min" },
-    { label: "Top Location", value: "Arada Sub-City" },
-  ],
-};
+type Props = { timeRange: TimeRange; stats?: Stats };
 
-type Props = { timeRange: TimeRange };
-
-export function AnalyticsStats({ timeRange }: Props) {
-  const data = STATS_BY_RANGE[timeRange];
+export function AnalyticsStats({ timeRange, stats }: Props) {
+  const data = stats
+    ? [
+        { label: "Total Reports", value: String(stats.totalReports) },
+        { label: "High Priority Reports", value: String(stats.highPriorityReports) },
+        { label: "Avg. Response Time", value: stats.avgResponseTime },
+        { label: "Top Location", value: stats.topLocation },
+      ]
+    : [
+        { label: "Total Reports", value: "0" },
+        { label: "High Priority Reports", value: "0" },
+        { label: "Avg. Response Time", value: "N/A" },
+        { label: "Top Location", value: "N/A" },
+      ];
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

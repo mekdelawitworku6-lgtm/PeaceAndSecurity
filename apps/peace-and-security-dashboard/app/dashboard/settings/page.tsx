@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/auth-context";
+import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
+import { fetchUsers, registerUser, toggleUserStatus, selectUsers, selectUsersLoading } from "@/lib/store/usersSlice";
+import { fetchReportTypes, createReportType, deleteReportType as deleteReportTypeThunk, selectReportTypes, selectReportTypesLoading } from "@/lib/store/reportTypesSlice";
 import { PERMISSIONS } from "@/lib/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,10 +14,8 @@ import {
   Loader2,
   Save,
   Plus,
-  Pencil,
   Trash2,
   X,
-  Shield,
   Send,
   UserPlus,
 } from "lucide-react";
@@ -27,51 +28,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import apiClient from "@/lib/api-client";
 
-// ─── Tab Types ───────────────────────────────────────────────────────────────
 type SettingsTab = "general" | "team" | "categories";
 
-// ─── Mock Data (will be replaced with backend integration) ───────────────────
-const MOCK_TEAM: TeamMember[] = [
-  { id: "1", fullName: "Abebe Tadesse", email: "abebe@aapbs.gov.et", role: "Super Admin", color: "bg-red-500" },
-  { id: "2", fullName: "Hanan Alemayehu", email: "hanan.a@aapbs.gov.et", role: "Dispatcher", color: "bg-green-500" },
-  { id: "3", fullName: "Hanna Tesfa", email: "hanna.t@aapbs.gov.et", role: "Dispatcher", color: "bg-blue-500" },
-  { id: "4", fullName: "Girma Haile", email: "girma.h@aapbs.gov.et", role: "Sub City Manager", color: "bg-purple-500" },
-  { id: "5", fullName: "Senait Wolde", email: "senait.w@aapbs.gov.et", role: "Viewer", color: "bg-orange-500" },
-];
-
-const DEFAULT_CATEGORIES: IncidentCategory[] = [
-  { id: "1", name: "Robbery/Theft", icon: "💰", bg: "bg-rose-100", enabled: true },
-  { id: "2", name: "Illegal Weapons", icon: "🔫", bg: "bg-amber-100", enabled: true },
-  { id: "3", name: "Property/Fraud", icon: "👤", bg: "bg-purple-100", enabled: true },
-  { id: "4", name: "Security Threat", icon: "💡", bg: "bg-slate-100", enabled: true },
-  { id: "5", name: "Street Begging", icon: "🎪", bg: "bg-blue-100", enabled: true },
-  { id: "6", name: "Disruptive Activity", icon: "🔊", bg: "bg-fuchsia-100", enabled: true },
-  { id: "7", name: "Unfit Area", icon: "🏚️", bg: "bg-orange-100", enabled: true },
-  { id: "8", name: "Illegal Business", icon: "🏪", bg: "bg-teal-100", enabled: true },
-  { id: "9", name: "Event Security", icon: "⚠️", bg: "bg-red-100", enabled: true },
-  { id: "10", name: "Institution Inspection", icon: "🏛️", bg: "bg-cyan-100", enabled: true },
-];
-
-interface TeamMember {
-  id: string;
-  fullName: string;
-  email: string;
-  role: string;
-  color: string;
-}
-
-interface IncidentCategory {
-  id: string;
-  name: string;
-  icon: string;
-  enabled: boolean;
-  bg?: string;
-}
-
-// ═════════════════════════════════════════════════════════════════════════════
-//  GENERAL SETTINGS TAB
-// ═════════════════════════════════════════════════════════════════════════════
 function GeneralSettingsTab() {
   const [bureauName, setBureauName] = useState("Addis Ababa City Peace and Security Administration Bureau");
   const [bureauCode, setBureauCode] = useState("AAPCB");
@@ -83,7 +43,6 @@ function GeneralSettingsTab() {
 
   const handleSave = async () => {
     setSaving(true);
-    // TODO: integrate with backend
     await new Promise((r) => setTimeout(r, 800));
     toast.success("General settings saved successfully");
     setSaving(false);
@@ -92,32 +51,19 @@ function GeneralSettingsTab() {
   return (
     <div className="space-y-8">
       <h2 className="text-lg font-bold text-slate-900">General Settings</h2>
-
       <div className="space-y-5">
         <div className="space-y-1.5">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bureau Name</Label>
-          <Input
-            value={bureauName}
-            onChange={(e) => setBureauName(e.target.value)}
-            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium"
-          />
+          <Input value={bureauName} onChange={(e) => setBureauName(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
         </div>
-
         <div className="space-y-1.5">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Bureau Code</Label>
-          <Input
-            value={bureauCode}
-            onChange={(e) => setBureauCode(e.target.value)}
-            className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium w-48"
-          />
+          <Input value={bureauCode} onChange={(e) => setBureauCode(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium w-48" />
         </div>
-
         <div className="space-y-1.5">
           <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Timezone</Label>
           <Select value={timezone} onValueChange={setTimezone}>
-            <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="EAT">East Africa Time (EAT) — UTC+3</SelectItem>
               <SelectItem value="UTC">UTC — Coordinated Universal Time</SelectItem>
@@ -125,48 +71,25 @@ function GeneralSettingsTab() {
             </SelectContent>
           </Select>
         </div>
-
         <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-            Default Priority Thresholds
-          </Label>
+          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Default Priority Thresholds</Label>
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">High Priority Hours</span>
-              <Input
-                type="number"
-                value={highPriority}
-                onChange={(e) => setHighPriority(e.target.value)}
-                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium"
-              />
+              <Input type="number" value={highPriority} onChange={(e) => setHighPriority(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Medium Priority Bound</span>
-              <Input
-                type="number"
-                value={mediumPriority}
-                onChange={(e) => setMediumPriority(e.target.value)}
-                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium"
-              />
+              <Input type="number" value={mediumPriority} onChange={(e) => setMediumPriority(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
             </div>
             <div className="space-y-1">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Low Priority Above</span>
-              <Input
-                type="number"
-                value={lowPriority}
-                onChange={(e) => setLowPriority(e.target.value)}
-                className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium"
-              />
+              <Input type="number" value={lowPriority} onChange={(e) => setLowPriority(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
             </div>
           </div>
         </div>
       </div>
-
-      <Button
-        onClick={handleSave}
-        disabled={saving}
-        className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm"
-      >
+      <Button onClick={handleSave} disabled={saving} className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm">
         {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
         <Save className="mr-2 h-4 w-4" />
         Save Changes
@@ -175,19 +98,23 @@ function GeneralSettingsTab() {
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  TEAM & ROLES TAB
-// ═════════════════════════════════════════════════════════════════════════════
 function TeamRolesTab() {
-  const [team, setTeam] = useState<TeamMember[]>(MOCK_TEAM);
+  const dispatch = useAppDispatch();
+  const team = useAppSelector(selectUsers);
+  const loading = useAppSelector(selectUsersLoading);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteForm, setInviteForm] = useState({
-    fullName: "",
-    email: "",
-    role: "Dispatcher",
-    subCity: "",
-  });
+  const [inviteForm, setInviteForm] = useState({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "" });
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    dispatch(fetchUsers({ limit: 50, role: "SYSTEM_SUPER_ADMIN", isStaffUser: true }));
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (team.length === 0) {
+      dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
+    }
+  }, [dispatch, team.length]);
 
   const handleInvite = async () => {
     if (!inviteForm.fullName || !inviteForm.email) {
@@ -195,51 +122,66 @@ function TeamRolesTab() {
       return;
     }
     setSending(true);
-    // TODO: integrate with backend
-    await new Promise((r) => setTimeout(r, 800));
-    const newMember: TeamMember = {
-      id: Date.now().toString(),
-      fullName: inviteForm.fullName,
-      email: inviteForm.email,
-      role: inviteForm.role,
-      color: "bg-teal-500",
-    };
-    setTeam((prev) => [...prev, newMember]);
-    setShowInvite(false);
-    setInviteForm({ fullName: "", email: "", role: "Dispatcher", subCity: "" });
-    toast.success("Invitation sent successfully");
-    setSending(false);
+    try {
+      const formData = new FormData();
+      formData.append("fullName", inviteForm.fullName);
+      formData.append("email", inviteForm.email);
+      formData.append("role", inviteForm.role);
+      if (inviteForm.phoneNumber) formData.append("phoneNumber", inviteForm.phoneNumber);
+      await dispatch(registerUser(formData)).unwrap();
+      setShowInvite(false);
+      setInviteForm({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "" });
+      toast.success("User invited successfully! Credentials sent via email.");
+      dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to invite user");
+    } finally {
+      setSending(false);
+    }
   };
 
-  const handleDelete = (id: string) => {
-    setTeam((prev) => prev.filter((m) => m.id !== id));
-    toast.success("Team member removed");
+  const handleToggleStatus = async (userId: string) => {
+    try {
+      await dispatch(toggleUserStatus(userId)).unwrap();
+      toast.success("User status updated");
+      dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update status");
+    }
   };
 
   const getRoleBadgeColor = (role: string) => {
     switch (role) {
-      case "Super Admin": return "bg-red-50 text-red-600 border-red-100";
-      case "Dispatcher": return "bg-blue-50 text-blue-600 border-blue-100";
-      case "Sub City Manager": return "bg-rose-50 text-rose-600 border-rose-100";
-      case "Viewer": return "bg-slate-50 text-slate-600 border-slate-100";
+      case "SYSTEM_SUPER_ADMIN": return "bg-red-50 text-red-600 border-red-100";
+      case "SYSTEM_ADMIN": return "bg-blue-50 text-blue-600 border-blue-100";
+      case "PATROL": return "bg-rose-50 text-rose-600 border-rose-100";
+      case "CITIZEN": return "bg-slate-50 text-slate-600 border-slate-100";
       default: return "bg-primary/10 text-primary border-primary/20";
     }
   };
+
+  const getRoleLabel = (role: string) => {
+    switch (role) {
+      case "SYSTEM_SUPER_ADMIN": return "Super Admin";
+      case "SYSTEM_ADMIN": return "System Admin";
+      case "PATROL": return "Patrol Officer";
+      case "CITIZEN": return "Citizen";
+      default: return role;
+    }
+  };
+
+  const colors = ["bg-red-500", "bg-green-500", "bg-blue-500", "bg-purple-500", "bg-orange-500", "bg-teal-500", "bg-pink-500"];
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">Team Members</h2>
-        <Button
-          onClick={() => setShowInvite(true)}
-          className="h-10 rounded-lg px-5 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm"
-        >
+        <Button onClick={() => setShowInvite(true)} className="h-10 rounded-lg px-5 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm">
           <UserPlus className="mr-2 h-4 w-4" />
           Invite User
         </Button>
       </div>
 
-      {/* Team Table */}
       <div className="bg-white rounded-xl border border-slate-100 overflow-hidden">
         <table className="w-full text-left">
           <thead>
@@ -251,40 +193,44 @@ function TeamRolesTab() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {team.map((member) => (
-              <tr key={member.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold", member.color)}>
-                      {member.fullName.charAt(0)}
+            {loading ? (
+              <tr><td colSpan={4} className="px-6 py-12 text-center"><Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" /></td></tr>
+            ) : team.length === 0 ? (
+              <tr><td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic">No team members found</td></tr>
+            ) : (
+              team.map((member: any, idx: number) => (
+                <tr key={member.id} className="hover:bg-slate-50/50 transition-colors group">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold", colors[idx % colors.length])}>
+                        {(member.fullName || member.name || "?").charAt(0)}
+                      </div>
+                      <span className="font-semibold text-sm text-slate-800">{member.fullName || member.name}</span>
                     </div>
-                    <span className="font-semibold text-sm text-slate-800">{member.fullName}</span>
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-sm text-slate-500 font-medium">{member.email}</td>
-                <td className="px-6 py-4">
-                  <span className={cn("inline-flex px-3 py-1 rounded-full text-xs font-bold border", getRoleBadgeColor(member.role))}>
-                    {member.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex items-center justify-end gap-2">
-                    <button className="text-xs font-bold text-primary hover:underline">Edit</button>
-                    <button
-                      onClick={() => handleDelete(member.id)}
-                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-slate-500 font-medium">{member.email}</td>
+                  <td className="px-6 py-4">
+                    <span className={cn("inline-flex px-3 py-1 rounded-full text-xs font-bold border", getRoleBadgeColor(member.role))}>
+                      {getRoleLabel(member.role)}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleToggleStatus(member.id)}
+                        className="text-xs font-bold text-primary hover:underline"
+                      >
+                        {member.status === "ACTIVE" ? "Disable" : "Enable"}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
 
-      {/* Invite Modal */}
       {showInvite && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-0 animate-in zoom-in-95 duration-300">
@@ -292,100 +238,50 @@ function TeamRolesTab() {
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900">Invite New User</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">They will receive an email to set up their account.</p>
+                  <p className="text-xs text-slate-400 mt-0.5">They will receive credentials to access the system.</p>
                 </div>
-                <button onClick={() => setShowInvite(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400">
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setShowInvite(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
               </div>
             </div>
-
             <div className="p-6 space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-600">Full Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    value={inviteForm.fullName}
-                    onChange={(e) => setInviteForm({ ...inviteForm, fullName: e.target.value })}
-                    placeholder="e.g. Tigist Bekele"
-                    className="h-11 rounded-lg border-slate-200"
-                  />
+                  <Input value={inviteForm.fullName} onChange={(e) => setInviteForm({ ...inviteForm, fullName: e.target.value })} placeholder="e.g. Tigist Bekele" className="h-11 rounded-lg border-slate-200" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-600">Email Address <span className="text-red-500">*</span></Label>
-                  <Input
-                    type="email"
-                    value={inviteForm.email}
-                    onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
-                    placeholder="user@aapsboz.gov.et"
-                    className="h-11 rounded-lg border-slate-200"
-                  />
+                  <Input type="email" value={inviteForm.email} onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })} placeholder="user@aapbs.gov.et" className="h-11 rounded-lg border-slate-200" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-600">Role <span className="text-red-500">*</span></Label>
-                  <Select
-                    value={inviteForm.role}
-                    onValueChange={(v) => setInviteForm({ ...inviteForm, role: v })}
-                  >
-                    <SelectTrigger className="h-11 rounded-lg border-slate-200">
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Select value={inviteForm.role} onValueChange={(v) => setInviteForm({ ...inviteForm, role: v })}>
+                    <SelectTrigger className="h-11 rounded-lg border-slate-200"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Dispatcher">Dispatcher</SelectItem>
-                      <SelectItem value="Sub City Manager">Sub City Manager</SelectItem>
-                      <SelectItem value="Viewer">Viewer</SelectItem>
-                      <SelectItem value="Super Admin">Super Admin</SelectItem>
+                      <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
+                      <SelectItem value="SYSTEM_SUPER_ADMIN">Super Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-600">Sub-City Assignment</Label>
-                  <Select
-                    value={inviteForm.subCity}
-                    onValueChange={(v) => setInviteForm({ ...inviteForm, subCity: v })}
-                  >
-                    <SelectTrigger className="h-11 rounded-lg border-slate-200">
-                      <SelectValue placeholder="All sub-cities" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All sub-cities</SelectItem>
-                      <SelectItem value="bole">Bole</SelectItem>
-                      <SelectItem value="kirkos">Kirkos</SelectItem>
-                      <SelectItem value="arada">Arada</SelectItem>
-                      <SelectItem value="yeka">Yeka</SelectItem>
-                      <SelectItem value="addis-ketema">Addis Ketema</SelectItem>
-                      <SelectItem value="lideta">Lideta</SelectItem>
-                      <SelectItem value="nifas-silk">Nifas Silk Lafto</SelectItem>
-                      <SelectItem value="kolfe">Kolfe Keranio</SelectItem>
-                      <SelectItem value="gulele">Gulele</SelectItem>
-                      <SelectItem value="akaki">Akaki Kality</SelectItem>
-                      <SelectItem value="lemi-kura">Lemi Kura</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-xs font-bold text-slate-600">Phone Number</Label>
+                  <Input value={inviteForm.phoneNumber} onChange={(e) => setInviteForm({ ...inviteForm, phoneNumber: e.target.value })} placeholder="+2519..." className="h-11 rounded-lg border-slate-200" />
                 </div>
               </div>
-
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-3">
                 <p className="text-xs text-blue-700 font-medium leading-relaxed">
-                  Assign/reassign reports, change statuses, view all data across sub-cities.
+                  The user will be registered in the system and receive their credentials via the configured notification channel.
                 </p>
               </div>
             </div>
-
             <div className="p-6 border-t border-slate-100 flex items-center justify-between">
-              <Button
-                onClick={handleInvite}
-                disabled={sending}
-                className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm"
-              >
+              <Button onClick={handleInvite} disabled={sending} className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm">
                 {sending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Send Invitation
               </Button>
-              <Button variant="ghost" onClick={() => setShowInvite(false)} className="h-11 rounded-lg font-bold text-sm text-slate-500">
-                Cancel
-              </Button>
+              <Button variant="ghost" onClick={() => setShowInvite(false)} className="h-11 rounded-lg font-bold text-sm text-slate-500">Cancel</Button>
             </div>
           </div>
         </div>
@@ -394,168 +290,138 @@ function TeamRolesTab() {
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  INCIDENT CATEGORIES TAB
-// ═════════════════════════════════════════════════════════════════════════════
 function IncidentCategoriesTab() {
-  const [categories, setCategories] = useState<IncidentCategory[]>(DEFAULT_CATEGORIES);
+  const dispatch = useAppDispatch();
+  const categories = useAppSelector(selectReportTypes);
+  const loading = useAppSelector(selectReportTypesLoading);
   const [showAdd, setShowAdd] = useState(false);
-  const [newCategory, setNewCategory] = useState({ name: "", icon: "🔒" });
+  const [newCategory, setNewCategory] = useState({ name: "", description: "" });
   const [saving, setSaving] = useState(false);
 
-  const toggleCategory = (id: string) => {
-    setCategories((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, enabled: !c.enabled } : c))
-    );
-  };
+  useEffect(() => {
+    dispatch(fetchReportTypes());
+  }, [dispatch]);
 
   const handleAddCategory = async () => {
     if (!newCategory.name) {
       toast.error("Category name is required");
       return;
     }
-    const cat: IncidentCategory = {
-      id: Date.now().toString(),
-      name: newCategory.name,
-      icon: newCategory.icon,
-      enabled: true,
-    };
-    setCategories((prev) => [...prev, cat]);
-    setShowAdd(false);
-    setNewCategory({ name: "", icon: "🔒" });
-    toast.success("Category added");
+    setSaving(true);
+    try {
+      await dispatch(createReportType({ name: newCategory.name, description: newCategory.description, isActive: true })).unwrap();
+      setShowAdd(false);
+      setNewCategory({ name: "", description: "" });
+      toast.success("Category added successfully");
+      dispatch(fetchReportTypes());
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to add category");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleSaveCategories = async () => {
-    setSaving(true);
-    // TODO: integrate with backend
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success("Category settings saved");
-    setSaving(false);
+  const handleDeleteCategory = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This may affect existing reports.`)) return;
+    try {
+      await dispatch(deleteReportTypeThunk(id)).unwrap();
+      toast.success("Category deleted");
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete category");
+    }
+  };
+
+  const getIcon = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes("noise")) return "🔊";
+    if (n.includes("litter") || n.includes("dump")) return "🗑️";
+    if (n.includes("vandal")) return "🔨";
+    if (n.includes("air")) return "💨";
+    if (n.includes("water")) return "💧";
+    if (n.includes("soil")) return "🌱";
+    if (n.includes("forest") || n.includes("tree")) return "🌳";
+    if (n.includes("hazard") || n.includes("waste")) return "☣️";
+    if (n.includes("wild") || n.includes("poach")) return "🦁";
+    return "📋";
+  };
+
+  const getBg = (name: string) => {
+    const n = name.toLowerCase();
+    if (n.includes("noise")) return "bg-rose-100";
+    if (n.includes("litter") || n.includes("dump")) return "bg-amber-100";
+    if (n.includes("vandal")) return "bg-purple-100";
+    if (n.includes("air")) return "bg-slate-100";
+    if (n.includes("water")) return "bg-blue-100";
+    if (n.includes("soil")) return "bg-green-100";
+    if (n.includes("forest") || n.includes("tree")) return "bg-emerald-100";
+    if (n.includes("hazard") || n.includes("waste")) return "bg-orange-100";
+    if (n.includes("wild") || n.includes("poach")) return "bg-yellow-100";
+    return "bg-cyan-100";
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-bold text-slate-900">Incident Categories</h2>
-        <Button
-          onClick={() => setShowAdd(true)}
-          className="h-10 rounded-lg px-5 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm"
-        >
+        <Button onClick={() => setShowAdd(true)} className="h-10 rounded-lg px-5 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm">
           <Plus className="mr-2 h-4 w-4" />
           Add Category
         </Button>
       </div>
 
-      {/* Categories Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {categories.map((cat) => (
-          <div
-            key={cat.id}
-            className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors shadow-sm"
-          >
-            <div className="flex items-center gap-3">
-              <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm", cat.bg || "bg-primary/10")}>
-                {cat.icon}
-              </div>
-              <span className="font-bold text-sm text-slate-800">{cat.name}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <button className="text-xs font-bold text-primary hover:underline">Edit</button>
-              {/* Checkbox toggle */}
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={cat.enabled}
-                  onChange={() => toggleCategory(cat.id)}
-                  className="sr-only peer"
-                />
-                <div className="w-5 h-5 border-2 border-slate-300 rounded peer-checked:bg-primary peer-checked:border-primary flex items-center justify-center transition-colors">
-                  {cat.enabled && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
+      {loading ? (
+        <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {categories.map((cat: any) => (
+            <div key={cat.id} className="flex items-center justify-between px-5 py-4 bg-white rounded-2xl border border-slate-100 hover:border-slate-200 transition-colors shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-sm", getBg(cat.name))}>
+                  {getIcon(cat.name)}
                 </div>
-              </label>
+                <div>
+                  <span className="font-bold text-sm text-slate-800">{cat.name}</span>
+                  {cat.description && <p className="text-xs text-slate-400 mt-0.5 max-w-[200px] truncate">{cat.description}</p>}
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full", cat.isActive ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
+                  {cat.isActive ? "Active" : "Inactive"}
+                </span>
+                <button onClick={() => handleDeleteCategory(cat.id, cat.name)} className="p-1.5 rounded-lg hover:bg-red-50 text-red-400 hover:text-red-600 transition-colors">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <Button
-        onClick={handleSaveCategories}
-        disabled={saving}
-        className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm"
-      >
-        {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        <Save className="mr-2 h-4 w-4" />
-        Save Category Settings
-      </Button>
-
-      {/* Add Category Modal */}
       {showAdd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-0 animate-in zoom-in-95 duration-300">
             <div className="p-6 border-b border-slate-100">
               <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">Add New Category</h3>
-                </div>
-                <button onClick={() => setShowAdd(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400">
-                  <X className="w-5 h-5" />
-                </button>
+                <h3 className="text-lg font-bold text-slate-900">Add New Category</h3>
+                <button onClick={() => setShowAdd(false)} className="p-2 rounded-lg hover:bg-slate-100 text-slate-400"><X className="w-5 h-5" /></button>
               </div>
             </div>
-
             <div className="p-6 space-y-5">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-600">
-                  Category Name <span className="text-red-500">*</span>
-                </Label>
-                <Input
-                  value={newCategory.name}
-                  onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                  placeholder="e.g. Robbery"
-                  className="h-11 rounded-lg border-slate-200"
-                />
+                <Label className="text-xs font-bold text-slate-600">Category Name <span className="text-red-500">*</span></Label>
+                <Input value={newCategory.name} onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })} placeholder="e.g. Robbery/Theft" className="h-11 rounded-lg border-slate-200" />
               </div>
-
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-600">Add Icon</Label>
-                <Select value={newCategory.icon} onValueChange={(v) => setNewCategory({ ...newCategory, icon: v })}>
-                  <SelectTrigger className="h-11 rounded-lg border-slate-200">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="🔒">🔒 Lock</SelectItem>
-                    <SelectItem value="🔓">🔓 Unlock</SelectItem>
-                    <SelectItem value="⚠️">⚠️ Warning</SelectItem>
-                    <SelectItem value="🔫">🔫 Weapon</SelectItem>
-                    <SelectItem value="📋">📋 Clipboard</SelectItem>
-                    <SelectItem value="🔊">🔊 Loud</SelectItem>
-                    <SelectItem value="🏚️">🏚️ Building</SelectItem>
-                    <SelectItem value="🏪">🏪 Store</SelectItem>
-                    <SelectItem value="🎪">🎪 Event</SelectItem>
-                    <SelectItem value="🏛️">🏛️ Institution</SelectItem>
-                    <SelectItem value="🙏">🙏 Prayer</SelectItem>
-                    <SelectItem value="🚨">🚨 Emergency</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label className="text-xs font-bold text-slate-600">Description</Label>
+                <textarea value={newCategory.description} onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })} placeholder="Brief description of this category..." className="w-full min-h-[80px] rounded-lg border border-slate-200 p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
               </div>
             </div>
-
             <div className="p-6 border-t border-slate-100 flex items-center justify-between">
-              <Button
-                onClick={handleAddCategory}
-                className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm"
-              >
-                <Plus className="mr-2 h-4 w-4" />
+              <Button onClick={handleAddCategory} disabled={saving} className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
                 Add Category
               </Button>
-              <Button variant="ghost" onClick={() => setShowAdd(false)} className="h-11 rounded-lg font-bold text-sm text-slate-500">
-                Cancel
-              </Button>
+              <Button variant="ghost" onClick={() => setShowAdd(false)} className="h-11 rounded-lg font-bold text-sm text-slate-500">Cancel</Button>
             </div>
           </div>
         </div>
@@ -564,19 +430,12 @@ function IncidentCategoriesTab() {
   );
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
-//  MAIN SETTINGS PAGE
-// ═════════════════════════════════════════════════════════════════════════════
 export default function SettingsPage() {
   const { hasPermission } = useAuth();
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
 
   if (!hasPermission(PERMISSIONS.SETTINGS_VIEW)) {
-    return (
-      <div className="p-6 text-center text-red-500 font-semibold">
-        Access Denied: Missing SETTINGS_VIEW permission
-      </div>
-    );
+    return <div className="p-6 text-center text-red-500 font-semibold">Access Denied: Missing SETTINGS_VIEW permission</div>;
   }
 
   const tabs: { key: SettingsTab; label: string }[] = [
@@ -588,8 +447,6 @@ export default function SettingsPage() {
   return (
     <div className="p-4 md:p-8 space-y-6 max-w-5xl">
       <PageHeader title="Settings" description="" className="w-full!" />
-
-      {/* Tab Bar */}
       <div className="flex items-center gap-2">
         {tabs.map((tab) => (
           <button
@@ -597,17 +454,13 @@ export default function SettingsPage() {
             onClick={() => setActiveTab(tab.key)}
             className={cn(
               "px-5 py-2.5 rounded-full text-sm font-bold transition-all",
-              activeTab === tab.key
-                ? "bg-primary text-white shadow-sm"
-                : "text-slate-500 hover:bg-slate-100"
+              activeTab === tab.key ? "bg-primary text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"
             )}
           >
             {tab.label}
           </button>
         ))}
       </div>
-
-      {/* Tab Content */}
       <div className="bg-white rounded-2xl border border-slate-100 p-6 md:p-8 shadow-sm">
         {activeTab === "general" && <GeneralSettingsTab />}
         {activeTab === "team" && <TeamRolesTab />}

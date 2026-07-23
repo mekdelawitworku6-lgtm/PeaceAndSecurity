@@ -49,9 +49,16 @@ const profileImageMulter = { storage: memoryStorage() };
 @ApiBearerAuth()
 export class UserController {
   @Post("register")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+  )
   @ApiOperation({
-    summary: "Register internal user and trigger OTP verification (Admin only)",
+    summary: "Register internal user (Admin/Peace/Police roles)",
   })
   @ApiResponse({
     status: 201,
@@ -80,9 +87,16 @@ export class UserController {
   ) {}
 
   @Get("all")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+  )
   @ApiOperation({
-    summary: "Get all users with filtering and pagination (Admin only)",
+    summary: "Get all users with filtering and pagination",
   })
   @ApiResponse({ status: 200, description: "Users retrieved successfully" })
   async getAllUsers(@Query() filterDto: UserFilterDto) {
@@ -120,24 +134,38 @@ export class UserController {
   }
 
   @Get(":id")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: "Get user by ID (Admin only)" })
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+  )
+  @ApiOperation({ summary: "Get user by ID" })
   @ApiResponse({ status: 200, description: "User retrieved successfully" })
   async getUserById(@Param("id") id: string) {
     return this.userService.getUser({ id });
   }
 
   @Put(":id/toggle-status")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: "Toggle user active status (Admin only)" })
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN)
+  @ApiOperation({ summary: "Toggle user active status" })
   @ApiResponse({ status: 200, description: "User status updated successfully" })
   async toggleUserStatus(@Param("id") id: string) {
     return this.userService.toggleUserStatus(id);
   }
 
   @Patch(":id")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: "Update user profile (Admin only)" })
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+  )
+  @ApiOperation({ summary: "Update user profile" })
   @ApiResponse({
     status: 200,
     description: "User profile updated successfully",
@@ -161,8 +189,8 @@ export class UserController {
   }
 
   @Post(":id/reset-password")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
-  @ApiOperation({ summary: "Reset user password by admin" })
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN)
+  @ApiOperation({ summary: "Reset user password" })
   @ApiResponse({ status: 200, description: "Password reset successfully" })
   async resetUserPassword(@Param("id") id: string, @Request() req: any) {
     return this.userService.resetUserPassword(req.user.id, id);

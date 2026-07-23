@@ -49,4 +49,21 @@ export class DashboardController {
     const data = await this.dashboardService.getRecentReports();
     return successResponse("Recent reports retrieved", data);
   }
+
+  @Get("analytics")
+  @ApiOperation({ summary: "Get analytics data (time-range based)" })
+  @ApiResponse({
+    status: 200,
+    description: "Analytics data retrieved successfully",
+  })
+  async getAnalytics(
+    @Query("timeRange") timeRange: string,
+    @Req() req: any,
+  ) {
+    const data = await this.dashboardService.getAnalytics(
+      timeRange || "week",
+      req.user,
+    );
+    return successResponse("Analytics data retrieved", data);
+  }
 }

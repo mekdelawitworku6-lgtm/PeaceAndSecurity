@@ -74,6 +74,7 @@ export class AuthService {
     fullName: string,
     phoneNumber: string,
     file?: any,
+    pin?: string,
   ): Promise<ServiceResponse> {
     try {
       const normalizedPhone = normalizeEtPhone(phoneNumber);
@@ -653,8 +654,37 @@ export class AuthService {
         role,
       });
 
+      // Also return access & refresh tokens if the user already has a PIN set
+      // (e.g., during PIN reset flow), so the frontend can skip set-pin step.
+      let accessToken: string | undefined;
+      let refreshToken: string | undefined;
+      if (role === UserRole.PATROL) {
+        const patrol = await this.patrolRepository
+          .createQueryBuilder("patrol")
+          .addSelect("patrol.pin")
+          .where("patrol.id = :id", { id: userId })
+          .getOne();
+        if (patrol?.isPinSet) {
+          const payload = { sub: patrol.id, phoneNumber: patrol.phoneNumber, role };
+          accessToken = signAccessToken(this.jwtService, payload);
+          refreshToken = signRefreshToken(this.jwtService, payload);
+        }
+      } else {
+        const citizen = await this.citizenRepository
+          .createQueryBuilder("citizen")
+          .addSelect("citizen.pin")
+          .where("citizen.id = :id", { id: userId })
+          .getOne();
+        if (citizen?.isPinSet) {
+          const payload = { sub: citizen.id, phoneNumber: citizen.phoneNumber, role };
+          accessToken = signAccessToken(this.jwtService, payload);
+          refreshToken = signRefreshToken(this.jwtService, payload);
+        }
+      }
+
       return successResponse("OTP verified successfully.", {
         setPinToken,
+        ...(accessToken ? { accessToken, refreshToken } : {}),
       });
     } catch (error) {
       return errorResponse(error.message ?? "Failed to verify OTP", error);

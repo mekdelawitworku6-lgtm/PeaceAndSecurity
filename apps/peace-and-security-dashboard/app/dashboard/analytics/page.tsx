@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/auth-context";
 import { useRouter } from "next/navigation";
-import { Download, FileText } from "lucide-react";
+import { Download } from "lucide-react";
 import { PERMISSIONS } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import { analyticsService, AnalyticsData } from "@/lib/services/analytics-service";
 
-// Import modular analytics components
 import { AnalyticsStats } from "@/components/analytics/analytics-stats";
 import { StatusBarChart } from "@/components/analytics/status-bar-chart";
 import { MonthlyLineChart } from "@/components/analytics/monthly-line-chart";
@@ -19,11 +19,21 @@ export default function AnalyticsPage() {
   const router = useRouter();
   const { user, hasPermission } = useAuth();
   const [timeRange, setTimeRange] = useState<TimeRange>("week");
+  const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
+  const [loading, setLoading] = useState(true);
 
   if (!hasPermission(PERMISSIONS.DASHBOARD_VIEW)) {
     router.replace("/dashboard/reports");
     return null;
   }
+
+  useEffect(() => {
+    setLoading(true);
+    analyticsService.getAnalytics(timeRange)
+      .then((res) => setAnalyticsData(res.data))
+      .catch(() => setAnalyticsData(null))
+      .finally(() => setLoading(false));
+  }, [timeRange]);
 
   const handleExportPDF = () => {
     window.print();
@@ -38,7 +48,6 @@ export default function AnalyticsPage() {
         </div>
 
         <div className="flex items-center gap-4 self-end sm:self-auto">
-          {/* Time range tab selectors */}
           <div className="flex items-center gap-1 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
             {(["week", "month", "year"] as const).map((range) => (
               <button
@@ -66,19 +75,24 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* 4 Stat Cards — data changes with timeRange */}
-      <AnalyticsStats timeRange={timeRange} />
+      {loading ? (
+        <div className="text-center py-12 text-muted-foreground">Loading analytics...</div>
+      ) : analyticsData ? (
+        <>
+          <AnalyticsStats timeRange={timeRange} stats={analyticsData.stats} />
 
-      {/* Two main trends charts side-by-side */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <StatusBarChart timeRange={timeRange} />
-        <MonthlyLineChart timeRange={timeRange} />
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <StatusBarChart timeRange={timeRange} data={analyticsData.statusChart} />
+            <MonthlyLineChart timeRange={timeRange} data={analyticsData.trendChart} />
+          </div>
 
-      {/* Donut chart at the bottom */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <CategoryDonutChart timeRange={timeRange} />
-      </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <CategoryDonutChart timeRange={timeRange} data={analyticsData.categoryChart} />
+          </div>
+        </>
+      ) : (
+        <div className="text-center py-12 text-muted-foreground">No data available</div>
+      )}
     </div>
   );
 }

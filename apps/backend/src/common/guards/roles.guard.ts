@@ -28,11 +28,13 @@ export class RolesGuard implements CanActivate {
 
       const user = request.user;
 
-      // Super admins and system admins are always allowed
+      // Super admins, system admins, and city-level officers are always allowed
       if (
         user &&
         (user.role === UserRole.SYSTEM_SUPER_ADMIN ||
-          user.role === UserRole.SYSTEM_ADMIN)
+          user.role === UserRole.SYSTEM_ADMIN ||
+          user.role === UserRole.PEACE_SUPER_ADMIN ||
+          user.role === UserRole.POLICE_COMMANDER_CITY)
       ) {
         return true;
       }

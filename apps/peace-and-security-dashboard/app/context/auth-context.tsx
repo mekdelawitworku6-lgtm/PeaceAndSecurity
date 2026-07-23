@@ -1,12 +1,14 @@
 "use client"
 
-import { useCallback } from "react"
+import { useCallback, useEffect } from "react"
 import { useAppSelector, useAppDispatch } from "@/lib/store/hooks"
 import {
   selectUser,
   selectAuthLoading,
   selectIsServerActive,
   selectIsCheckingServer,
+  userLogin,
+  initAuth,
   setUser,
   logout as logoutAction,
 } from "@/lib/store/authSlice"
@@ -21,13 +23,14 @@ export function useAuth() {
   const isServerActive = useAppSelector(selectIsServerActive)
   const isCheckingServer = useAppSelector(selectIsCheckingServer)
 
+  useEffect(() => {
+    dispatch(initAuth())
+  }, [dispatch])
+
   const login = useCallback(
     async (email?: string, password: string = "", phoneNumber?: string) => {
-      const { validateCredentials } = await import("@/lib/auth")
-      const validatedUser = await validateCredentials(email, password, phoneNumber)
-      if (validatedUser) {
-        dispatch(setUser(validatedUser))
-      }
+      const result = await dispatch(userLogin({ email, password, phoneNumber })).unwrap()
+      return result
     },
     [dispatch]
   )

@@ -1,22 +1,25 @@
-import { mockReportTypes } from "../mock-store";
+import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 class ReportTypeService {
   async getAll(params?: { search?: string; isActive?: string }) {
-    return mockReportTypes.getAll(params?.search);
+    const response = await apiClient.get(API_ENDPOINTS.REPORT_TYPES.GET_ALL, { params });
+    return response.data;
   }
 
   async create(data: any) {
-    const item = { ...data, isActive: true, createdAt: new Date().toISOString() };
-    return mockReportTypes.create(item);
+    const response = await apiClient.post(API_ENDPOINTS.REPORT_TYPES.CREATE, data);
+    return response.data;
   }
 
   async update(id: string, data: any) {
-    return mockReportTypes.update(id, { ...data, updatedAt: new Date().toISOString() });
+    const response = await apiClient.patch(API_ENDPOINTS.REPORT_TYPES.UPDATE(id), data);
+    return response.data;
   }
 
   async deleteReportType(id: string) {
-    mockReportTypes.delete(id);
-    return { success: true };
+    const response = await apiClient.delete(API_ENDPOINTS.REPORT_TYPES.DELETE(id));
+    return response.data;
   }
 }
 

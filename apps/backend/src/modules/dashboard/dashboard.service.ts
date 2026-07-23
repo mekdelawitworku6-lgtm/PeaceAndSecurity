@@ -161,4 +161,109 @@ export class DashboardService {
       relations: ["assignedPatrol"],
     });
   }
+
+  async getAnalytics(timeRange: string, user: any) {
+    const now = dayjs();
+    let startDate: dayjs.Dayjs;
+    let dateFormat: string;
+    let groupByExpr: string;
+
+    if (timeRange === "week") {
+      startDate = now.subtract(7, "day").startOf("day");
+      dateFormat = "YYYY-MM-DD";
+      groupByExpr = "DATE(report.createdAt)";
+    } else if (timeRange === "month") {
+      startDate = now.subtract(30, "day").startOf("day");
+      dateFormat = "YYYY-MM-DD";
+      groupByExpr = "DATE(report.createdAt)";
+    } else {
+      startDate = now.subtract(12, "month").startOf("month");
+      dateFormat = "YYYY-MM";
+      groupByExpr = "TO_CHAR(report.createdAt, 'YYYY-MM')";
+    }
+
+    const startDateStr = startDate.format("YYYY-MM-DD");
+
+    // 1. Stats cards
+    const totalReports = await this.reportRepo
+      .createQueryBuilder("report")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .getCount();
+
+    const highPriorityReports = await this.reportRepo
+      .createQueryBuilder("report")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .andWhere("report.status = :status", { status: ReportStatus.SUBMITTED })
+      .getCount();
+
+    const resolvedReports = await this.reportRepo
+      .createQueryBuilder("report")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .andWhere("report.status IN (:...statuses)", {
+        statuses: [ReportStatus.RESOLVED, ReportStatus.CLOSED],
+      })
+      .getCount();
+
+    const avgResponseTime = totalReports > 0 ? Math.round((resolvedReports / totalReports) * 100) : 0;
+
+    // Top location
+    const topLocationRaw = await this.reportRepo
+      .createQueryBuilder("report")
+      .select("report.address", "address")
+      .addSelect("COUNT(report.id)", "count")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .andWhere("report.address IS NOT NULL")
+      .andWhere("report.address != ''")
+      .groupBy("report.address")
+      .orderBy("count", "DESC")
+      .limit(1)
+      .getRawOne();
+
+    // 2. Status bar chart — reports grouped by status per time bucket
+    const statusData = await this.reportRepo
+      .createQueryBuilder("report")
+      .select(groupByExpr, "period")
+      .addSelect("report.status", "status")
+      .addSelect("COUNT(report.id)", "count")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .groupBy(groupByExpr)
+      .addGroupBy("report.status")
+      .orderBy("period", "ASC")
+      .getRawMany();
+
+    // 3. Monthly line chart — total reports per time bucket
+    const trendData = await this.reportRepo
+      .createQueryBuilder("report")
+      .select(groupByExpr, "period")
+      .addSelect("COUNT(report.id)", "count")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .groupBy(groupByExpr)
+      .orderBy("period", "ASC")
+      .getRawMany();
+
+    // 4. Category donut chart — reports by violation type
+    const categoryData = await this.reportRepo
+      .createQueryBuilder("report")
+      .select("report.violationType", "name")
+      .addSelect("COUNT(report.id)", "value")
+      .where("report.createdAt >= :startDate", { startDate: startDateStr })
+      .andWhere("report.violationType IS NOT NULL")
+      .andWhere("report.violationType != ''")
+      .groupBy("report.violationType")
+      .orderBy("value", "DESC")
+      .getRawMany();
+
+    return {
+      stats: {
+        totalReports,
+        highPriorityReports,
+        avgResponseTime: `${avgResponseTime}%`,
+        topLocation: topLocationRaw?.address || "N/A",
+      },
+      statusChart: statusData,
+      trendChart: trendData,
+      categoryChart: categoryData,
+      timeRange,
+    };
+  }
 }

@@ -1,80 +1,75 @@
-import { mockUsers } from "../mock-store";
-
-// FormData helper
-function fd(fd: FormData, key: string): string {
-  const v = fd.get(key);
-  return v !== null ? String(v) : "";
-}
+import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 class UserService {
   async getAllUsers(params?: any) {
-    return mockUsers.query({
-      page: params?.page,
-      limit: params?.limit,
-      search: params?.search,
-      role: params?.role,
-      status: params?.status,
-    });
+    const response = await apiClient.get(API_ENDPOINTS.USERS.GET_ALL, { params });
+    return response.data;
   }
 
   async registerUser(formData: FormData) {
-    const now = new Date().toISOString();
+    const body: any = {};
     const permissions: string[] = [];
     formData.forEach((v, k) => {
-      if (k === "permissions") permissions.push(String(v));
+      if (k === 'permissions') {
+        permissions.push(String(v));
+      } else {
+        body[k] = String(v);
+      }
     });
-    const item = {
-      fullName: fd(formData, "fullName"),
-      email: fd(formData, "email"),
-      phoneNumber: fd(formData, "phoneNumber"),
-      role: fd(formData, "role") || "SYSTEM_ADMIN",
-      status: "ACTIVE",
-      isStaffUser: true,
-      permissions,
-      createdAt: now,
-      updatedAt: now,
-    };
-    return mockUsers.create(item);
+    if (permissions.length) body.permissions = permissions;
+    const response = await apiClient.post(API_ENDPOINTS.USERS.REGISTER, body);
+    return response.data;
   }
 
   async updateUser(id: string, formData: FormData) {
-    const patch: any = { updatedAt: new Date().toISOString() };
-    const fn = fd(formData, "fullName");
-    if (fn) patch.fullName = fn;
-    const em = fd(formData, "email");
-    if (em) patch.email = em;
-    const ph = fd(formData, "phoneNumber");
-    if (ph) patch.phoneNumber = ph;
-    const rl = fd(formData, "role");
-    if (rl) patch.role = rl;
+    const body: any = {};
     const permissions: string[] = [];
     formData.forEach((v, k) => {
-      if (k === "permissions") permissions.push(String(v));
+      if (k === 'permissions') {
+        permissions.push(String(v));
+      } else {
+        body[k] = String(v);
+      }
     });
-    if (permissions.length) patch.permissions = permissions;
-    return mockUsers.update(id, patch);
+    if (permissions.length) body.permissions = permissions;
+    const response = await apiClient.patch(API_ENDPOINTS.USERS.GET_BY_ID(id), body);
+    return response.data;
   }
 
   async updateProfile(formData: FormData) {
-    return this.updateUser("usr-admin-001", formData);
+    const body: any = {};
+    const permissions: string[] = [];
+    formData.forEach((v, k) => {
+      if (k === 'permissions') {
+        permissions.push(String(v));
+      } else {
+        body[k] = String(v);
+      }
+    });
+    if (permissions.length) body.permissions = permissions;
+    const response = await apiClient.patch(API_ENDPOINTS.USERS.UPDATE_PROFILE, body);
+    return response.data;
   }
 
   async toggleUserStatus(id: string) {
-    mockUsers.toggleStatus(id);
-    return { success: true };
+    const response = await apiClient.put(API_ENDPOINTS.USERS.TOGGLE_STATUS(id));
+    return response.data;
   }
 
   async getUserProfile() {
-    return mockUsers.getById("usr-admin-001");
+    const response = await apiClient.get(API_ENDPOINTS.USERS.GET_PROFILE);
+    return response.data;
   }
 
   async getUserById(id: string) {
-    return mockUsers.getById(id);
+    const response = await apiClient.get(API_ENDPOINTS.USERS.GET_BY_ID(id));
+    return response.data;
   }
 
   async resetUserPassword(id: string) {
-    mockUsers.resetPassword(id);
-    return { success: true };
+    const response = await apiClient.post(API_ENDPOINTS.USERS.RESET_PASSWORD(id));
+    return response.data;
   }
 }
 

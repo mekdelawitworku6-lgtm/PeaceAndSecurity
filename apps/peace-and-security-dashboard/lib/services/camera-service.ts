@@ -1,30 +1,35 @@
-import { mockCameras } from "../mock-store";
+import apiClient from '@/lib/api-client';
+import { API_ENDPOINTS } from '@/lib/api-config';
 
 class CameraService {
   async getAll() {
-    return mockCameras.getAll();
+    const response = await apiClient.get(API_ENDPOINTS.CAMERAS.GET_ALL);
+    return response.data;
   }
 
   async create(data: any) {
-    const item = { ...data, isActive: true, lastMaintenanceDate: new Date().toISOString() };
-    return mockCameras.create(item);
+    const response = await apiClient.post(API_ENDPOINTS.CAMERAS.CREATE, data);
+    return response.data;
   }
 
   async update(id: string, data: any) {
-    return mockCameras.update(id, data);
+    const response = await apiClient.patch(API_ENDPOINTS.CAMERAS.UPDATE(id), data);
+    return response.data;
   }
 
   async deleteCamera(id: string) {
-    mockCameras.delete(id);
-    return { success: true };
+    const response = await apiClient.delete(API_ENDPOINTS.CAMERAS.DELETE(id));
+    return response.data;
   }
 
   async getAlerts() {
-    return { data: [], success: true };
+    const response = await apiClient.get('cameras/alerts');
+    return response.data;
   }
 
-  async createAlert(_data: any) {
-    return { success: true };
+  async createAlert(data: any) {
+    const response = await apiClient.post('cameras/alerts', data);
+    return response.data;
   }
 }
 

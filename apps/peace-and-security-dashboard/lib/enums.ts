@@ -10,12 +10,28 @@ export enum UserStatus {
  * - SYSTEM_ADMIN:       Admin access, manages patrols and reports
  * - PATROL:             Field officer, accesses via Patrol mobile app
  * - CITIZEN:            Public user, submits reports via Citizen mobile app
+ * - PEACE_SUPER_ADMIN:  City-level Peace & Security Super Admin
+ * - PEACE_OFFICER_SUBCITY: Subcity Peace Officer
+ * - PEACE_OFFICER_WOREDA: Woreda Peace Officer
+ * - POLICE_COMMANDER_CITY: City-level Police Commander
+ * - POLICE_COMMANDER_SUBCITY: Subcity Police Commander
+ * - POLICE_COMMANDER_WOREDA: Woreda Police Commander
  */
 export enum UserRole {
-    SYSTEM_SUPER_ADMIN = "SYSTEM_SUPER_ADMIN",
-    SYSTEM_ADMIN = "SYSTEM_ADMIN",
-    PATROL = "PATROL",
-    CITIZEN = "CITIZEN",
+  SYSTEM_SUPER_ADMIN = "SYSTEM_SUPER_ADMIN",
+  SYSTEM_ADMIN = "SYSTEM_ADMIN",
+  PATROL = "PATROL",
+  CITIZEN = "CITIZEN",
+
+  // Peace & Security hierarchy
+  PEACE_SUPER_ADMIN = "PEACE_SUPER_ADMIN",
+  PEACE_OFFICER_SUBCITY = "PEACE_OFFICER_SUBCITY",
+  PEACE_OFFICER_WOREDA = "PEACE_OFFICER_WOREDA",
+
+  // Police hierarchy
+  POLICE_COMMANDER_CITY = "POLICE_COMMANDER_CITY",
+  POLICE_COMMANDER_SUBCITY = "POLICE_COMMANDER_SUBCITY",
+  POLICE_COMMANDER_WOREDA = "POLICE_COMMANDER_WOREDA",
 }
 
 export enum OTPType {
@@ -48,7 +64,13 @@ export enum TokenType {
 }
 
 export enum EvidenceType {
-    PHOTO = "PHOTO",
-    VIDEO = "VIDEO",
-    BOTH = "BOTH",
+  PHOTO = "PHOTO",
+  VIDEO = "VIDEO",
+  BOTH = "BOTH",
+}
+
+export enum AuditAction {
+  CREATE = "CREATE",
+  UPDATE = "UPDATE",
+  DELETE = "DELETE",
 }

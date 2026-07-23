@@ -1,5 +1,5 @@
-import { mockDashboard } from "../mock-store";
-import { ServiceResponse } from "../api-types";
+import apiClient from '@/lib/api-client';
+import { ServiceResponse } from '../api-types';
 
 export interface PeaceSecurityStats {
   reports: {
@@ -24,18 +24,18 @@ export interface PeaceSecurityStats {
 
 class DashboardService {
   async getDashboardStats(): Promise<ServiceResponse<PeaceSecurityStats>> {
-    const stats = mockDashboard.getStats();
-    return { success: true, message: "ok", data: stats as PeaceSecurityStats };
+    const response = await apiClient.get('dashboard/stats');
+    return response.data;
   }
 
   async getFleetLocations(): Promise<ServiceResponse<any>> {
-    const data = mockDashboard.getFleetLocations();
-    return { success: true, message: "ok", data: data.data };
+    const response = await apiClient.get('dashboard/fleet-locations');
+    return response.data;
   }
 
   async getRecentReports(): Promise<ServiceResponse<any[]>> {
-    const all = mockDashboard.getFleetLocations();
-    return { success: true, message: "ok", data: all.data.reports };
+    const response = await apiClient.get('dashboard/recent-reports');
+    return response.data;
   }
 }
 

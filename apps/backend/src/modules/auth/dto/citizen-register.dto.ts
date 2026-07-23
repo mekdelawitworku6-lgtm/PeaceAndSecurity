@@ -12,6 +12,10 @@ export class CitizenRegisterDto {
     message: "Invalid Ethiopian phone number format",
   })
   phoneNumber: string;
+
+  @ApiProperty({ example: "0000", description: "Temporary PIN (will be replaced after OTP verification)", required: false })
+  @IsString()
+  pin?: string;
 }
 
 export class CitizenRegisterFormDto extends CitizenRegisterDto {

@@ -13,6 +13,10 @@ import {
   Users,
   LogOut,
   FileText,
+  MapPin,
+  Shield,
+  MessageSquare,
+  ClipboardList,
 } from "lucide-react";
 
 const navigationItems = [
@@ -34,6 +38,30 @@ const navigationItems = [
     href: "/dashboard/patrols",
     icon: Users,
     permission: PERMISSIONS.USER_VIEW,
+  },
+  {
+    label: "Geographic Units",
+    href: "/dashboard/geo",
+    icon: MapPin,
+    permission: PERMISSIONS.GEO_MANAGE,
+  },
+  {
+    label: "Patrol Teams",
+    href: "/dashboard/patrol-teams",
+    icon: Shield,
+    permission: PERMISSIONS.PATROL_TEAM_MANAGE,
+  },
+  {
+    label: "Chat",
+    href: "/dashboard/chat",
+    icon: MessageSquare,
+    permission: PERMISSIONS.CHAT_VIEW,
+  },
+  {
+    label: "Audit Logs",
+    href: "/dashboard/audit-logs",
+    icon: ClipboardList,
+    permission: PERMISSIONS.AUDIT_LOG_VIEW,
   },
   {
     label: "Analytics",

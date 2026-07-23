@@ -1,5 +1,5 @@
-import { IsString, IsEmail, IsOptional, IsArray } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
+import { IsString, IsEmail, IsOptional, IsArray, IsUUID } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform } from "class-transformer";
 
 /**
@@ -37,4 +37,21 @@ export class UpdateUserDto {
   @Transform(({ value }) => (typeof value === "string" ? [value] : value))
   @IsArray()
   permissions?: string[];
+
+  // ─── Geographic Hierarchy ─────────────────────────────────
+
+  @ApiPropertyOptional({ description: "City ID" })
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
+  @ApiPropertyOptional({ description: "Subcity ID" })
+  @IsOptional()
+  @IsUUID()
+  subcityId?: string;
+
+  @ApiPropertyOptional({ description: "Woreda ID" })
+  @IsOptional()
+  @IsUUID()
+  woredaId?: string;
 }

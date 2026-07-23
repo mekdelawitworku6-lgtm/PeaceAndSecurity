@@ -26,7 +26,7 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { UserForm } from "@/components/forms/user-form";
-import { mockNotifications } from "@/lib/mock-store";
+import apiClient from "@/lib/api-client";
 
 export default function PatrolsPage() {
     const router = useRouter();
@@ -176,12 +176,10 @@ export default function PatrolsPage() {
 
         const loadingToast = toast.loading("Sending push notification...");
         try {
-            mockNotifications.create({
+            await apiClient.post("notifications/broadcast", {
                 title,
                 message,
-                type: "GENERAL",
-                createdAt: new Date().toISOString(),
-                read: false,
+                targetRole: "PATROL",
             });
             toast.success("Push notification sent successfully", { id: loadingToast });
         } catch (err: any) {
@@ -273,7 +271,7 @@ export default function PatrolsPage() {
                     </div>
 
                     {/* Right: Add Button */}
-                    {hasPermission(PERMISSIONS.USER_CREATE) && (
+                    {hasPermission(PERMISSIONS.USER_CREATE) && user?.role === UserRole.SYSTEM_ADMIN ? (
                         <Button
                             onClick={handleAddUser}
                             className="h-11 rounded px-6 bg-primary hover:opacity-90 font-bold shadow-lg shadow-primary/20 shrink-0 w-full xl:w-auto"
@@ -281,7 +279,20 @@ export default function PatrolsPage() {
                             <Plus className="h-4 w-4 mr-2" />
                             Register Patrol
                         </Button>
-                    )}
+                    ) : hasPermission(PERMISSIONS.USER_CREATE) ? (
+                        <div className="relative group">
+                            <Button
+                                disabled
+                                className="h-11 rounded px-6 opacity-50 cursor-not-allowed shrink-0 w-full xl:w-auto"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Register Patrol
+                            </Button>
+                            <div className="absolute right-0 top-full mt-2 w-72 p-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                Patrol officer registration is restricted to System Admin only. Please contact a System Admin to register patrol officers.
+                            </div>
+                        </div>
+                    ) : null}
                 </div>
             </PageHeader>
 

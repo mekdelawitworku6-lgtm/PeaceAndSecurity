@@ -9,12 +9,48 @@ import { ConfigService } from "@nestjs/config";
 import helmet from "helmet";
 import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 import { TransformInterceptor } from "./common/interceptors/transform.interceptor";
+import { RequestContext } from "./modules/audit/request-context";
+import * as jwt from "jsonwebtoken";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
   app.useGlobalInterceptors(new TransformInterceptor());
   app.useGlobalFilters(new AllExceptionsFilter());
+
+  // RequestContext middleware for audit logging
+  app.use((req: any, res: any, next: () => void) => {
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      try {
+        const token = authHeader.substring(7);
+        const decoded = jwt.decode(token) as any;
+        if (decoded) {
+          RequestContext.run(
+            {
+              userId: decoded.sub || decoded.id || "unknown",
+              userName: decoded.fullName || decoded.name || "Unknown User",
+              userRole: decoded.role || "SYSTEM_ADMIN",
+              ipAddress: req.ip || req.connection?.remoteAddress || "unknown",
+            },
+            () => next(),
+          );
+          return;
+        }
+      } catch (e) {
+        // Token decode failed, continue without context
+      }
+    }
+    RequestContext.run(
+      {
+        userId: "anonymous",
+        userName: "Anonymous",
+        userRole: "CITIZEN" as any,
+        ipAddress: req.ip || req.connection?.remoteAddress || "unknown",
+      },
+      () => next(),
+    );
+  });
 
   app.use(
     helmet({

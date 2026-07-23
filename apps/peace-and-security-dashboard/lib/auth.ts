@@ -30,8 +30,8 @@ export interface AuthContextType {
   isServerActive: boolean;
   isCheckingServer: boolean;
   login: (
-    email: string,
-    password: string,
+    email?: string,
+    password?: string,
     phoneNumber?: string
   ) => Promise<void>;
   loginWithData: (user: User) => void;
@@ -40,22 +40,6 @@ export interface AuthContextType {
   hasPermission: (permission: string) => boolean;
 }
 
-export async function validateCredentials(
-  email?: string,
-  password?: string,
-  phoneNumber?: string
-): Promise<User> {
-  const { authService } = await import("./services/auth-service");
-  const { user } = await authService.login({ email, password: password || "", phoneNumber });
-  return user;
-}
-
-/**
- * Page-level route permissions by role.
- * System Admins have full access.
- * Patrol officers can view reports and their own settings.
- * Citizens access the system via the mobile app only.
- */
 export const rolePermissions: Record<UserRole, string[]> = {
   [UserRole.SYSTEM_SUPER_ADMIN]: [
     "dashboard",
@@ -79,7 +63,49 @@ export const rolePermissions: Record<UserRole, string[]> = {
     "settings",
   ],
   [UserRole.CITIZEN]: [
-    // Citizens access via mobile app, not this dashboard
     "reports",
+  ],
+  [UserRole.PEACE_SUPER_ADMIN]: [
+    "dashboard",
+    "reports",
+    "staff_management",
+    "geo_management",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.PEACE_OFFICER_SUBCITY]: [
+    "dashboard",
+    "reports",
+    "staff_management",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.PEACE_OFFICER_WOREDA]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.POLICE_COMMANDER_CITY]: [
+    "dashboard",
+    "reports",
+    "staff_management",
+    "geo_management",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.POLICE_COMMANDER_SUBCITY]: [
+    "dashboard",
+    "reports",
+    "staff_management",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.POLICE_COMMANDER_WOREDA]: [
+    "dashboard",
+    "reports",
+    "staff_management",
+    "patrol_teams",
+    "audit_logs",
   ],
 };

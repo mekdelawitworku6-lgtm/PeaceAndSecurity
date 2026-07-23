@@ -1,10 +1,11 @@
-import { ApiProperty } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsEmail,
   IsEnum,
   IsOptional,
   IsString,
   IsArray,
+  IsUUID,
 } from "class-validator";
 import { Transform } from "class-transformer";
 import { UserRole } from "../../../common/enums/enums";
@@ -29,10 +30,9 @@ export class CreateUserDto {
   email?: string;
 
   @ApiProperty({
-    enum: [UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN],
+    enum: Object.values(UserRole),
     default: UserRole.SYSTEM_ADMIN,
-    description:
-      "Dashboard admin role. Use /patrols or /citizens for those user types.",
+    description: "User role. Use /patrols or /citizens for patrol/citizen types.",
   })
   @IsOptional()
   @IsEnum(UserRole)
@@ -47,4 +47,21 @@ export class CreateUserDto {
   @Transform(({ value }) => (typeof value === "string" ? [value] : value))
   @IsArray()
   permissions?: string[];
+
+  // ─── Geographic Hierarchy ─────────────────────────────────
+
+  @ApiPropertyOptional({ description: "City ID (for city-level roles)" })
+  @IsOptional()
+  @IsUUID()
+  cityId?: string;
+
+  @ApiPropertyOptional({ description: "Subcity ID (for subcity-level roles)" })
+  @IsOptional()
+  @IsUUID()
+  subcityId?: string;
+
+  @ApiPropertyOptional({ description: "Woreda ID (for woreda-level roles)" })
+  @IsOptional()
+  @IsUUID()
+  woredaId?: string;
 }
