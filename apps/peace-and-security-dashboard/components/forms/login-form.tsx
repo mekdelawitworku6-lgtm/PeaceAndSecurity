@@ -10,7 +10,7 @@ import { selectLoginError, clearLoginError } from "@/lib/store/authSlice";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
 
 export function LoginForm() {
@@ -18,6 +18,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, user, loading: authLoading } = useAuth();
@@ -131,21 +132,31 @@ export function LoginForm() {
           <label className="text-xs font-semibold text-slate-700">
             Password
           </label>
-          <Input
-            type="password"
-            placeholder="Enter your password"
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              if (errors.password) setErrors({ ...errors, password: "" });
-            }}
-            disabled={loading}
-            autoComplete="current-password"
-            className={`h-12 bg-white border border-slate-200 rounded-xl px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all ${
-              errors.password ? "border-destructive bg-destructive/5" : ""
-            }`}
-            required
-          />
+          <div className="relative">
+            <Input
+              type={showPassword ? "text" : "password"}
+              placeholder="Enter your password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors({ ...errors, password: "" });
+              }}
+              disabled={loading}
+              autoComplete="current-password"
+              className={`h-12 bg-white border border-slate-200 rounded-xl px-4 pr-10 text-sm focus:ring-2 focus:ring-primary/20 transition-all ${
+                errors.password ? "border-destructive bg-destructive/5" : ""
+              }`}
+              required
+            />
+            <button
+              type="button"
+              tabIndex={-1}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
           {errors.password && (
             <p className="text-[11px] text-destructive font-bold pl-2 pt-0.5">
               {errors.password}

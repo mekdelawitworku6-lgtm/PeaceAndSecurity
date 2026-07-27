@@ -5,16 +5,12 @@ const getBaseUrl = () => {
         return envUrl.endsWith('/') ? envUrl : `${envUrl}/`;
     }
 
-    // 2. Fallback: Automatic detection on client side
-    // We return a placeholder during SSR to avoid hydration mismatch
-    // The actual components should handle the "waiting" state or use the fallback
+    // 2. Fallback: use same origin (nginx proxies /api/ to backend)
     if (typeof window === 'undefined') {
-        return 'http://127.0.0.1:1221/api/';
+        return 'http://127.0.0.1:52500/api/';
     }
 
-    // On client: use current host but port 1221
-    const url = `${window.location.protocol}//${window.location.hostname}:1221/api/`;
-    return url;
+    return `${window.location.origin}/api/`;
 };
 
 export const API_CONFIG = {
