@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { userService } from "@/lib/services/user-service";
 import { patrolService } from "@/lib/services/patrol-service";
 import { UserResponse } from "@/components/types";
+import { ROLE_LABELS } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,12 +30,16 @@ import {
 } from "lucide-react";
 import { getImageUrl, cn } from "@/lib/utils";
 import { PERMISSION_LABELS, PERMISSION_CATEGORIES } from "@/lib/permissions";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function UserDetailPage() {
   const { id } = useParams();
   const router = useRouter();
   const [user, setUser] = useState<UserResponse | any>(null);
   const [loading, setLoading] = useState(true);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -72,21 +77,22 @@ export default function UserDetailPage() {
 
   const handleToggleStatus = async () => {
     if (!user) return;
-    if (
-      !confirm(
-        `Are you sure you want to ${user.status === "ACTIVE" ? "disable" : "activate"
-        } this user?`,
-      )
-    )
-      return;
+    setConfirmOpen(true);
+  };
 
+  const executeToggleStatus = async () => {
+    if (!user) return;
+    setConfirmLoading(true);
     try {
       const loadingToast = toast.loading("Updating status...");
       await userService.toggleUserStatus(user.id);
       toast.success("Status updated successfully", { id: loadingToast });
       loadData();
+      setConfirmOpen(false);
     } catch (error) {
       toast.error("Failed to update status");
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -120,6 +126,7 @@ export default function UserDetailPage() {
     : [];
 
   return (
+    <>
     <DetailLayout
       backLink={{
         label: user.role === "PATROL" ? "Patrol Management" : "Users",
@@ -181,7 +188,7 @@ export default function UserDetailPage() {
                 className="uppercase tracking-wider font-bold text-primary border-primary/20 bg-primary/5"
               >
                 <Shield className="h-3 w-3 mr-1" />
-                {String(user.role || "").replace(/_/g, " ")}
+                {ROLE_LABELS[user.role as string] || String(user.role || "").replace(/_/g, " ")}
               </Badge>
             }
           />
@@ -417,6 +424,18 @@ export default function UserDetailPage() {
         </div>
       </DetailSection>
     </DetailLayout>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={user?.status === "ACTIVE" ? "Disable Account" : "Activate Account"}
+        description={`Are you sure you want to ${user?.status === "ACTIVE" ? "disable" : "activate"} this user?`}
+        confirmLabel={user?.status === "ACTIVE" ? "Disable" : "Activate"}
+        variant="destructive"
+        loading={confirmLoading}
+        onConfirm={executeToggleStatus}
+      />
+    </>
   );
 }
 

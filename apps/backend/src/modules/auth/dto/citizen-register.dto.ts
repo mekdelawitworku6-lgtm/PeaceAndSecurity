@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, Matches } from "class-validator";
+import { IsString, IsOptional, Matches } from "class-validator";
 
 export class CitizenRegisterDto {
   @ApiProperty({ example: "John Doe" })
@@ -14,6 +14,7 @@ export class CitizenRegisterDto {
   phoneNumber: string;
 
   @ApiProperty({ example: "0000", description: "Temporary PIN (will be replaced after OTP verification)", required: false })
+  @IsOptional()
   @IsString()
   pin?: string;
 }

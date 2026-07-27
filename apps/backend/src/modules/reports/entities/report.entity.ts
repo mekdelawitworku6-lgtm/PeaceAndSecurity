@@ -11,7 +11,7 @@ import {
 import { Citizen } from "../../citizen/entities/citizen.entity";
 import { Patrol } from "../../patrol/entities/patrol.entity";
 import { ReportType } from "../../report-types/entities/report-type.entity";
-import { ReportStatus, NoiseAreaType } from "../../../common/enums/enums";
+import { ReportStatus, NoiseAreaType, DevicePlatform } from "../../../common/enums/enums";
 
 @Entity("reports")
 export class Report extends BaseEntity {
@@ -147,6 +147,55 @@ export class Report extends BaseEntity {
   // Admin rejection reason
   @Column({ nullable: true })
   rejectionReason: string;
+
+  // ─── Incident Information ─────────────────────────────────
+
+  @Column({ type: "timestamp", nullable: true })
+  incidentDateTime: Date;
+
+  @Column({ default: false })
+  isOngoing: boolean;
+
+  @Column({ default: false })
+  isEmergency: boolean;
+
+  @Column({ type: "text", nullable: true })
+  suspectInfo: string;
+
+  @Column({ type: "text", nullable: true })
+  victimInfo: string;
+
+  @Column({ type: "text", nullable: true })
+  witnessInfo: string;
+
+  // ─── Device / Security Data ───────────────────────────────
+
+  @Column({ nullable: true })
+  deviceId: string;
+
+  @Column({
+    type: "enum",
+    enum: DevicePlatform,
+    nullable: true,
+  })
+  devicePlatform: DevicePlatform;
+
+  @Column({ nullable: true })
+  appVersion: string;
+
+  @Column({ nullable: true })
+  ipAddress: string;
+
+  // ─── Investigation ────────────────────────────────────────
+
+  @Column({ nullable: true })
+  assignedDepartmentId: string;
+
+  @Column("text", { nullable: true })
+  investigationNotes: string;
+
+  @Column({ type: "timestamp", nullable: true })
+  resolvedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

@@ -88,8 +88,12 @@ export class PatrolTeamService {
     if (!team) throw new NotFoundException("Patrol team not found");
 
     // Unassign all members before deleting
-    await this.patrolRepo.update({ teamId: id }, { teamId: null });
-    await this.teamRepo.delete(id);
+    const members = await this.patrolRepo.find({ where: { teamId: id } });
+    for (const member of members) {
+      member.teamId = null;
+      await this.patrolRepo.save(member);
+    }
+    await this.teamRepo.save({ ...team, deletedAt: new Date() });
     return successResponse("Patrol team deleted successfully");
   }
 

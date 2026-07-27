@@ -26,6 +26,7 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import apiClient from "@/lib/api-client";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function CitizensPage() {
     const router = useRouter();
@@ -45,6 +46,11 @@ export default function CitizensPage() {
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [sortBy, setSortBy] = useState<string>("createdAt");
     const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
+
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmTarget, setConfirmTarget] = useState<User | null>(null);
+    const [confirmAction, setConfirmAction] = useState<"toggle" | "reset">("toggle");
+    const [confirmLoading, setConfirmLoading] = useState(false);
 
     useEffect(() => {
         loadData(page);
@@ -97,36 +103,38 @@ export default function CitizensPage() {
     const handleDetailUser = (user: User) =>
         router.push(`/dashboard/citizens/${user.id}`);
 
-    const handleDeleteUser = async (user: User) => {
-        if (!confirm("Are you sure you want to toggle this citizen's status?")) return;
-        const loadingToast = toast.loading("Updating citizen status...");
-        try {
-            await userService.toggleUserStatus(user.id);
-            loadData();
-            toast.success("Citizen status updated successfully", { id: loadingToast });
-        } catch {
-            toast.error("Failed to update citizen status", { id: loadingToast });
-        }
+    const handleDeleteUser = (user: User) => {
+        setConfirmTarget(user);
+        setConfirmAction("toggle");
+        setConfirmOpen(true);
     };
 
-    const handleResetPassword = async (user: User) => {
-        if (
-            !confirm(
-                `Are you sure you want to reset the PIN for ${user.fullName}? A new PIN will be sent to them via SMS.`,
-            )
-        )
-            return;
+    const handleResetPassword = (user: User) => {
+        setConfirmTarget(user);
+        setConfirmAction("reset");
+        setConfirmOpen(true);
+    };
 
-        const loadingToast = toast.loading("Resetting PIN...");
+    const executeConfirm = async () => {
+        if (!confirmTarget) return;
+        setConfirmLoading(true);
         try {
-            await userService.resetUserPassword(user.id);
-            toast.success("PIN reset successfully. User notified via SMS.", {
-                id: loadingToast,
-            });
+            if (confirmAction === "toggle") {
+                const loadingToast = toast.loading("Updating citizen status...");
+                await userService.toggleUserStatus(confirmTarget.id);
+                toast.success("Citizen status updated successfully", { id: loadingToast });
+                loadData();
+            } else {
+                const loadingToast = toast.loading("Resetting PIN...");
+                await userService.resetUserPassword(confirmTarget.id);
+                toast.success("PIN reset successfully. User notified via SMS.", { id: loadingToast });
+            }
+            setConfirmOpen(false);
+            setConfirmTarget(null);
         } catch (err: any) {
-            toast.error(err?.message || "Failed to reset PIN", {
-                id: loadingToast,
-            });
+            toast.error(err?.message || "Action failed");
+        } finally {
+            setConfirmLoading(false);
         }
     };
 
@@ -258,6 +266,21 @@ export default function CitizensPage() {
                 onPageChange={setPage}
                 limit={limit}
                 onLimitChange={setLimit}
+            />
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title={confirmAction === "toggle" ? "Toggle Citizen Status" : "Reset PIN"}
+                description={
+                    confirmAction === "toggle"
+                        ? "Are you sure you want to toggle this citizen's status?"
+                        : `Are you sure you want to reset the PIN for ${confirmTarget?.fullName}? A new PIN will be sent via SMS.`
+                }
+                confirmLabel={confirmAction === "toggle" ? "Update Status" : "Reset PIN"}
+                variant="destructive"
+                loading={confirmLoading}
+                onConfirm={executeConfirm}
             />
         </div>
     );

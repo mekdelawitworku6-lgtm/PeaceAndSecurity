@@ -8,7 +8,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User } from "./entities/user.entity";
 import type { UpdateUserDto } from "./dto/update-user.dto";
-import { UserStatus, UserRole } from "../../common/enums/enums";
+import { BusinessEventType, UserStatus, UserRole } from "../../common/enums/enums";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { sendSMS } from "../../common/utils/sms-sender";
 import { normalizeEtPhone } from "../../common/utils/validator";
@@ -19,12 +19,14 @@ import {
   successResponse,
 } from "../../common/types/service-response";
 import { generateRandomCode } from "../../common/utils/generator";
+import { AuditService } from "../audit/audit.service";
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    private readonly auditService: AuditService,
   ) {}
 
   /* ---------------- REGISTER DASHBOARD USER ---------------- */
@@ -278,6 +280,15 @@ export class UserService {
         ? UserStatus.DISABLED
         : UserStatus.ACTIVE;
     const updated = await this.userRepository.save(user);
+
+    void this.auditService.logBusinessEvent({
+      eventType: BusinessEventType.USER_STATUS_TOGGLED,
+      entity: "User",
+      entityId: user.id,
+      description: `User status toggled to ${updated.status}`,
+      metadata: { previousStatus: updated.status === UserStatus.ACTIVE ? "DISABLED" : "ACTIVE", newStatus: updated.status },
+    });
+
     return successResponse(
       "User status updated successfully",
       this.sanitizeUser(updated),
@@ -295,7 +306,7 @@ export class UserService {
       throw new BadRequestException("Cannot delete a Super Admin user");
     }
 
-    await this.userRepository.remove(user);
+    await this.userRepository.save({ ...user, deletedAt: new Date() });
     return successResponse("User deleted successfully", { id });
   }
 

@@ -77,12 +77,12 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage("chat:read")
   async handleRead(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { conversationId: string },
+    @MessageBody() data: { conversationId: string; readerId?: string; readerName?: string },
   ) {
-    await this.chatService.markAsRead(data.conversationId);
+    await this.chatService.markAsRead(data.conversationId, data.readerId, data.readerName);
     this.server
       .to(`conversation:${data.conversationId}`)
-      .emit("chat:read", { conversationId: data.conversationId });
+      .emit("chat:read", { conversationId: data.conversationId, readerId: data.readerId, readerName: data.readerName });
   }
 
   // Method called from reports service when a report is created

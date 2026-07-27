@@ -7,6 +7,7 @@ import {
   Column,
 } from "@/components/tables";
 import { User } from "@/lib/auth";
+import { ROLE_LABELS } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { getImageUrl } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +16,6 @@ import { Mail, Phone, User as UserIcon } from "lucide-react";
 type Props = {
   owners: User[];
   loading?: boolean;
-  onDetail: (owner: User) => void;
   onEdit?: (owner: User) => void;
   onDelete?: (owner: User) => void;
   onResetPassword?: (owner: User) => void;
@@ -24,7 +24,6 @@ type Props = {
 export function UserTable({
   owners,
   loading,
-  onDetail,
   onEdit,
   onDelete,
   onResetPassword,
@@ -72,14 +71,12 @@ export function UserTable({
       header: "Role / Access",
       render: (row) => (
         <Badge variant="outline" className="uppercase text-[9px] font-black tracking-widest bg-slate-50 border-slate-200 text-slate-600 px-2 py-0.5 rounded-lg">
-          {row.role?.replace(/-/g, " ")}
+          {ROLE_LABELS[row.role] || row.role?.replace(/_/g, " ")}
         </Badge>
       ),
     },
     statusColumn<User>(),
     actionsColumn<User>({
-      onDetail,
-      detailPermission: PERMISSIONS.USER_VIEW,
       onEdit,
       editPermission: PERMISSIONS.USER_UPDATE,
       onDelete,

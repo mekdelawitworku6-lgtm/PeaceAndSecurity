@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, UserRole } from "@/lib/auth";
+import { User, UserRole, ROLE_LABELS } from "@/lib/auth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -101,11 +101,21 @@ export function UserForm({
     UserRole.POLICE_COMMANDER_WOREDA,
   ].includes(role);
 
+  const isSubcityRole = [
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+  ].includes(role);
+
+  const isWoredaRole = role === UserRole.PEACE_OFFICER_WOREDA;
+
+  const showWoreda = isWoredaRole;
+
   useEffect(() => {
     if (initialData) {
       setFullName(initialData.fullName || "");
       setEmail(initialData.email || "");
-      setPhoneNumber(initialData.phoneNumber || "");
+      const rawPhone = initialData.phoneNumber || "";
+      setPhoneNumber(rawPhone.startsWith("+251") ? rawPhone.slice(4) : rawPhone.replace(/^\+?\d{1,3}/, ""));
       setRole((initialData.role as UserRole) || UserRole.SYSTEM_ADMIN);
       setOfficeAddress((initialData as any).officeAddress || "");
       setOfficeLatitude(String((initialData as any).officeLatitude || ""));
@@ -148,8 +158,10 @@ export function UserForm({
     if (!isPatrol && !email.trim()) newErrors.email = "Email is required";
     if (!phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
-    } else if (phoneNumber.replace(/\D/g, "").length < 9) {
-      newErrors.phoneNumber = "Phone number must be at least 9 digits";
+    } else if (!/^\d{9}$/.test(phoneNumber)) {
+      newErrors.phoneNumber = "Must be exactly 9 digits";
+    } else if (!phoneNumber.startsWith("9")) {
+      newErrors.phoneNumber = "Ethiopian mobile numbers start with 9";
     }
 
     if (isNew && !isPatrol) {
@@ -187,13 +199,7 @@ export function UserForm({
     formData.append("fullName", fullName);
     if (email.trim()) formData.append("email", email);
 
-    let phone = phoneNumber.trim();
-    if (!phone.startsWith("+")) {
-      if (phone.startsWith("0")) phone = phone.substring(1);
-      if (phone.startsWith("251")) phone = `+${phone}`;
-      else phone = `+251${phone}`;
-    }
-    formData.append("phoneNumber", phone);
+    formData.append("phoneNumber", `+251${phoneNumber.trim()}`);
 
     formData.append("role", role);
     formData.append("isStaffUser", isPatrol ? "false" : "true");
@@ -234,13 +240,15 @@ export function UserForm({
           <div>
             <h2 className="text-lg font-bold text-slate-900">
               {isNew
-                ? (isPatrol ? "Register Patrol Officer" : "Create System User")
+                ? (defaultRole ? ROLE_LABELS[defaultRole] || "Create User" : "Create System User")
                 : (isPatrol ? "Update Patrol Officer" : "Update User Account")}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
               {isPatrol
                 ? "Register a new officer for field operations"
-                : "Manage staff access and permissions for the dashboard"}
+                : defaultRole
+                  ? `Set up account for a new ${ROLE_LABELS[defaultRole] || "user"}`
+                  : "Manage staff access and permissions for the dashboard"}
             </p>
           </div>
           <button
@@ -324,43 +332,55 @@ export function UserForm({
 
             <div className="space-y-1.5">
               <Label className="text-xs font-bold text-slate-600">Phone Number <span className="text-red-500">*</span></Label>
-              <Input
-                className={cn(
-                  "h-10 rounded-lg border-slate-200",
-                  errors.phoneNumber && "border-red-500 focus-visible:ring-red-100"
-                )}
-                placeholder="+251912345678"
-                value={phoneNumber}
-                onChange={(e) => {
-                  setPhoneNumber(e.target.value);
-                  if (errors.phoneNumber) setErrors({ ...errors, phoneNumber: "" });
-                }}
-              />
+              <div className="flex">
+                <div className="flex items-center h-10 px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-sm font-bold text-slate-600 select-none">
+                  +251
+                </div>
+                <Input
+                  className={cn(
+                    "h-10 rounded-r-lg border-slate-200 rounded-l-none flex-1",
+                    errors.phoneNumber && "border-red-500 focus-visible:ring-red-100"
+                  )}
+                  placeholder="9XXXXXXXX"
+                  maxLength={9}
+                  value={phoneNumber}
+                  onChange={(e) => {
+                    const val = e.target.value.replace(/\D/g, "").slice(0, 9);
+                    setPhoneNumber(val);
+                    if (errors.phoneNumber) setErrors({ ...errors, phoneNumber: "" });
+                  }}
+                />
+              </div>
+              {errors.phoneNumber && (
+                <p className="text-[11px] text-red-500 font-medium">{errors.phoneNumber}</p>
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-600">Role <span className="text-red-500">*</span></Label>
-              <Select value={role} onValueChange={(v) => {
-                setRole(v as UserRole);
-                setCityId("");
-                setSubcityId("");
-                setWoredaId("");
-              }}>
-                <SelectTrigger className="h-10 rounded-lg border-slate-200">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
-                  <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
-                  <SelectItem value="PEACE_SUPER_ADMIN">Peace Super Admin</SelectItem>
-                  <SelectItem value="PEACE_OFFICER_SUBCITY">Peace Officer Subcity</SelectItem>
-                  <SelectItem value="PEACE_OFFICER_WOREDA">Peace Officer Woreda</SelectItem>
-                  <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
-                  <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
-                  <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {!defaultRole && (
+              <div className="space-y-1.5">
+                <Label className="text-xs font-bold text-slate-600">Role <span className="text-red-500">*</span></Label>
+                <Select value={role} onValueChange={(v) => {
+                  setRole(v as UserRole);
+                  setCityId("");
+                  setSubcityId("");
+                  setWoredaId("");
+                }}>
+                  <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
+                    <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
+                    <SelectItem value="PEACE_SUPER_ADMIN">Peace Super Admin</SelectItem>
+                    <SelectItem value="PEACE_OFFICER_SUBCITY">Peace Officer Subcity</SelectItem>
+                    <SelectItem value="PEACE_OFFICER_WOREDA">Peace Officer Woreda</SelectItem>
+                    <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
+                    <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
+                    <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             {isNew && !isPatrol && (
               <div className="space-y-1.5">
@@ -393,51 +413,53 @@ export function UserForm({
                   <Building className="h-3.5 w-3.5 text-slate-400" />
                   Geographic Assignment
                 </Label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-slate-500">City</Label>
-                    <Select value={cityId} onValueChange={setCityId}>
-                      <SelectTrigger className="h-10 rounded-lg border-slate-200">
-                        <SelectValue placeholder="Select city" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {cities.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-slate-500">Subcity</Label>
-                    <Select value={subcityId} onValueChange={setSubcityId}>
-                      <SelectTrigger className="h-10 rounded-lg border-slate-200">
-                        <SelectValue placeholder="Select subcity" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {subcities
-                          .filter((s: any) => !cityId || s.cityId === cityId)
-                          .map((s: any) => (
-                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-slate-500">Woreda</Label>
-                    <Select value={woredaId} onValueChange={setWoredaId}>
-                      <SelectTrigger className="h-10 rounded-lg border-slate-200">
-                        <SelectValue placeholder="Select woreda" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {woredas
-                          .filter((w: any) => !subcityId || w.subcityId === subcityId)
-                          .map((w: any) => (
-                            <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+                <div className={`grid grid-cols-1 gap-3 ${showWoreda ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+                   <div className="space-y-1.5">
+                     <Label className="text-[10px] font-bold text-slate-500">City</Label>
+                     <Select value={cityId} onValueChange={setCityId}>
+                       <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                         <SelectValue placeholder="Select city" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {cities.map((c: any) => (
+                           <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                         ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+                   <div className="space-y-1.5">
+                     <Label className="text-[10px] font-bold text-slate-500">Subcity</Label>
+                     <Select value={subcityId} onValueChange={setSubcityId}>
+                       <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                         <SelectValue placeholder="Select subcity" />
+                       </SelectTrigger>
+                       <SelectContent>
+                         {subcities
+                           .filter((s: any) => !cityId || s.cityId === cityId)
+                           .map((s: any) => (
+                             <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                           ))}
+                       </SelectContent>
+                     </Select>
+                   </div>
+                   {showWoreda && (
+                     <div className="space-y-1.5">
+                       <Label className="text-[10px] font-bold text-slate-500">Woreda</Label>
+                       <Select value={woredaId} onValueChange={setWoredaId}>
+                         <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                           <SelectValue placeholder="Select woreda" />
+                         </SelectTrigger>
+                         <SelectContent>
+                           {woredas
+                             .filter((w: any) => !subcityId || w.subcityId === subcityId)
+                             .map((w: any) => (
+                               <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
+                             ))}
+                         </SelectContent>
+                       </Select>
+                     </div>
+                   )}
+                 </div>
                 <p className="text-[10px] text-slate-400">Assign this officer to a specific geographic area.</p>
               </div>
             )}
@@ -497,7 +519,7 @@ export function UserForm({
               </>
             )}
 
-            {!isPatrol && (
+            {!isPatrol && !isSubcityRole && (
               <div className="sm:col-span-2 space-y-2 pt-2 border-t border-slate-100">
                 <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                   <Shield className="h-3.5 w-3.5 text-slate-400" />
@@ -532,7 +554,13 @@ export function UserForm({
               <Loader2 className="h-4.5 w-4.5 animate-spin" />
             ) : (
               <>
-                {isNew ? (isPatrol ? "Register Officer" : "Create Account") : "Save Changes"}
+                {isNew
+                  ? (isPatrol
+                      ? "Register Officer"
+                      : defaultRole
+                        ? `Create ${ROLE_LABELS[defaultRole] || "User"}`
+                        : "Create Account")
+                  : "Save Changes"}
                 <ChevronRight className="ml-1.5 h-3.5 w-3.5" />
               </>
             )}

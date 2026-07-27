@@ -23,7 +23,7 @@ import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { NoBypass } from "../../common/decorators/no-bypass.decorator";
-import { UserRole } from "../../common/enums/enums";
+import { UserRole, DataAccessType } from "../../common/enums/enums";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -32,13 +32,17 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
+import { AuditService } from "../audit/audit.service";
 
 @ApiTags("Patrols")
 @Controller("patrols")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class PatrolController {
-  constructor(private readonly patrolService: PatrolService) { }
+  constructor(
+    private readonly patrolService: PatrolService,
+    private readonly auditService: AuditService,
+  ) { }
 
   /**
    * Register a new patrol officer from the Admin Dashboard.
@@ -69,7 +73,7 @@ export class PatrolController {
     status: 200,
     description: "Patrol officers retrieved successfully.",
   })
-  findAll(
+  async findAll(
     @Query()
     query: {
       page?: number;
@@ -77,8 +81,16 @@ export class PatrolController {
       search?: string;
       status?: string;
     },
+    @Request() req: any,
   ) {
-    return this.patrolService.findAll(query);
+    const result = await this.patrolService.findAll(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PATROL_LIST,
+      targetEntity: "Patrol",
+      accessPath: req.originalUrl,
+      description: `Listed patrol officers (page ${query.page || 1})`,
+    });
+    return result;
   }
 
   @Get("nearby")
@@ -88,14 +100,22 @@ export class PatrolController {
     status: 200,
     description: "Nearby patrol officers retrieved successfully.",
   })
-  findNearby(
+  async findNearby(
     @Query() query: { latitude: string; longitude: string; radiusKm?: string },
+    @Request() req: any,
   ) {
-    return this.patrolService.findNearby(
+    const result = await this.patrolService.findNearby(
       Number(query.latitude),
       Number(query.longitude),
       query.radiusKm ? Number(query.radiusKm) : 10,
     );
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PATROL_LIST,
+      targetEntity: "Patrol",
+      accessPath: req.originalUrl,
+      description: `Viewed nearby patrol officers`,
+    });
+    return result;
   }
 
   @Get(":id")
@@ -105,8 +125,16 @@ export class PatrolController {
     status: 200,
     description: "Patrol officer retrieved successfully.",
   })
-  findOne(@Param("id") id: string) {
-    return this.patrolService.findOne(id);
+  async findOne(@Param("id") id: string, @Request() req: any) {
+    const result = await this.patrolService.findOne(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PATROL_PROFILE,
+      targetEntity: "Patrol",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed patrol officer profile`,
+    });
+    return result;
   }
 
   @Patch(":id")
@@ -157,7 +185,15 @@ export class PatrolController {
   @ApiOperation({ summary: "Get currently logged-in patrol officer's profile" })
   @ApiResponse({ status: 200, description: "Profile retrieved successfully." })
   async getProfile(@Request() req: any) {
-    return this.patrolService.getPatrolProfile(req.user.id);
+    const result = await this.patrolService.getPatrolProfile(req.user.id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PROFILE,
+      targetEntity: "Patrol",
+      targetId: req.user.id,
+      accessPath: req.originalUrl,
+      description: `Viewed own profile`,
+    });
+    return result;
   }
 
   @Patch("me/profile")

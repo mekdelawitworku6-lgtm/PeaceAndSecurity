@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { Plus, Trash2, Users } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function PatrolTeamsPage() {
   const dispatch = useAppDispatch();
@@ -45,6 +46,10 @@ export default function PatrolTeamsPage() {
   const [name, setName] = useState("");
   const [selectedWoredaId, setSelectedWoredaId] = useState("");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTargetId, setConfirmTargetId] = useState<string | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   // Only Woreda Police Commander can create/manage teams
   const canManageTeams = user?.role === UserRole.POLICE_COMMANDER_WOREDA;
@@ -77,13 +82,23 @@ export default function PatrolTeamsPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Delete this team?")) return;
+  const handleDelete = (id: string) => {
+    setConfirmTargetId(id);
+    setConfirmOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmTargetId) return;
+    setConfirmLoading(true);
     try {
-      await dispatch(deletePatrolTeam(id)).unwrap();
+      await dispatch(deletePatrolTeam(confirmTargetId)).unwrap();
       toast.success("Team deleted");
+      setConfirmOpen(false);
+      setConfirmTargetId(null);
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete");
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -197,6 +212,17 @@ export default function PatrolTeamsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Patrol Team"
+        description="Are you sure you want to delete this team? This cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={confirmLoading}
+        onConfirm={executeDelete}
+      />
     </div>
   );
 }

@@ -34,7 +34,11 @@ export class ReportTypesService {
     return await this.reportTypeRepo.save(reportType);
   }
 
-  async findAll(query?: { search?: string; isActive?: string }) {
+  async findAll(query?: { search?: string; isActive?: string; page?: string; limit?: string }) {
+    const page = Math.max(1, parseInt(query?.page || "1", 10));
+    const limit = Math.min(100, Math.max(1, parseInt(query?.limit || "20", 10)));
+    const skip = (page - 1) * limit;
+
     const qb = this.reportTypeRepo.createQueryBuilder("rt");
 
     if (query?.search) {
@@ -49,7 +53,13 @@ export class ReportTypesService {
       });
     }
 
-    return await qb.orderBy("rt.name", "ASC").getMany();
+    const [data, total] = await qb
+      .orderBy("rt.name", "ASC")
+      .skip(skip)
+      .take(limit)
+      .getManyAndCount();
+
+    return { data, total, page, limit, totalPages: Math.ceil(total / limit) };
   }
 
   async findOne(id: string) {
@@ -86,7 +96,8 @@ export class ReportTypesService {
       }
     }
 
-    await this.reportTypeRepo.update(id, dto);
+    Object.assign(existing, dto);
+    await this.reportTypeRepo.save(existing);
     return this.reportTypeRepo.findOneBy({ id });
   }
 
@@ -107,6 +118,6 @@ export class ReportTypesService {
       );
     }
 
-    return await this.reportTypeRepo.delete(id);
+    return await this.reportTypeRepo.save({ ...existing, deletedAt: new Date() });
   }
 }

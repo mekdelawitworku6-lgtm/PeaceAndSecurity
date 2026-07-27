@@ -2,6 +2,7 @@ import {
   PrimaryGeneratedColumn,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   Column,
   ManyToOne,
   JoinColumn,
@@ -16,6 +17,9 @@ export abstract class BaseEntity {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  @DeleteDateColumn({ nullable: true })
+  deletedAt: Date | null;
 
   @ManyToOne(() => require("../../modules/user/entities/user.entity").User, {
     nullable: true,

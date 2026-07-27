@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Req,
 } from "@nestjs/common";
 import {
   ApiTags,
@@ -20,14 +21,18 @@ import { CreatePatrolTeamDto, UpdatePatrolTeamDto, AddTeamMemberDto } from "./dt
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
-import { UserRole } from "../../common/enums/enums";
+import { UserRole, DataAccessType } from "../../common/enums/enums";
+import { AuditService } from "../audit/audit.service";
 
 @ApiTags("Patrol Teams")
 @Controller("patrol-teams")
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class PatrolTeamController {
-  constructor(private readonly teamService: PatrolTeamService) {}
+  constructor(
+    private readonly teamService: PatrolTeamService,
+    private readonly auditService: AuditService,
+  ) {}
 
   @Post()
   @Roles(UserRole.POLICE_COMMANDER_WOREDA)
@@ -38,14 +43,29 @@ export class PatrolTeamController {
 
   @Get()
   @ApiOperation({ summary: "Get all patrol teams (filtered by woreda)" })
-  async findAll(@Query() query: { woredaId?: string; page?: number; limit?: number }) {
-    return this.teamService.findAll(query);
+  async findAll(@Query() query: { woredaId?: string; page?: number; limit?: number }, @Req() req: any) {
+    const result = await this.teamService.findAll(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PATROL_TEAM_LIST,
+      targetEntity: "PatrolTeam",
+      accessPath: req.originalUrl,
+      description: `Listed patrol teams`,
+    });
+    return result;
   }
 
   @Get(":id")
   @ApiOperation({ summary: "Get patrol team by ID" })
-  async findOne(@Param("id") id: string) {
-    return this.teamService.findOne(id);
+  async findOne(@Param("id") id: string, @Req() req: any) {
+    const result = await this.teamService.findOne(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PATROL_TEAM_LIST,
+      targetEntity: "PatrolTeam",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed patrol team detail`,
+    });
+    return result;
   }
 
   @Patch(":id")

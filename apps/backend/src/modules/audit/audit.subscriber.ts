@@ -4,12 +4,13 @@ import {
   InsertEvent,
   UpdateEvent,
   RemoveEvent,
+  EntityManager,
 } from "typeorm";
+import * as crypto from "crypto";
 import { AuditLog } from "./entities/audit-log.entity";
 import { AuditAction, UserRole } from "../../common/enums/enums";
 import { RequestContext } from "./request-context";
 
-// Entities that should be audited
 const AUDITED_ENTITIES = new Set([
   "User",
   "Report",
@@ -22,38 +23,61 @@ const AUDITED_ENTITIES = new Set([
   "ReportType",
   "Citizen",
   "Message",
+  "Conversation",
+  "Setting",
+  "Notification",
+  "ReportLog",
+  "CameraAlert",
+  "PatrolTeamMember",
 ]);
 
-// Sensitive fields to exclude from audit logs
 const EXCLUDED_FIELDS = new Set([
   "password",
   "pin",
   "fcmToken",
   "accessToken",
   "refreshToken",
+  "registrationToken",
+  "passwordResetToken",
+  "otpCode",
+  "otp",
+  "__originalValues",
+  "createdAt",
+  "updatedAt",
 ]);
+
+const AUDIT_REDACTED_FIELDS = new Set([
+  "pin",
+  "password",
+  "otpCode",
+  "otp",
+  "fcmToken",
+  "accessToken",
+  "refreshToken",
+  "registrationToken",
+  "passwordResetToken",
+]);
+
+function computeRecordHash(id: string, timestamp: Date, entity: string, entityId: string, action: string, actorId: string, previousHash: string): string {
+  const data = `${id || ""}|${timestamp?.toISOString() || ""}|${entity}|${entityId}|${action}|${actorId}|${previousHash}`;
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
 
 @EventSubscriber()
 export class AuditSubscriber implements EntitySubscriberInterface<any> {
-  private auditRepository: any;
-
   afterLoad(entity: any) {
-    // Store original values for comparison during updates
     if (entity && typeof entity === "object") {
       entity.__originalValues = { ...entity };
     }
   }
 
-  async beforeInsert(event: InsertEvent<any>) {
+  async afterInsert(event: InsertEvent<any>) {
     const entityName = event.metadata.name;
     if (!AUDITED_ENTITIES.has(entityName)) return;
 
     const ctx = RequestContext.getStore();
     const entity = event.entity;
-
-    // Extract geo fields if they exist
     const geoFields = this.extractGeoFields(entity);
-
     const newValues = this.sanitizeValues(entity);
 
     const auditLog = new AuditLog();
@@ -62,7 +86,7 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     auditLog.actorRole = ctx?.userRole || UserRole.SYSTEM_ADMIN;
     auditLog.ipAddress = ctx?.ipAddress || "unknown";
     auditLog.entity = entityName;
-    auditLog.entityId = entity.id || "pending";
+    auditLog.entityId = entity.id;
     auditLog.action = AuditAction.CREATE;
     auditLog.cityId = geoFields.cityId;
     auditLog.subcityId = geoFields.subcityId;
@@ -70,8 +94,26 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     auditLog.newValues = newValues;
     auditLog.description = `Created ${entityName}`;
 
-    // Save asynchronously (non-blocking)
-    this.saveAuditLog(auditLog);
+    // Request correlation
+    auditLog.requestId = ctx?.requestId;
+    auditLog.source = ctx?.source || "SYSTEM" as any;
+    auditLog.requestMethod = ctx?.requestMethod;
+    auditLog.requestPath = ctx?.requestPath;
+    auditLog.userAgent = ctx?.userAgent;
+    auditLog.deviceId = ctx?.deviceId;
+    auditLog.devicePlatform = ctx?.devicePlatform;
+    auditLog.appVersion = ctx?.appVersion;
+    auditLog.sessionId = ctx?.sessionId;
+
+    // Hash chain
+    const previousHash = await this.getLastHash(event.manager);
+    auditLog.previousHash = previousHash;
+    auditLog.recordHash = computeRecordHash(
+      auditLog.id, auditLog.timestamp, auditLog.entity, auditLog.entityId,
+      auditLog.action, auditLog.actorId, previousHash,
+    );
+
+    await this.persistAuditLog(event.manager, auditLog);
   }
 
   async beforeUpdate(event: UpdateEvent<any>) {
@@ -84,18 +126,24 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
 
     if (!entity || !databaseEntity) return;
 
-    // Compare old and new values
     const oldValues: Record<string, any> = {};
     const newValues: Record<string, any> = {};
     const changedFields: string[] = [];
 
-    for (const key of Object.keys(entity)) {
-      if (key.startsWith("__") || EXCLUDED_FIELDS.has(key)) continue;
+    // Use entity columns from metadata for reliable field comparison
+    const columns = event.metadata.columns.map(c => c.propertyName);
+
+    for (const key of columns) {
+      if (EXCLUDED_FIELDS.has(key)) continue;
 
       const oldVal = databaseEntity[key];
       const newVal = entity[key];
 
-      if (JSON.stringify(oldVal) !== JSON.stringify(newVal)) {
+      // Deep comparison using JSON stringify
+      const oldJson = JSON.stringify(oldVal);
+      const newJson = JSON.stringify(newVal);
+
+      if (oldJson !== newJson) {
         oldValues[key] = oldVal;
         newValues[key] = newVal;
         changedFields.push(key);
@@ -103,6 +151,11 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     }
 
     if (changedFields.length === 0) return;
+
+    const isSoftDelete =
+      changedFields.includes("deletedAt") &&
+      !oldValues.deletedAt &&
+      newValues.deletedAt;
 
     const geoFields = this.extractGeoFields(entity);
 
@@ -113,16 +166,44 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     auditLog.ipAddress = ctx?.ipAddress || "unknown";
     auditLog.entity = entityName;
     auditLog.entityId = entity.id || databaseEntity.id;
-    auditLog.action = AuditAction.UPDATE;
+
+    if (isSoftDelete) {
+      auditLog.action = AuditAction.DELETE;
+      auditLog.oldValues = { deletedAt: null };
+      auditLog.newValues = { deletedAt: newValues.deletedAt };
+      auditLog.description = `Deleted ${entityName} (soft delete)`;
+    } else {
+      auditLog.action = AuditAction.UPDATE;
+      auditLog.oldValues = this.redactSensitiveFields(this.sanitizeValues(oldValues));
+      auditLog.newValues = this.redactSensitiveFields(this.sanitizeValues(newValues));
+      auditLog.changedFields = changedFields.filter(f => f !== "deletedAt" && f !== "updatedAt");
+      auditLog.description = `Updated ${entityName}: ${auditLog.changedFields.join(", ")}`;
+    }
+
     auditLog.cityId = geoFields.cityId;
     auditLog.subcityId = geoFields.subcityId;
     auditLog.woredaId = geoFields.woredaId;
-    auditLog.oldValues = this.sanitizeValues(oldValues);
-    auditLog.newValues = this.sanitizeValues(newValues);
-    auditLog.changedFields = changedFields;
-    auditLog.description = `Updated ${entityName}: ${changedFields.join(", ")}`;
 
-    this.saveAuditLog(auditLog);
+    // Request correlation
+    auditLog.requestId = ctx?.requestId;
+    auditLog.source = ctx?.source || "SYSTEM" as any;
+    auditLog.requestMethod = ctx?.requestMethod;
+    auditLog.requestPath = ctx?.requestPath;
+    auditLog.userAgent = ctx?.userAgent;
+    auditLog.deviceId = ctx?.deviceId;
+    auditLog.devicePlatform = ctx?.devicePlatform;
+    auditLog.appVersion = ctx?.appVersion;
+    auditLog.sessionId = ctx?.sessionId;
+
+    // Hash chain
+    const previousHash = await this.getLastHash(event.manager);
+    auditLog.previousHash = previousHash;
+    auditLog.recordHash = computeRecordHash(
+      auditLog.id, auditLog.timestamp, auditLog.entity, auditLog.entityId,
+      auditLog.action, auditLog.actorId, previousHash,
+    );
+
+    await this.persistAuditLog(event.manager, auditLog);
   }
 
   async beforeRemove(event: RemoveEvent<any>) {
@@ -135,7 +216,7 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     if (!entity) return;
 
     const geoFields = this.extractGeoFields(entity);
-    const oldValues = this.sanitizeValues(entity);
+    const oldValues = this.redactSensitiveFields(this.sanitizeValues(entity));
 
     const auditLog = new AuditLog();
     auditLog.actorId = ctx?.userId || "system";
@@ -151,7 +232,36 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     auditLog.oldValues = oldValues;
     auditLog.description = `Deleted ${entityName}`;
 
-    this.saveAuditLog(auditLog);
+    // Request correlation
+    auditLog.requestId = ctx?.requestId;
+    auditLog.source = ctx?.source || "SYSTEM" as any;
+    auditLog.requestMethod = ctx?.requestMethod;
+    auditLog.requestPath = ctx?.requestPath;
+    auditLog.userAgent = ctx?.userAgent;
+    auditLog.deviceId = ctx?.deviceId;
+    auditLog.devicePlatform = ctx?.devicePlatform;
+    auditLog.appVersion = ctx?.appVersion;
+    auditLog.sessionId = ctx?.sessionId;
+
+    // Hash chain
+    const previousHash = await this.getLastHash(event.manager);
+    auditLog.previousHash = previousHash;
+    auditLog.recordHash = computeRecordHash(
+      auditLog.id, auditLog.timestamp, auditLog.entity, auditLog.entityId,
+      auditLog.action, auditLog.actorId, previousHash,
+    );
+
+    await this.persistAuditLog(event.manager, auditLog);
+  }
+
+  private async getLastHash(manager: EntityManager): Promise<string | null> {
+    try {
+      const repo = manager.getRepository(AuditLog);
+      const last = await repo.findOne({ order: { timestamp: "DESC", id: "DESC" } });
+      return last?.recordHash || null;
+    } catch {
+      return null;
+    }
   }
 
   private extractGeoFields(entity: any): {
@@ -166,12 +276,22 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     };
   }
 
+  private redactSensitiveFields(values: Record<string, any> | null): Record<string, any> | null {
+    if (!values) return null;
+    const redacted = { ...values };
+    for (const key of Object.keys(redacted)) {
+      if (AUDIT_REDACTED_FIELDS.has(key)) {
+        redacted[key] = "[REDACTED]";
+      }
+    }
+    return redacted;
+  }
+
   private sanitizeValues(values: any): Record<string, any> {
     if (!values) return null;
     const sanitized: Record<string, any> = {};
     for (const [key, value] of Object.entries(values)) {
       if (EXCLUDED_FIELDS.has(key) || key.startsWith("__")) continue;
-      // Only include serializable values
       try {
         JSON.stringify(value);
         sanitized[key] = value;
@@ -182,16 +302,12 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     return sanitized;
   }
 
-  private async saveAuditLog(auditLog: AuditLog) {
+  private async persistAuditLog(manager: EntityManager, auditLog: AuditLog) {
     try {
-      // Get the audit repository from the connection
-      if (!this.auditRepository) {
-        const connection = require("typeorm").getConnection();
-        this.auditRepository = connection.getRepository(AuditLog);
-      }
-      await this.auditRepository.save(auditLog);
+      const repo = manager.getRepository(AuditLog);
+      await repo.save(auditLog);
     } catch (error) {
-      console.error("Failed to save audit log:", error);
+      console.error("[AuditSubscriber] Failed to save audit log:", error);
     }
   }
 }

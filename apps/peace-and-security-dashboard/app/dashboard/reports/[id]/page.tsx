@@ -60,6 +60,7 @@ import {
     SelectValue,
 } from "@/components/ui/select"
 import { EcoGoogleMap } from "@/components/maps/google-map"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function ReportDetailPage() {
     const params = useParams()
@@ -81,6 +82,9 @@ export default function ReportDetailPage() {
     const [followUpNotes, setFollowUpNotes] = useState("")
     const [followUpFiles, setFollowUpFiles] = useState<File[]>([])
     const [submittingFollowUp, setSubmittingFollowUp] = useState(false)
+
+    const [confirmOpen, setConfirmOpen] = useState(false)
+    const [confirmLoading, setConfirmLoading] = useState(false)
 
     useEffect(() => {
         if (id) {
@@ -195,13 +199,20 @@ export default function ReportDetailPage() {
     }
 
     const handleDelete = async () => {
-        if (!confirm("Are you sure you want to delete this report?")) return
+        setConfirmOpen(true)
+    }
+
+    const executeDelete = async () => {
+        setConfirmLoading(true)
         try {
             await reportService.deleteReport(id)
             toast.success("Report deleted successfully")
+            setConfirmOpen(false)
             router.push("/dashboard/reports")
         } catch (error) {
             toast.error("Failed to delete report")
+        } finally {
+            setConfirmLoading(false)
         }
     }
 
@@ -637,6 +648,17 @@ export default function ReportDetailPage() {
                     </DialogContent>
                 </Dialog>
             </div>
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title="Delete Report"
+                description="Are you sure you want to delete this report? This cannot be undone."
+                confirmLabel="Delete Report"
+                variant="destructive"
+                loading={confirmLoading}
+                onConfirm={executeDelete}
+            />
         </div>
     )
 }

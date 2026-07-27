@@ -31,6 +31,9 @@ export class Message {
   @Column({ type: "timestamp", nullable: true })
   readAt: Date;
 
+  @Column({ type: "jsonb", default: [] })
+  readBy: Array<{ userId: string; userName?: string; readAt: Date }>;
+
   @CreateDateColumn()
   createdAt: Date;
 }

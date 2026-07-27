@@ -1,5 +1,5 @@
-import { UserStatus, UserRole } from "./enums";
-export { UserStatus, UserRole };
+import { UserStatus, UserRole, ROLE_LABELS } from "./enums";
+export { UserStatus, UserRole, ROLE_LABELS };
 
 export interface User {
   id: string;

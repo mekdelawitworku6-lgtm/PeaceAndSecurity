@@ -8,6 +8,7 @@ import { Camera } from "../cameras/entities/camera.entity";
 import { ReportType } from "../report-types/entities/report-type.entity";
 import { Citizen } from "../citizen/entities/citizen.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { Patrol } from "../patrol/entities/patrol.entity";
       Citizen,
       Patrol,
     ]),
+    AuditModule,
   ],
   controllers: [DashboardController],
   providers: [DashboardService],

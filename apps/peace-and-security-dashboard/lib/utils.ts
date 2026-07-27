@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
+import { API_CONFIG } from './api-config'
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
@@ -11,12 +12,10 @@ export function getImageUrl(path: string | null | undefined) {
     return path;
   }
 
-  if (process.env.NEXT_PUBLIC_FILE_URL) {
-    const baseUrl = process.env.NEXT_PUBLIC_FILE_URL.replace(/\/$/, "");
-    const cleanPath = path.replace(/^\/+/, "");
-    return `${baseUrl}/${cleanPath}`;
-  }
-
-  return path;
+  // API_CONFIG.BASE_URL is e.g. "http://localhost:5000/api/"
+  // Strip trailing "api/" to get the file server base
+  const apiBase = API_CONFIG.BASE_URL.replace(/\/api\/?\/?$/, "").replace(/\/$/, "");
+  const cleanPath = path.replace(/^\/+/, "");
+  return `${apiBase}/${cleanPath}`;
 }
 

@@ -36,7 +36,7 @@ const navigationItems = [
     permission: PERMISSIONS.REPORT_VIEW,
   },
   {
-    label: "Officers",
+    label: "Patrol Officers",
     href: "/dashboard/patrols",
     icon: Users,
     permission: PERMISSIONS.USER_VIEW,

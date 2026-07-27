@@ -172,6 +172,7 @@ export const API_ENDPOINTS = {
             GET_ALL: (conversationId: string) => `chat/conversations/${conversationId}/messages`,
             SEND: (conversationId: string) => `chat/conversations/${conversationId}/messages`,
         },
+        MARK_READ: (conversationId: string) => `chat/conversations/${conversationId}/read`,
         WS_GATEWAY: 'chat',
     },
 
@@ -180,6 +181,9 @@ export const API_ENDPOINTS = {
         GET_ALL: 'audit-logs',
         GET_BY_ID: (id: string) => `audit-logs/${id}`,
         GET_BY_ENTITY: (entity: string, entityId: string) => `audit-logs/entity/${entity}/${entityId}`,
+        SECURITY_EVENTS: 'audit-logs/security-events',
+        DATA_ACCESS_EVENTS: 'audit-logs/data-access-events',
+        VERIFY_CHAIN: 'audit-logs/verify-chain',
         EXPORT_CSV: 'audit-logs/export/csv',
         EXPORT_PDF: 'audit-logs/export/pdf',
     },

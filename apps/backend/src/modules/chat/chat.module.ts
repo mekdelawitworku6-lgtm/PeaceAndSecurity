@@ -5,9 +5,10 @@ import { ChatService } from "./chat.service";
 import { ChatGateway } from "./chat.gateway";
 import { Conversation } from "./entities/conversation.entity";
 import { Message } from "./entities/message.entity";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Conversation, Message])],
+  imports: [TypeOrmModule.forFeature([Conversation, Message]), AuditModule],
   controllers: [ChatController],
   providers: [ChatService, ChatGateway],
   exports: [ChatService, ChatGateway],

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/auth-context";
+import { ROLE_LABELS } from "@/lib/auth";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import { fetchUsers, registerUser, toggleUserStatus, selectUsers, selectUsersLoading } from "@/lib/store/usersSlice";
 import { PERMISSIONS } from "@/lib/permissions";
@@ -25,24 +26,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import apiClient from "@/lib/api-client";
 
 type SettingsTab = "general" | "team";
 
 function GeneralSettingsTab() {
-  const [bureauName, setBureauName] = useState("Addis Ababa City Peace and Security Administration Bureau");
-  const [bureauCode, setBureauCode] = useState("AAPCB");
+  const [bureauName, setBureauName] = useState("");
+  const [bureauCode, setBureauCode] = useState("");
   const [timezone, setTimezone] = useState("EAT");
-  const [highPriority, setHighPriority] = useState("6");
-  const [mediumPriority, setMediumPriority] = useState("12");
-  const [lowPriority, setLowPriority] = useState("48");
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await apiClient.get("/settings");
+        const data = res.data?.data || res.data;
+        if (data.bureauName) setBureauName(data.bureauName);
+        if (data.bureauCode) setBureauCode(data.bureauCode);
+        if (data.timezone) setTimezone(data.timezone);
+      } catch {}
+      setLoading(false);
+    };
+    load();
+  }, []);
 
   const handleSave = async () => {
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 800));
-    toast.success("General settings saved successfully");
+    try {
+      await apiClient.put("/settings", { bureauName, bureauCode, timezone });
+      toast.success("General settings saved successfully");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to save settings");
+    }
     setSaving(false);
   };
+
+  if (loading) {
+    return <div className="flex items-center gap-2 text-slate-400 py-8"><Loader2 className="w-5 h-5 animate-spin" /> Loading settings...</div>;
+  }
 
   return (
     <div className="space-y-8">
@@ -66,23 +88,6 @@ function GeneralSettingsTab() {
               <SelectItem value="CET">Central European Time — UTC+1</SelectItem>
             </SelectContent>
           </Select>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Default Priority Thresholds</Label>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">High Priority Hours</span>
-              <Input type="number" value={highPriority} onChange={(e) => setHighPriority(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Medium Priority Bound</span>
-              <Input type="number" value={mediumPriority} onChange={(e) => setMediumPriority(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Low Priority Above</span>
-              <Input type="number" value={lowPriority} onChange={(e) => setLowPriority(e.target.value)} className="h-11 rounded-lg border-slate-200 bg-slate-50/50 font-medium" />
-            </div>
-          </div>
         </div>
       </div>
       <Button onClick={handleSave} disabled={saving} className="h-11 rounded-lg px-6 bg-primary hover:opacity-90 text-white font-bold text-sm shadow-sm">
@@ -156,13 +161,7 @@ function TeamRolesTab() {
   };
 
   const getRoleLabel = (role: string) => {
-    switch (role) {
-      case "SYSTEM_SUPER_ADMIN": return "Super Admin";
-      case "SYSTEM_ADMIN": return "System Admin";
-      case "PATROL": return "Patrol Officer";
-      case "CITIZEN": return "Citizen";
-      default: return role;
-    }
+    return ROLE_LABELS[role] || role.replace(/_/g, " ");
   };
 
   const colors = ["bg-red-500", "bg-green-500", "bg-blue-500", "bg-purple-500", "bg-orange-500", "bg-teal-500", "bg-pink-500"];
@@ -268,7 +267,17 @@ function TeamRolesTab() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs font-bold text-slate-600">Phone Number</Label>
-                  <Input value={inviteForm.phoneNumber} onChange={(e) => setInviteForm({ ...inviteForm, phoneNumber: e.target.value })} placeholder="+2519..." className="h-11 rounded-lg border-slate-200" />
+                  <div className="flex">
+                    <div className="flex items-center h-11 px-3 rounded-l-lg border border-r-0 border-slate-200 bg-slate-100 text-sm font-bold text-slate-600 select-none">
+                      +251
+                    </div>
+                    <Input
+                      value={inviteForm.phoneNumber}
+                      onChange={(e) => setInviteForm({ ...inviteForm, phoneNumber: e.target.value.replace(/\D/g, "").slice(0, 9) })}
+                      placeholder="9XXXXXXXX"
+                      className="h-11 rounded-r-lg border-slate-200 rounded-l-none flex-1"
+                    />
+                  </div>
                 </div>
               </div>
               <div className="space-y-1.5">

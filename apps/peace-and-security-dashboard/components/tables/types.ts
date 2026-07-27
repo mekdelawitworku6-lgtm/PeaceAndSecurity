@@ -23,6 +23,7 @@ export type TableActions<T> = {
   editLabel?: string;
   onDelete?: (row: T) => void;
   deletePermission?: string;
+  deleteLabel?: string;
   onResetPassword?: (row: T) => void;
   resetPasswordPermission?: string;
   onPush?: (row: T) => void;

@@ -8,47 +8,23 @@ class UserService {
   }
 
   async registerUser(formData: FormData) {
-    const body: any = {};
-    const permissions: string[] = [];
-    formData.forEach((v, k) => {
-      if (k === 'permissions') {
-        permissions.push(String(v));
-      } else {
-        body[k] = String(v);
-      }
+    const response = await apiClient.post(API_ENDPOINTS.USERS.REGISTER, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-    if (permissions.length) body.permissions = permissions;
-    const response = await apiClient.post(API_ENDPOINTS.USERS.REGISTER, body);
     return response.data;
   }
 
   async updateUser(id: string, formData: FormData) {
-    const body: any = {};
-    const permissions: string[] = [];
-    formData.forEach((v, k) => {
-      if (k === 'permissions') {
-        permissions.push(String(v));
-      } else {
-        body[k] = String(v);
-      }
+    const response = await apiClient.patch(API_ENDPOINTS.USERS.GET_BY_ID(id), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-    if (permissions.length) body.permissions = permissions;
-    const response = await apiClient.patch(API_ENDPOINTS.USERS.GET_BY_ID(id), body);
     return response.data;
   }
 
   async updateProfile(formData: FormData) {
-    const body: any = {};
-    const permissions: string[] = [];
-    formData.forEach((v, k) => {
-      if (k === 'permissions') {
-        permissions.push(String(v));
-      } else {
-        body[k] = String(v);
-      }
+    const response = await apiClient.patch(API_ENDPOINTS.USERS.UPDATE_PROFILE, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
     });
-    if (permissions.length) body.permissions = permissions;
-    const response = await apiClient.patch(API_ENDPOINTS.USERS.UPDATE_PROFILE, body);
     return response.data;
   }
 

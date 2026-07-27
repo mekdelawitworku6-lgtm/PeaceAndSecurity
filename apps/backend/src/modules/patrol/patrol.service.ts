@@ -9,7 +9,7 @@ import { Repository } from "typeorm";
 import { Patrol } from "./entities/patrol.entity";
 import { CreatePatrolDto } from "./dto/create-patrol.dto";
 import { UpdatePatrolDto } from "./dto/update-patrol.dto";
-import { UserStatus } from "../../common/enums/enums";
+import { BusinessEventType, UserStatus } from "../../common/enums/enums";
 import {
   ServiceResponse,
   successResponse,
@@ -20,12 +20,14 @@ import { normalizeEtPhone } from "../../common/utils/validator";
 import { sendSMS } from "../../common/utils/sms-sender";
 import { getDistance } from "../../common/utils/geo-util";
 import { processUploads } from "../../common/utils/file-upload.util";
+import { AuditService } from "../audit/audit.service";
 
 @Injectable()
 export class PatrolService {
   constructor(
     @InjectRepository(Patrol)
     private readonly patrolRepository: Repository<Patrol>,
+    private readonly auditService: AuditService,
   ) { }
 
   async create(dto: CreatePatrolDto, file?: any): Promise<ServiceResponse> {
@@ -61,6 +63,14 @@ export class PatrolService {
     });
 
     const saved = await this.patrolRepository.save(patrol);
+
+    void this.auditService.logBusinessEvent({
+      eventType: BusinessEventType.PATROL_DISPATCHED,
+      entity: "Patrol",
+      entityId: saved.id,
+      description: `Patrol officer dispatched for duty`,
+      metadata: { fullName: dto.fullName, assignedArea: dto.assignedArea },
+    });
 
     sendSMS({
       recipient: normalizedPhone,
@@ -157,7 +167,7 @@ export class PatrolService {
     const patrol = await this.patrolRepository.findOne({ where: { id } });
     if (!patrol)
       throw new NotFoundException(`Patrol officer with ID ${id} not found`);
-    await this.patrolRepository.delete(id);
+    await this.patrolRepository.save({ ...patrol, deletedAt: new Date() });
     return successResponse("Patrol officer deleted successfully");
   }
 

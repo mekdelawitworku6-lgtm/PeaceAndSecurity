@@ -11,6 +11,7 @@ import {
   Query,
   UseInterceptors,
   UploadedFiles,
+  BadRequestException,
 } from "@nestjs/common";
 import { FileFieldsInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
@@ -21,7 +22,7 @@ import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { Public } from "../../common/decorators/public.decorator";
-import { UserRole, ReportStatus } from "../../common/enums/enums";
+import { UserRole, ReportStatus, DataAccessType } from "../../common/enums/enums";
 import {
   CreateReportDto,
   AssignPatrolDto,
@@ -31,11 +32,15 @@ import {
 } from "./dto/report.dto";
 import { OptionalJwtAuthGuard } from "../../common/guards/optional-jwt-auth.guard";
 import { successResponse } from "../../common/types/service-response";
+import { AuditService } from "../audit/audit.service";
 
 @ApiTags("Reports")
 @Controller("reports")
 export class ReportsController {
-  constructor(private readonly reportsService: ReportsService) { }
+  constructor(
+    private readonly reportsService: ReportsService,
+    private readonly auditService: AuditService,
+  ) { }
 
   @Post()
   @UseGuards(OptionalJwtAuthGuard)
@@ -59,7 +64,8 @@ export class ReportsController {
     files: { images?: any[]; video?: any[]; audio?: any[] },
   ) {
     const userId = req.user?.id;
-    const report = await this.reportsService.create(createReportDto, userId, files);
+    const ipAddress = req.ip || req.headers["x-forwarded-for"] || req.connection?.remoteAddress || "unknown";
+    const report = await this.reportsService.create(createReportDto, userId, files, ipAddress);
     return successResponse("Report created successfully", report);
   }
 
@@ -77,8 +83,15 @@ export class ReportsController {
     UserRole.POLICE_COMMANDER_WOREDA,
   )
   @ApiBearerAuth()
-  async findAll(@Query() query: any) {
-    return this.reportsService.findAll(query);
+  async findAll(@Query() query: any, @Request() req: any) {
+    const result = await this.reportsService.findAll(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_REPORT_LIST,
+      targetEntity: "Report",
+      accessPath: req.originalUrl,
+      description: `Listed reports (page ${query.page || 1})${query.status ? `, status: ${query.status}` : ""}${query.violationType ? `, type: ${query.violationType}` : ""}`,
+    });
+    return result;
   }
 
   @Get("my-reports")
@@ -86,6 +99,12 @@ export class ReportsController {
   @ApiBearerAuth()
   async findMyReports(@Request() req: any) {
     const reports = await this.reportsService.findByCitizen(req.user.id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_REPORT_LIST,
+      targetEntity: "Report",
+      accessPath: req.originalUrl,
+      description: `Viewed own reports`,
+    });
     return successResponse("My reports retrieved", reports);
   }
 
@@ -96,6 +115,12 @@ export class ReportsController {
   @ApiOperation({ summary: "Get reports assigned to the currently logged-in patrol officer" })
   async findAssignedToMe(@Request() req: any) {
     const reports = await this.reportsService.findByPatrol(req.user.id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_ASSIGNED_REPORTS,
+      targetEntity: "Report",
+      accessPath: req.originalUrl,
+      description: `Viewed reports assigned to self`,
+    });
     return successResponse("Assigned reports retrieved", reports);
   }
 
@@ -108,19 +133,62 @@ export class ReportsController {
   })
   async findNearby(@Request() req: any, @Query() query: any) {
     const radiusKm = query.radiusKm ? Number(query.radiusKm) : 10;
-    return this.reportsService.findNearbyForPatrol(
+    const result = await this.reportsService.findNearbyForPatrol(
       req.user.id,
       radiusKm,
       query,
     );
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_NEARBY_REPORTS,
+      targetEntity: "Report",
+      accessPath: req.originalUrl,
+      description: `Viewed nearby reports within ${radiusKm}km`,
+    });
+    return result;
+  }
+
+  @Get("nearby-citizen")
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: "Get reports near citizen's current location" })
+  async findNearbyForCitizen(
+    @Request() req: any,
+    @Query() query: any,
+  ) {
+    const lat = Number(query.lat);
+    const lng = Number(query.lng);
+    if (isNaN(lat) || isNaN(lng)) {
+      throw new BadRequestException("lat and lng query parameters are required");
+    }
+    const radiusKm = query.radiusKm ? Number(query.radiusKm) : 10;
+    const result = await this.reportsService.findNearbyForCitizen(
+      lat,
+      lng,
+      radiusKm,
+      query,
+    );
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_NEARBY_REPORTS,
+      targetEntity: "Report",
+      accessPath: req.originalUrl,
+      description: `Citizen viewed nearby reports within ${radiusKm}km`,
+    });
+    return result;
   }
 
 
   @Get(":id")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async findOne(@Param("id") id: string) {
+  async findOne(@Param("id") id: string, @Request() req: any) {
     const report = await this.reportsService.findOne(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_REPORT_DETAIL,
+      targetEntity: "Report",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed report detail (case: ${report.caseId})`,
+    });
     return successResponse("Report retrieved", report);
   }
 
@@ -135,8 +203,15 @@ export class ReportsController {
   @Get(":id/history")
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  async getHistory(@Param("id") id: string) {
+  async getHistory(@Param("id") id: string, @Request() req: any) {
     const history = await this.reportsService.getHistory(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_REPORT_HISTORY,
+      targetEntity: "Report",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed report history`,
+    });
     return successResponse("Report history retrieved", history);
   }
 
@@ -160,8 +235,15 @@ export class ReportsController {
   @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get nearby patrols for a specific report (Admin only)" })
-  async findNearbyPatrols(@Param("id") id: string, @Query("radiusKm") radiusKm?: number) {
+  async findNearbyPatrols(@Param("id") id: string, @Query("radiusKm") radiusKm?: number, @Request() req?: any) {
     const patrols = await this.reportsService.findNearbyPatrolsForReport(id, radiusKm);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_NEARBY_PATROLS,
+      targetEntity: "Report",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed nearby patrols for report`,
+    });
     return successResponse("Nearby patrols retrieved", patrols);
   }
 
@@ -290,8 +372,14 @@ export class ReportsController {
   )
   @ApiBearerAuth()
   @ApiOperation({ summary: "Export reports to CSV (Admin only)" })
-  async exportCsv(@Query() query: any) {
+  async exportCsv(@Query() query: any, @Request() req: any) {
     const csv = await this.reportsService.exportToCsv(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.EXPORT_CSV,
+      targetEntity: "Report",
+      accessPath: req.originalUrl,
+      description: `Exported reports to CSV`,
+    });
     return csv;
   }
 }

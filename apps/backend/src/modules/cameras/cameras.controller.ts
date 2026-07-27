@@ -7,19 +7,24 @@ import {
   Param,
   Delete,
   UseGuards,
+  Req,
 } from "@nestjs/common";
 import { CamerasService } from "./cameras.service";
 import { ApiBearerAuth, ApiTags, ApiOperation } from "@nestjs/swagger";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
-import { UserRole } from "../../common/enums/enums";
+import { UserRole, DataAccessType } from "../../common/enums/enums";
 import { successResponse } from "../../common/types/service-response";
+import { AuditService } from "../audit/audit.service";
 
 @ApiTags("Cameras")
 @Controller("cameras")
 export class CamerasController {
-  constructor(private readonly camerasService: CamerasService) { }
+  constructor(
+    private readonly camerasService: CamerasService,
+    private readonly auditService: AuditService,
+  ) { }
 
   @Post()
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -35,8 +40,14 @@ export class CamerasController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get all cameras" })
-  async findAll() {
+  async findAll(@Req() req: any) {
     const cameras = await this.camerasService.findAll();
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_CAMERA_LIST,
+      targetEntity: "Camera",
+      accessPath: req.originalUrl,
+      description: `Listed all cameras`,
+    });
     return successResponse("Cameras retrieved", cameras);
   }
 
@@ -45,8 +56,14 @@ export class CamerasController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get all camera AI detection alerts" })
-  async findAllAlerts() {
+  async findAllAlerts(@Req() req: any) {
     const alerts = await this.camerasService.findAllAlerts();
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_CAMERA_ALERTS,
+      targetEntity: "CameraAlert",
+      accessPath: req.originalUrl,
+      description: `Listed all camera alerts`,
+    });
     return successResponse("Camera alerts retrieved", alerts);
   }
 
@@ -93,8 +110,15 @@ export class CamerasController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get a single camera by ID" })
-  async findOne(@Param("id") id: string) {
+  async findOne(@Param("id") id: string, @Req() req: any) {
     const camera = await this.camerasService.findOne(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_CAMERA_LIST,
+      targetEntity: "Camera",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed camera detail`,
+    });
     return successResponse("Camera retrieved", camera);
   }
 

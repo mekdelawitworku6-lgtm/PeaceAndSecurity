@@ -22,8 +22,13 @@ class ChatService {
     return response.data;
   }
 
-  async sendMessage(conversationId: string, data: { content: string; messageType?: string }) {
+  async sendMessage(conversationId: string, data: { content: string }) {
     const response = await apiClient.post(API_ENDPOINTS.CHAT.MESSAGES.SEND(conversationId), data);
+    return response.data;
+  }
+
+  async markAsRead(conversationId: string) {
+    const response = await apiClient.patch(API_ENDPOINTS.CHAT.MARK_READ(conversationId));
     return response.data;
   }
 }

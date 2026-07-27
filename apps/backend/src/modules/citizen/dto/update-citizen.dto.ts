@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, IsOptional } from "class-validator";
+import { IsString, IsOptional, IsEmail, IsEnum } from "class-validator";
+import { DevicePlatform, PreferredLanguage, VerificationStatus, UserStatus } from "../../../common/enums/enums";
 
 /**
  * DTO for updating a citizen's profile.
@@ -16,6 +17,36 @@ export class UpdateCitizenDto {
   @IsOptional()
   @IsString()
   phoneNumber?: string;
+
+  @ApiProperty({ required: false, example: "abebe@example.com" })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ required: false, enum: PreferredLanguage })
+  @IsOptional()
+  @IsEnum(PreferredLanguage)
+  preferredLanguage?: PreferredLanguage;
+
+  @ApiProperty({ required: false, enum: VerificationStatus })
+  @IsOptional()
+  @IsEnum(VerificationStatus)
+  verificationStatus?: VerificationStatus;
+
+  @ApiProperty({ required: false, enum: UserStatus })
+  @IsOptional()
+  @IsEnum(UserStatus)
+  status?: UserStatus;
+
+  @ApiProperty({ required: false, enum: DevicePlatform })
+  @IsOptional()
+  @IsEnum(DevicePlatform)
+  devicePlatform?: DevicePlatform;
+
+  @ApiProperty({ required: false, example: "1.0.0" })
+  @IsOptional()
+  @IsString()
+  appVersion?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

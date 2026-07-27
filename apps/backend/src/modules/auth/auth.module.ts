@@ -10,6 +10,7 @@ import { User } from "../user/entities/user.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
 import { Citizen } from "../citizen/entities/citizen.entity";
 import { OtpModule } from "../otp/otp.module";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { OtpModule } from "../otp/otp.module";
     PassportModule,
     JwtModule.register({}),
     OtpModule,
+    AuditModule,
   ],
   providers: [AuthService, LocalStrategy, JwtStrategy],
   controllers: [AuthController],

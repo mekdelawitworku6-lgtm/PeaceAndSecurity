@@ -24,7 +24,6 @@ import {
 } from "@/lib/store/geoSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -49,9 +48,11 @@ import {
   Building,
   FileText,
   Pencil,
-  Phone,
   Globe,
 } from "lucide-react";
+import { MapPicker } from "@/components/maps/map-picker";
+import { ReusableTable, Column } from "@/components/tables";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 type Tab = "cities" | "subcities" | "woredas";
 
@@ -84,18 +85,21 @@ export default function GeoPage() {
   const isCityRole = CITY_ROLES.includes(userRole);
   const isSubcityRole = SUBCITY_ROLES.includes(userRole);
 
-  const canManageCities = isSystemRole;
+  const canManageCities = false;
   const canManageSubcities = isSystemRole || isCityRole;
   const canManageWoredas = isSubcityRole;
 
   const availableTabs: Tab[] = [];
-  if (isSystemRole || isCityRole) availableTabs.push("cities");
   if (isSystemRole || isCityRole) availableTabs.push("subcities");
   if (isSubcityRole) availableTabs.push("woredas");
 
   const [activeTab, setActiveTab] = useState<Tab>(availableTabs[0] || "subcities");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<{ tab: Tab; id: string } | null>(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -183,15 +187,25 @@ export default function GeoPage() {
     }
   };
 
-  const handleDelete = async (tab: Tab, id: string) => {
-    if (!confirm("Delete this item? This cannot be undone.")) return;
+  const handleDelete = (tab: Tab, id: string) => {
+    setConfirmTarget({ tab, id });
+    setConfirmOpen(true);
+  };
+
+  const executeDelete = async () => {
+    if (!confirmTarget) return;
+    setConfirmLoading(true);
     try {
-      if (tab === "cities") await dispatch(deleteCity(id)).unwrap();
-      else if (tab === "subcities") await dispatch(deleteSubcity(id)).unwrap();
-      else await dispatch(deleteWoreda(id)).unwrap();
+      if (confirmTarget.tab === "cities") await dispatch(deleteCity(confirmTarget.id)).unwrap();
+      else if (confirmTarget.tab === "subcities") await dispatch(deleteSubcity(confirmTarget.id)).unwrap();
+      else await dispatch(deleteWoreda(confirmTarget.id)).unwrap();
       toast.success("Deleted");
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     } catch (e: any) {
       toast.error(e?.message || "Failed to delete");
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -228,6 +242,113 @@ export default function GeoPage() {
 
   const currentItems = activeTab === "cities" ? cities : activeTab === "subcities" ? subcities : woredas;
 
+  const nameColumn: Column<any> = {
+    key: "name",
+    header: "Name",
+    render: (row) => (
+      <div className="flex items-center gap-2">
+        <span className="font-medium">{row.name}</span>
+        {row.code && (
+          <span className="text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded">{row.code}</span>
+        )}
+      </div>
+    ),
+  };
+
+  const activeColumn: Column<any> = {
+    key: "isActive",
+    header: "Status",
+    render: (row) => (
+      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${row.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
+        {row.isActive ? "Active" : "Inactive"}
+      </span>
+    ),
+  };
+
+  const coordsColumn: Column<any> = {
+    key: "coords",
+    header: "Coordinates",
+    render: (row) => (
+      (row.latitude || row.longitude) ? (
+        <span className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Globe className="w-3 h-3" />
+          {row.latitude}, {row.longitude}
+        </span>
+      ) : <span className="text-xs text-muted-foreground">-</span>
+    ),
+  };
+
+  const makeActionsColumn = (tab: Tab): Column<any> => ({
+    key: "actions",
+    header: "Actions",
+    className: "text-right",
+    render: (row) => (
+      canEditOnTab(tab) ? (
+        <div className="flex items-center justify-end gap-1">
+          <Button variant="ghost" size="sm" onClick={() => openEdit(row)} className="h-8 w-8 p-0">
+            <Pencil className="h-3.5 w-3.5 text-slate-500" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(tab, row.id)} className="h-8 w-8 p-0">
+            <Trash2 className="h-3.5 w-3.5 text-red-500" />
+          </Button>
+        </div>
+      ) : (
+        <span className="text-xs text-muted-foreground px-2">View only</span>
+      )
+    ),
+  });
+
+  const cityColumns: Column<any>[] = [
+    nameColumn,
+    activeColumn,
+    coordsColumn,
+    makeActionsColumn("cities"),
+  ];
+
+  const subcityColumns: Column<any>[] = [
+    nameColumn,
+    {
+      key: "city",
+      header: "Parent City",
+      render: (row) => (
+        row.city ? (
+          <span className="flex items-center gap-1 text-sm">
+            <Building className="w-3 h-3" />
+            {row.city.name}
+          </span>
+        ) : <span className="text-xs text-muted-foreground">-</span>
+      ),
+    },
+    activeColumn,
+    coordsColumn,
+    makeActionsColumn("subcities"),
+  ];
+
+  const woredaColumns: Column<any>[] = [
+    nameColumn,
+    {
+      key: "subcity",
+      header: "Parent Subcity",
+      render: (row) => (
+        row.subcity ? (
+          <span className="flex items-center gap-1 text-sm">
+            <MapPin className="w-3 h-3" />
+            {row.subcity.name}
+          </span>
+        ) : <span className="text-xs text-muted-foreground">-</span>
+      ),
+    },
+    activeColumn,
+    coordsColumn,
+    makeActionsColumn("woredas"),
+  ];
+
+  const tabColumns: Record<Tab, Column<any>[]> = {
+    cities: cityColumns,
+    subcities: subcityColumns,
+    woredas: woredaColumns,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -260,78 +381,15 @@ export default function GeoPage() {
         ))}
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="capitalize">{getTabLabel(activeTab)}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <p className="text-muted-foreground">Loading...</p>
-          ) : (
-            <div className="space-y-2">
-              {currentItems.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between rounded-lg border p-3 hover:bg-slate-50 transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <p className="font-medium truncate">{item.name}</p>
-                      {item.code && (
-                        <span className="text-[10px] font-mono bg-slate-100 px-1.5 py-0.5 rounded shrink-0">{item.code}</span>
-                      )}
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${item.isActive ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
-                        {item.isActive ? "Active" : "Inactive"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                      {item.nameAm && <span>{item.nameAm}</span>}
-                      {item.city && <span className="flex items-center gap-1"><Building className="w-3 h-3" />{item.city.name}</span>}
-                      {item.subcity && <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{item.subcity.name}</span>}
-                      {(item.latitude || item.longitude) && (
-                        <span className="flex items-center gap-1">
-                          <Globe className="w-3 h-3" />
-                          {item.latitude}, {item.longitude}
-                        </span>
-                      )}
-                    </div>
-                    {item.description && (
-                      <p className="text-xs text-muted-foreground mt-0.5 truncate">{item.description}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1 shrink-0 ml-3">
-                    {canEditOnTab(activeTab) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => openEdit(item)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Pencil className="h-3.5 w-3.5 text-slate-500" />
-                      </Button>
-                    )}
-                    {canEditOnTab(activeTab) && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDelete(activeTab, item.id)}
-                        className="h-8 w-8 p-0"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 text-red-500" />
-                      </Button>
-                    )}
-                    {!canEditOnTab(activeTab) && (
-                      <span className="text-xs text-muted-foreground px-2">View only</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {currentItems.length === 0 && (
-                <p className="text-muted-foreground text-center py-8">
-                  No {getTabLabel(activeTab).toLowerCase()} found
-                </p>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded border border-slate-100 shadow-sm overflow-hidden">
+        <ReusableTable
+          data={currentItems}
+          columns={tabColumns[activeTab]}
+          getRowKey={(row: any) => row.id}
+          isLoading={loading}
+          emptyText={loading ? `Loading ${getTabLabel(activeTab).toLowerCase()}...` : `No ${getTabLabel(activeTab).toLowerCase()} found`}
+        />
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="max-w-lg">
@@ -392,27 +450,19 @@ export default function GeoPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-600">Latitude</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  placeholder="9.0192"
-                  value={latitude}
-                  onChange={(e) => setLatitude(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-600">Longitude</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  placeholder="38.7525"
-                  value={longitude}
-                  onChange={(e) => setLongitude(e.target.value)}
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                Location
+              </Label>
+              <MapPicker
+                lat={latitude ? Number(latitude) : undefined}
+                lng={longitude ? Number(longitude) : undefined}
+                onChange={(lat, lng) => {
+                  setLatitude(String(lat));
+                  setLongitude(String(lng));
+                }}
+              />
             </div>
 
             <div className="flex items-center justify-between rounded-lg border p-3">
@@ -429,6 +479,17 @@ export default function GeoPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="Delete Item"
+        description="Delete this item? This cannot be undone."
+        confirmLabel="Delete"
+        variant="destructive"
+        loading={confirmLoading}
+        onConfirm={executeDelete}
+      />
     </div>
   );
 }

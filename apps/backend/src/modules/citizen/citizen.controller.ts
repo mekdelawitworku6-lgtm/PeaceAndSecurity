@@ -23,6 +23,8 @@ import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
 import { UserRole } from "../../common/enums/enums";
+import { AuditService } from "../audit/audit.service";
+import { DataAccessType } from "../../common/enums/enums";
 import {
   ApiBearerAuth,
   ApiBody,
@@ -39,7 +41,10 @@ import {
 @UseGuards(JwtAuthGuard, RolesGuard)
 @ApiBearerAuth()
 export class CitizenController {
-  constructor(private readonly citizenService: CitizenService) { }
+  constructor(
+    private readonly citizenService: CitizenService,
+    private readonly auditService: AuditService,
+  ) { }
 
   @Public()
   @Post()
@@ -59,7 +64,7 @@ export class CitizenController {
   @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiOperation({ summary: "Get all citizens (paginated, filterable)" })
   @ApiResponse({ status: 200, description: "Citizens retrieved successfully." })
-  findAll(
+  async findAll(
     @Query()
     query: {
       page?: number;
@@ -67,16 +72,32 @@ export class CitizenController {
       search?: string;
       status?: string;
     },
+    @Request() req: any,
   ) {
-    return this.citizenService.findAll(query);
+    const result = await this.citizenService.findAll(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_CITIZEN_LIST,
+      targetEntity: "Citizen",
+      accessPath: req.originalUrl,
+      description: `Listed citizens (page ${query.page || 1}, limit ${query.limit || 20})${query.search ? `, search: ${query.search}` : ""}`,
+    });
+    return result;
   }
 
   @Get(":id")
   @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
   @ApiOperation({ summary: "Get a citizen by ID" })
   @ApiResponse({ status: 200, description: "Citizen retrieved successfully." })
-  findOne(@Param("id") id: string) {
-    return this.citizenService.findOne(id);
+  async findOne(@Param("id") id: string, @Request() req: any) {
+    const result = await this.citizenService.findOne(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_CITIZEN_PROFILE,
+      targetEntity: "Citizen",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed citizen profile`,
+    });
+    return result;
   }
 
   @Patch(":id")
@@ -107,7 +128,15 @@ export class CitizenController {
   @ApiOperation({ summary: "Get currently logged-in citizen's profile" })
   @ApiResponse({ status: 200, description: "Profile retrieved successfully." })
   async getProfile(@Request() req: any) {
-    return this.citizenService.getCitizenProfile(req.user.id);
+    const result = await this.citizenService.getCitizenProfile(req.user.id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PROFILE,
+      targetEntity: "Citizen",
+      targetId: req.user.id,
+      accessPath: req.originalUrl,
+      description: `Viewed own profile`,
+    });
+    return result;
   }
 
   @Patch("me/profile")

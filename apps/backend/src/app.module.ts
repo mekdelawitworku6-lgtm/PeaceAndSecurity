@@ -22,6 +22,8 @@ import { MediaModule } from "./modules/media/media.module";
 import { GeoModule } from "./modules/geo/geo.module";
 import { ChatModule } from "./modules/chat/chat.module";
 import { AuditModule } from "./modules/audit/audit.module";
+import { AuditSubscriber } from "./modules/audit/audit.subscriber";
+import { SettingsModule } from "./modules/settings/settings.module";
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { AuditModule } from "./modules/audit/audit.module";
           database: cfg.get<string>("DB_NAME") || "",
           autoLoadEntities: true,
           synchronize: true,
+          subscribers: [AuditSubscriber],
         };
 
         // Log connection attempt (without password for security)
@@ -74,6 +77,7 @@ import { AuditModule } from "./modules/audit/audit.module";
     GeoModule,
     ChatModule,
     AuditModule,
+    SettingsModule,
   ],
   providers: [],
   exports: [],

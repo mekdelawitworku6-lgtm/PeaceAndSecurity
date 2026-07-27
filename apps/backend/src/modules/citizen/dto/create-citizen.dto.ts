@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, IsOptional, Matches, Length } from "class-validator";
+import { IsString, IsOptional, Matches, IsEmail, IsEnum } from "class-validator";
+import { DevicePlatform, PreferredLanguage } from "../../../common/enums/enums";
 
 /**
  * DTO for creating a citizen account from the Admin Dashboard
@@ -20,6 +21,31 @@ export class CreateCitizenDto {
     message: "Invalid Ethiopian phone number format",
   })
   phoneNumber: string;
+
+  @ApiProperty({ required: false, example: "abebe@example.com" })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ required: false, enum: PreferredLanguage, default: PreferredLanguage.AMHARIC })
+  @IsOptional()
+  @IsEnum(PreferredLanguage)
+  preferredLanguage?: PreferredLanguage;
+
+  @ApiProperty({ required: false, enum: DevicePlatform })
+  @IsOptional()
+  @IsEnum(DevicePlatform)
+  devicePlatform?: DevicePlatform;
+
+  @ApiProperty({ required: false, example: "1.0.0" })
+  @IsOptional()
+  @IsString()
+  appVersion?: string;
+
+  @ApiProperty({ required: false, description: "App-generated unique device identifier" })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 
   @ApiProperty({ required: false })
   @IsOptional()

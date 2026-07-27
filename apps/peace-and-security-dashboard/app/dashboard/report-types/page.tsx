@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from "react"
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks"
-import { fetchReportTypes, deleteReportType as deleteReportTypeThunk, selectReportTypes, selectReportTypesLoading } from "@/lib/store/reportTypesSlice"
+import { fetchReportTypes, deleteReportType as deleteReportTypeThunk, selectReportTypes, selectReportTypesLoading, selectReportTypesTotal, selectReportTypesTotalPages } from "@/lib/store/reportTypesSlice"
 import { Button } from "@/components/ui/button"
 import {
     Plus,
@@ -28,27 +28,47 @@ import { ReportTypeForm } from "@/components/forms/report-type-form"
 import { ReportTypeTable } from "@/components/report-types/report-type-table"
 import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
+import { DashboardPagination } from "@/components/tables/dashboard-pagination"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function ReportTypesPage() {
     const dispatch = useAppDispatch()
     const reportTypes = useAppSelector(selectReportTypes)
     const loading = useAppSelector(selectReportTypesLoading)
+    const total = useAppSelector(selectReportTypesTotal)
+    const totalPages = useAppSelector(selectReportTypesTotalPages)
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isDetailOpen, setIsDetailOpen] = useState(false)
     const [selectedReportType, setSelectedReportType] = useState<any>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const [page, setPage] = useState(1)
+    const [limit, setLimit] = useState(20)
+
+    const [confirmOpen, setConfirmOpen] = useState(false)
+    const [confirmTarget, setConfirmTarget] = useState<any>(null)
+    const [confirmLoading, setConfirmLoading] = useState(false)
 
     useEffect(() => {
-        dispatch(fetchReportTypes({ search: searchTerm || undefined }))
-    }, [dispatch, searchTerm])
+        dispatch(fetchReportTypes({ search: searchTerm || undefined, page, limit }))
+    }, [dispatch, searchTerm, page, limit])
 
-    const handleDelete = async (type: any) => {
-        if (!confirm(`Are you sure you want to delete ${type.name}? This might affect existing reports.`)) return
+    const handleDelete = (type: any) => {
+        setConfirmTarget(type)
+        setConfirmOpen(true)
+    }
+
+    const executeDelete = async () => {
+        if (!confirmTarget) return
+        setConfirmLoading(true)
         try {
-            await dispatch(deleteReportTypeThunk(type.id)).unwrap()
+            await dispatch(deleteReportTypeThunk(confirmTarget.id)).unwrap()
             toast.success("Report type deleted")
+            setConfirmOpen(false)
+            setConfirmTarget(null)
         } catch (error) {
             toast.error("Failed to delete")
+        } finally {
+            setConfirmLoading(false)
         }
     }
 
@@ -90,7 +110,7 @@ export default function ReportTypesPage() {
                                 initialData={selectedReportType}
                                 onSuccess={() => {
                                     setIsDialogOpen(false)
-                                    dispatch(fetchReportTypes({ search: searchTerm || undefined }))
+                                    dispatch(fetchReportTypes({ search: searchTerm || undefined, page, limit }))
                                 }}
                                 onCancel={() => setIsDialogOpen(false)}
                             />
@@ -114,6 +134,26 @@ export default function ReportTypesPage() {
                     onDelete={handleDelete}
                 />
             </div>
+
+            <DashboardPagination
+                page={page}
+                totalPages={totalPages}
+                total={total}
+                onPageChange={setPage}
+                limit={limit}
+                onLimitChange={setLimit}
+            />
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title="Delete Report Type"
+                description={`Are you sure you want to delete ${confirmTarget?.name}? This might affect existing reports.`}
+                confirmLabel="Delete"
+                variant="destructive"
+                loading={confirmLoading}
+                onConfirm={executeDelete}
+            />
 
             {/* Detail Dialog */}
             <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>

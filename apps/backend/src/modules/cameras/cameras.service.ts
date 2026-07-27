@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Camera } from "./entities/camera.entity";
@@ -28,12 +28,18 @@ export class CamerasService {
   }
 
   async update(id: string, updateCameraDto: any) {
-    await this.cameraRepo.update(id, updateCameraDto);
+    const camera = await this.cameraRepo.findOne({ where: { id } });
+    if (!camera) throw new NotFoundException("Camera not found");
+    Object.assign(camera, updateCameraDto);
+    await this.cameraRepo.save(camera);
     return this.findOne(id);
   }
 
   async remove(id: string) {
-    return await this.cameraRepo.delete(id);
+    const camera = await this.cameraRepo.findOne({ where: { id } });
+    if (!camera) throw new NotFoundException("Camera not found");
+    camera.deletedAt = new Date();
+    return await this.cameraRepo.save(camera);
   }
 
   async createAlert(
@@ -78,7 +84,11 @@ export class CamerasService {
   }
 
   async updateAlertStatus(id: string, status: CameraAlertStatus) {
-    await this.alertRepo.update(id, { status });
+    const alert = await this.alertRepo.findOne({ where: { id }, relations: ["camera"] });
+    if (alert) {
+      alert.status = status;
+      await this.alertRepo.save(alert);
+    }
     return await this.alertRepo.findOne({ where: { id }, relations: ["camera"] });
   }
 }

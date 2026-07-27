@@ -20,7 +20,21 @@ export class ChatService {
       order: { createdAt: "DESC" },
       relations: ["report"],
     });
-    return successResponse("Conversations retrieved", conversations);
+
+    const enriched = await Promise.all(
+      conversations.map(async (conv) => {
+        const lastMessage = await this.messageRepo.findOne({
+          where: { conversationId: conv.id },
+          order: { createdAt: "DESC" },
+        });
+        const unreadCount = await this.messageRepo.count({
+          where: { conversationId: conv.id, isRead: false },
+        });
+        return { ...conv, lastMessage: lastMessage || null, unreadCount };
+      })
+    );
+
+    return successResponse("Conversations retrieved", enriched);
   }
 
   async getOrCreateConversation(reportId: string): Promise<ServiceResponse> {
@@ -80,17 +94,25 @@ export class ChatService {
     return this.messageRepo.save(message);
   }
 
-  async markAsRead(conversationId: string, readerId?: string): Promise<ServiceResponse> {
-    await this.messageRepo.update(
-      {
-        conversationId,
-        isRead: false,
-      },
-      {
-        isRead: true,
-        readAt: new Date(),
-      },
-    );
+  async markAsRead(conversationId: string, readerId?: string, readerName?: string): Promise<ServiceResponse> {
+    const unreadMessages = await this.messageRepo.find({
+      where: { conversationId, isRead: false },
+    });
+
+    const now = new Date();
+    for (const msg of unreadMessages) {
+      if (readerId && msg.senderId !== readerId) {
+        const alreadyRead = (msg.readBy || []).some((r) => r.userId === readerId);
+        if (!alreadyRead) {
+          msg.readBy = [...(msg.readBy || []), { userId: readerId, userName: readerName, readAt: now }];
+        }
+      }
+      msg.isRead = true;
+      msg.readAt = now;
+    }
+    if (unreadMessages.length > 0) {
+      await this.messageRepo.save(unreadMessages);
+    }
 
     return successResponse("Messages marked as read");
   }

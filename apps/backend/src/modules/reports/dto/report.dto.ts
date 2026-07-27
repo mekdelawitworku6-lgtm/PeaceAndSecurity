@@ -7,8 +7,9 @@ import {
   IsEnum,
   IsPhoneNumber,
   Length,
+  IsDateString,
 } from "class-validator";
-import { ReportStatus, NoiseAreaType } from "../../../common/enums/enums";
+import { ReportStatus, NoiseAreaType, DevicePlatform } from "../../../common/enums/enums";
 import { ApiProperty } from "@nestjs/swagger";
 import { Type, Transform } from "class-transformer";
 
@@ -85,6 +86,60 @@ export class CreateReportDto {
   @IsString()
   @ApiProperty({ example: "Pollution", description: "Pollution or Not Pollution", required: false })
   noisePollutionStatus?: string;
+
+  // ─── Incident Information ─────────────────────────────────
+
+  @IsOptional()
+  @IsDateString()
+  @ApiProperty({ example: "2026-07-20T14:30:00Z", description: "When the incident happened", required: false })
+  incidentDateTime?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === "true" || value === true)
+  @IsBoolean()
+  @ApiProperty({ example: false, description: "Is the crime still ongoing?", required: false })
+  isOngoing?: boolean;
+
+  @IsOptional()
+  @Transform(({ value }) => value === "true" || value === true)
+  @IsBoolean()
+  @ApiProperty({ example: false, description: "Emergency requiring immediate response", required: false })
+  isEmergency?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 1000)
+  @ApiProperty({ example: "Tall man in dark jacket, speaks Amharic", required: false })
+  suspectInfo?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 1000)
+  @ApiProperty({ example: "Elderly woman, injured arm", required: false })
+  victimInfo?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 1000)
+  @ApiProperty({ example: "Neighbor saw everything, willing to testify", required: false })
+  witnessInfo?: string;
+
+  // ─── Device / Security Data ───────────────────────────────
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ description: "App-generated UUID from the citizen's device", required: false })
+  deviceId?: string;
+
+  @IsOptional()
+  @IsEnum(DevicePlatform)
+  @ApiProperty({ enum: DevicePlatform, required: false })
+  devicePlatform?: DevicePlatform;
+
+  @IsOptional()
+  @IsString()
+  @ApiProperty({ example: "1.0.0", required: false })
+  appVersion?: string;
 }
 
 export class CreateReportFormDto extends CreateReportDto {
@@ -141,6 +196,34 @@ export class UpdateReportDto {
   @IsOptional()
   @IsString()
   noisePollutionStatus?: string;
+
+  // ─── Investigation Fields ─────────────────────────────────
+
+  @IsOptional()
+  @IsString()
+  assignedDepartmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  @Length(0, 5000)
+  investigationNotes?: string;
+
+  @IsOptional()
+  @Transform(({ value }) => value === "true" || value === true)
+  @IsBoolean()
+  isOngoing?: boolean;
+
+  @IsOptional()
+  @IsString()
+  suspectInfo?: string;
+
+  @IsOptional()
+  @IsString()
+  victimInfo?: string;
+
+  @IsOptional()
+  @IsString()
+  witnessInfo?: string;
 }
 
 export class AssignPatrolDto {

@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { userService } from "@/lib/services/user-service";
-import { useRouter } from "next/navigation";
 import {
   Select,
   SelectContent,
@@ -25,9 +24,9 @@ import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { UserForm } from "@/components/forms/user-form";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function UsersPage() {
-  const router = useRouter();
   const { canAccess, hasPermission, user } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -50,6 +49,11 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [formLoading, setFormLoading] = useState(false);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<User | null>(null);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "reset">("delete");
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   useEffect(() => {
     loadData(page);
@@ -108,9 +112,6 @@ export default function UsersPage() {
     setIsFormOpen(true);
   };
 
-  const handleDetailUser = (user: User) =>
-    router.push(`/dashboard/users/${user.id}`);
-
   const handleSaveForm = async (formData: FormData) => {
     setFormLoading(true);
     const loadingToast = toast.loading(
@@ -135,40 +136,41 @@ export default function UsersPage() {
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
-    if (!confirm(`Are you sure you want to delete ${user.fullName}? This cannot be undone.`)) return;
-    const loadingToast = toast.loading("Deleting user...");
-    try {
-      await userService.deleteUser(user.id);
-      toast.success("User deleted successfully", { id: loadingToast });
-      loadData(page);
-    } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to delete user";
-      toast.error(msg, { id: loadingToast });
-    }
+  const handleDeleteUser = (user: User) => {
+    setConfirmTarget(user);
+    setConfirmAction("delete");
+    setConfirmOpen(true);
   };
 
-  const handleResetPassword = async (user: User) => {
-    const isMobileUser = user.role === UserRole.PATROL || user.role === UserRole.CITIZEN;
+  const handleResetPassword = (user: User) => {
+    setConfirmTarget(user);
+    setConfirmAction("reset");
+    setConfirmOpen(true);
+  };
+
+  const executeConfirm = async () => {
+    if (!confirmTarget) return;
+    setConfirmLoading(true);
+    const isMobileUser = confirmTarget.role === UserRole.PATROL || confirmTarget.role === UserRole.CITIZEN;
     const credentialType = isMobileUser ? "PIN" : "password";
-
-    if (
-      !confirm(
-        `Are you sure you want to reset the ${credentialType} for ${user.fullName}? A new ${credentialType} will be sent to them via SMS.`,
-      )
-    )
-      return;
-
-    const loadingToast = toast.loading(`Resetting ${credentialType}...`);
     try {
-      await userService.resetUserPassword(user.id);
-      toast.success(`${credentialType} reset successfully. User notified via SMS.`, {
-        id: loadingToast,
-      });
+      if (confirmAction === "delete") {
+        const loadingToast = toast.loading("Deleting user...");
+        await userService.deleteUser(confirmTarget.id);
+        toast.success("User deleted successfully", { id: loadingToast });
+        loadData(page);
+      } else {
+        const loadingToast = toast.loading(`Resetting ${credentialType}...`);
+        await userService.resetUserPassword(confirmTarget.id);
+        toast.success(`${credentialType} reset successfully. User notified via SMS.`, { id: loadingToast });
+      }
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     } catch (err: any) {
-      toast.error(err?.message || `Failed to reset ${credentialType}`, {
-        id: loadingToast,
-      });
+      const msg = err?.response?.data?.message || err?.message || "Action failed";
+      toast.error(msg);
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -288,7 +290,6 @@ export default function UsersPage() {
         <UserTable
           owners={users}
           loading={loading}
-          onDetail={handleDetailUser}
           onEdit={handleEditUser}
           onDelete={handleDeleteUser}
           onResetPassword={
@@ -317,6 +318,21 @@ export default function UsersPage() {
           isLoading={formLoading}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={confirmAction === "delete" ? "Delete User" : "Reset Password"}
+        description={
+          confirmAction === "delete"
+            ? `Are you sure you want to delete ${confirmTarget?.fullName}? This cannot be undone.`
+            : `Are you sure you want to reset the password for ${confirmTarget?.fullName}? A new password will be sent via SMS.`
+        }
+        confirmLabel={confirmAction === "delete" ? "Delete" : "Reset"}
+        variant="destructive"
+        loading={confirmLoading}
+        onConfirm={executeConfirm}
+      />
     </div>
   );
 }

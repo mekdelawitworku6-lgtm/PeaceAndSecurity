@@ -130,7 +130,11 @@ export class NotificationsService implements OnModuleInit {
     }
 
     async markAsRead(id: string) {
-        await this.notificationRepo.update(id, { isRead: true });
+        const notification = await this.notificationRepo.findOne({ where: { id } });
+        if (notification) {
+            notification.isRead = true;
+            await this.notificationRepo.save(notification);
+        }
         return { success: true };
     }
 
@@ -140,7 +144,11 @@ export class NotificationsService implements OnModuleInit {
         if (patrolId) where.patrolId = patrolId;
         if (citizenId) where.citizenId = citizenId;
 
-        await this.notificationRepo.update(where, { isRead: true });
+        const unread = await this.notificationRepo.find({ where });
+        for (const notif of unread) {
+            notif.isRead = true;
+        }
+        await this.notificationRepo.save(unread);
         return { success: true };
     }
 

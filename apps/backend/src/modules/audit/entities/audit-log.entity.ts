@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, Index } from "typeorm";
-import { AuditAction, UserRole } from "../../../common/enums/enums";
+import { AuditAction, AuditSource, UserRole } from "../../../common/enums/enums";
 
 @Entity("audit_logs")
 @Index(["entity", "entityId"])
@@ -8,6 +8,8 @@ import { AuditAction, UserRole } from "../../../common/enums/enums";
 @Index(["cityId"])
 @Index(["subcityId"])
 @Index(["woredaId"])
+@Index(["source"])
+@Index(["requestId"])
 export class AuditLog {
   @PrimaryGeneratedColumn("uuid")
   id: string;
@@ -66,4 +68,50 @@ export class AuditLog {
 
   @Column({ type: "text", nullable: true })
   description: string;
+
+  // ─── Request correlation ─────────────────────────────────
+
+  @Column({ nullable: true })
+  requestId: string;
+
+  @Column({ type: "enum", enum: AuditSource, default: AuditSource.SYSTEM })
+  source: AuditSource;
+
+  @Column({ nullable: true })
+  requestMethod: string;
+
+  @Column({ nullable: true })
+  requestPath: string;
+
+  @Column({ nullable: true })
+  userAgent: string;
+
+  @Column({ nullable: true })
+  deviceId: string;
+
+  @Column({ nullable: true })
+  devicePlatform: string;
+
+  @Column({ nullable: true })
+  appVersion: string;
+
+  @Column({ default: true })
+  success: boolean;
+
+  @Column({ nullable: true })
+  errorCode: string;
+
+  @Column({ type: "text", nullable: true })
+  reason: string;
+
+  @Column({ nullable: true })
+  sessionId: string;
+
+  // ─── Tamper evidence (hash chain) ────────────────────────
+
+  @Column({ nullable: true })
+  previousHash: string;
+
+  @Column({ nullable: true })
+  recordHash: string;
 }

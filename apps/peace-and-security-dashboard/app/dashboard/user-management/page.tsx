@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
-import { UserRole } from "@/lib/auth";
+import { UserRole, ROLE_LABELS } from "@/lib/auth";
+import { PERMISSIONS } from "@/lib/permissions";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   fetchCities,
@@ -15,51 +16,32 @@ import {
 import { UserForm } from "@/components/forms/user-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { userService } from "@/lib/services/user-service";
 import {
+  ReusableTable,
+  actionsColumn,
+  statusColumn,
+  Column,
+} from "@/components/tables";
+import { DashboardPagination } from "@/components/tables/dashboard-pagination";
+import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/layouts/page-header";
+import {
   Plus,
-  ChevronDown,
-  ChevronRight,
-  Building,
-  MapPin,
-  FileText,
-  Loader2,
-  Pencil,
-  Trash2,
+  Search,
+  X,
   Phone,
   Mail,
-  Shield,
+  User as UserIcon,
+  Building,
+  MapPin,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-
-const WOREDA_ROLES = [
-  { value: "POLICE_COMMANDER_WOREDA", label: "Police Commander Woreda" },
-  { value: "PEACE_OFFICER_WOREDA", label: "Peace Officer Woreda" },
-];
-
-const SUBCITY_ROLES = [
-  { value: "POLICE_COMMANDER_SUBCITY", label: "Police Commander Subcity" },
-  { value: "PEACE_OFFICER_SUBCITY", label: "Peace Officer Subcity" },
-];
+import { getImageUrl, cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function UserManagementPage() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const dispatch = useAppDispatch();
   const cities = useAppSelector(selectCities);
   const subcities = useAppSelector(selectSubcities);
@@ -67,36 +49,65 @@ export default function UserManagementPage() {
 
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedSubcities, setExpandedSubcities] = useState<Set<string>>(new Set());
 
   const [formOpen, setFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  // Quick create geo unit dialog
-  const [geoDialogOpen, setGeoDialogOpen] = useState(false);
-  const [geoType, setGeoType] = useState<"subcity" | "woreda">("subcity");
-  const [geoParentId, setGeoParentId] = useState("");
-  const [geoName, setGeoName] = useState("");
-  const [geoCode, setGeoCode] = useState("");
-  const [geoSaving, setGeoSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const [roleFilter, setRoleFilter] = useState<string>("ALL");
+  const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [subcityFilter, setSubcityFilter] = useState<string>("ALL");
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmTarget, setConfirmTarget] = useState<any>(null);
+  const [confirmAction, setConfirmAction] = useState<"delete" | "reset">("delete");
+  const [confirmLoading, setConfirmLoading] = useState(false);
 
   const userRole = user?.role as UserRole;
-  const isSuperAdmin = userRole === UserRole.SYSTEM_SUPER_ADMIN || userRole === UserRole.SYSTEM_ADMIN;
-  const isSubcityLevel = userRole === UserRole.POLICE_COMMANDER_SUBCITY || userRole === UserRole.PEACE_OFFICER_SUBCITY;
+  const isSuperAdmin =
+    userRole === UserRole.SYSTEM_SUPER_ADMIN ||
+    userRole === UserRole.SYSTEM_ADMIN ||
+    userRole === UserRole.PEACE_SUPER_ADMIN;
+  const isSubcityLevel =
+    userRole === UserRole.POLICE_COMMANDER_SUBCITY ||
+    userRole === UserRole.PEACE_OFFICER_SUBCITY;
 
   useEffect(() => {
     dispatch(fetchCities());
     dispatch(fetchSubcities());
     dispatch(fetchWoredas());
-    loadUsers();
   }, [dispatch]);
+
+  useEffect(() => {
+    loadUsers();
+  }, [page, limit, searchTerm, roleFilter, statusFilter, subcityFilter]);
 
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const res = await userService.getAllUsers({ limit: 200 });
-      setUsers(res.data || []);
+      const res = await userService.getAllUsers({
+        page,
+        limit,
+        search: searchTerm || undefined,
+        role: roleFilter === "ALL" ? undefined : roleFilter,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        subcityId: subcityFilter === "ALL" ? undefined : subcityFilter,
+      });
+      const userList = res.data || [];
+      setUsers(
+        userList.map((u: any) => ({
+          ...u,
+          name: String(u.fullName || u.name || "Unknown"),
+        }))
+      );
+      setTotal(res.total || userList.length);
+      setTotalPages(res.totalPages || 1);
     } catch {
       toast.error("Failed to load users");
     } finally {
@@ -104,368 +115,373 @@ export default function UserManagementPage() {
     }
   };
 
-  const getSubcityUsers = (subcityId: string) =>
-    users.filter((u) => u.subcityId === subcityId && !u.woredaId);
-
-  const getWoredaUsers = (woredaId: string) =>
-    users.filter((u) => u.woredaId === woredaId);
-
-  const toggleSubcity = (id: string) => {
-    const next = new Set(expandedSubcities);
-    next.has(id) ? next.delete(id) : next.add(id);
-    setExpandedSubcities(next);
+  const getGeoLabel = (u: any) => {
+    const parts: string[] = [];
+    if (u.city?.name) parts.push(u.city.name);
+    else if (u.subcity?.city?.name) parts.push(u.subcity.city.name);
+    if (u.subcity?.name) parts.push(u.subcity.name);
+    else if (u.woreda?.subcity?.name) parts.push(u.woreda.subcity.name);
+    if (u.woreda?.name) parts.push(u.woreda.name);
+    return parts.join(" > ") || "—";
   };
 
   const handleFormSave = async (formData: FormData) => {
     setFormLoading(true);
-    const loadingToast = toast.loading(editingUser ? "Updating officer..." : "Creating officer...");
+    const loadingToast = toast.loading(
+      editingUser?._isNew ? "Creating officer..." : "Updating officer..."
+    );
     try {
-      if (editingUser) {
-        await userService.updateUser(editingUser.id, formData);
-        toast.success("Officer updated", { id: loadingToast });
-      } else {
+      if (editingUser?._isNew) {
         await userService.registerUser(formData);
         toast.success("Officer created", { id: loadingToast });
+      } else {
+        await userService.updateUser(editingUser.id, formData);
+        toast.success("Officer updated", { id: loadingToast });
       }
       setFormOpen(false);
       setEditingUser(null);
       loadUsers();
     } catch (err: any) {
-      const msg = err?.response?.data?.message || err?.message || "Failed to save";
+      const msg =
+        err?.response?.data?.message || err?.message || "Failed to save";
       toast.error(msg, { id: loadingToast });
     } finally {
       setFormLoading(false);
     }
   };
 
-  const handleDelete = async (userId: string, name: string) => {
-    if (!confirm(`Delete ${name}? This cannot be undone.`)) return;
-    try {
-      await userService.deleteUser(userId);
-      toast.success("Officer deleted");
-      loadUsers();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to delete");
-    }
+  const handleDelete = (u: any) => {
+    setConfirmTarget(u);
+    setConfirmAction("delete");
+    setConfirmOpen(true);
   };
 
-  const handleCreateGeoUnit = async () => {
-    if (!geoName.trim()) { toast.error("Name is required"); return; }
-    if (!geoCode.trim()) { toast.error("Code is required"); return; }
-    setGeoSaving(true);
+  const handleResetPassword = (u: any) => {
+    setConfirmTarget(u);
+    setConfirmAction("reset");
+    setConfirmOpen(true);
+  };
+
+  const executeConfirm = async () => {
+    if (!confirmTarget) return;
+    setConfirmLoading(true);
+    const isMobileUser =
+      confirmTarget.role === UserRole.PATROL || confirmTarget.role === UserRole.CITIZEN;
+    const credentialType = isMobileUser ? "PIN" : "password";
     try {
-      const payload: any = { name: geoName.trim(), code: geoCode.trim(), isActive: true };
-      if (geoType === "subcity") {
-        payload.cityId = geoParentId;
+      if (confirmAction === "delete") {
+        await userService.deleteUser(confirmTarget.id);
+        toast.success("Officer deleted");
+        loadUsers();
       } else {
-        payload.subcityId = geoParentId;
+        const loadingToast = toast.loading(`Resetting ${credentialType}...`);
+        await userService.resetUserPassword(confirmTarget.id);
+        toast.success(`${credentialType} reset successfully. User notified via SMS.`, { id: loadingToast });
       }
-      const token = localStorage.getItem("access_token");
-      const url = geoType === "subcity" ? "/api/geo/subcities" : "/api/geo/woredas";
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.message || "Failed to create");
-      }
-      toast.success(`${geoType === "subcity" ? "Subcity" : "Woreda"} created`);
-      setGeoDialogOpen(false);
-      setGeoName("");
-      setGeoCode("");
-      if (geoType === "subcity") dispatch(fetchSubcities());
-      else dispatch(fetchWoredas());
+      setConfirmOpen(false);
+      setConfirmTarget(null);
     } catch (err: any) {
-      toast.error(err?.message || "Failed to create");
+      toast.error(err?.response?.data?.message || err?.message || "Action failed");
     } finally {
-      setGeoSaving(false);
+      setConfirmLoading(false);
     }
   };
 
-  const getRoleBadge = (role: string) => {
-    const isPeace = role.startsWith("PEACE");
-    const label = role.replace(/_/g, " ").replace("POLICE COMMANDER ", "PC ").replace("PEACE OFFICER ", "PO ");
-    return (
-      <span className={cn(
-        "text-[10px] font-bold px-2 py-0.5 rounded-full",
-        isPeace ? "bg-blue-50 text-blue-600" : "bg-amber-50 text-amber-600"
-      )}>
-        {label}
-      </span>
-    );
+  const openCreateOfficer = (
+    role: string,
+    geoId: string,
+    geoLevel: "subcity" | "woreda"
+  ) => {
+    setEditingUser({
+      role,
+      ...(geoLevel === "subcity" ? { subcityId: geoId } : { woredaId: geoId }),
+      _isNew: true,
+    });
+    setFormOpen(true);
   };
 
-  const renderUserRow = (u: any) => (
-    <div key={u.id} className="flex items-center justify-between px-4 py-3 bg-white rounded-xl border border-slate-100 hover:border-slate-200 transition-colors">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600 shrink-0">
-          {(u.fullName || "?").charAt(0)}
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-semibold text-sm text-slate-800 truncate">{u.fullName}</span>
-            {getRoleBadge(u.role)}
-          </div>
-          <div className="flex items-center gap-3 mt-0.5">
-            {u.phoneNumber && (
-              <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                <Phone className="w-2.5 h-2.5" />{u.phoneNumber}
-              </span>
+  const clearFilters = () => {
+    setSearchTerm("");
+    setRoleFilter("ALL");
+    setStatusFilter("ALL");
+    setSubcityFilter("ALL");
+    setPage(1);
+  };
+
+  const columns: Column<any>[] = [
+    {
+      key: "fullName",
+      header: "Officer",
+      render: (row) => (
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
+            {row.profileImage ? (
+              <img
+                src={getImageUrl(row.profileImage)}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="h-full w-full flex items-center justify-center text-slate-400">
+                <UserIcon size={18} />
+              </div>
             )}
-            {u.email && (
-              <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                <Mail className="w-2.5 h-2.5" />{u.email}
-              </span>
-            )}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-bold text-slate-900">{row.fullName}</span>
+            <span className="text-[10px] text-slate-400 font-mono">
+              {row.id.substring(0, 8)}
+            </span>
           </div>
         </div>
-      </div>
-      <div className="flex items-center gap-2 shrink-0">
-        <span className={cn(
-          "text-[10px] font-bold px-1.5 py-0.5 rounded",
-          u.status === "ACTIVE" ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400"
-        )}>
-          {u.status}
-        </span>
-        <button
-          onClick={() => { setEditingUser(u); setFormOpen(true); }}
-          className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-        >
-          <Pencil className="w-3.5 h-3.5" />
-        </button>
-        <button
-          onClick={() => handleDelete(u.id, u.fullName)}
-          className="p-1.5 rounded-lg hover:bg-red-50 text-slate-400 hover:text-red-500"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    </div>
-  );
-
-  // Super Admin sees subcities → creates subcity-level officers
-  // Subcity Officer sees woredas → creates woreda-level officers
-  const availableSubcities = isSuperAdmin
-    ? subcities
-    : subcities.filter((s: any) => s.id === (user as any)?.subcityId);
-
-  const availableWoredas = isSubcityLevel
-    ? woredas.filter((w: any) => w.subcityId === (user as any)?.subcityId)
-    : [];
-
-  const getInitialData = (role: string, geoId: string, geoLevel: "subcity" | "woreda") => ({
-    role,
-    ...(geoLevel === "subcity" ? { subcityId: geoId } : { woredaId: geoId }),
-  });
+      ),
+    },
+    {
+      key: "role",
+      header: "Role",
+      render: (row) => {
+        const isPeace = row.role?.startsWith("PEACE");
+        return (
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-[10px] font-bold px-2 py-0.5 rounded-full",
+              isPeace
+                ? "bg-blue-50 text-blue-600 border-blue-100"
+                : "bg-amber-50 text-amber-600 border-amber-100"
+            )}
+          >
+            {ROLE_LABELS[row.role] || row.role?.replace(/_/g, " ")}
+          </Badge>
+        );
+      },
+    },
+    {
+      key: "contact",
+      header: "Contact",
+      render: (row) => (
+        <div className="flex flex-col gap-1">
+          {row.phoneNumber && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Phone size={11} className="text-slate-400" />
+              {row.phoneNumber}
+            </div>
+          )}
+          {row.email && (
+            <div className="flex items-center gap-1.5 text-xs text-slate-600">
+              <Mail size={11} className="text-slate-400" />
+              {row.email}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "geo",
+      header: "Geographic Area",
+      render: (row) => (
+        <div className="flex items-center gap-1.5 text-xs text-slate-600">
+          {(row.city || row.subcity || row.woreda) ? (
+            <>
+              <MapPin size={11} className="text-slate-400 shrink-0" />
+              <span>{getGeoLabel(row)}</span>
+            </>
+          ) : (
+            <span className="text-slate-400">—</span>
+          )}
+        </div>
+      ),
+    },
+    statusColumn<any>(),
+    actionsColumn<any>({
+      onEdit: (row) => {
+        setEditingUser(row);
+        setFormOpen(true);
+      },
+      editPermission: PERMISSIONS.USER_UPDATE,
+      onDelete: handleDelete,
+      deletePermission: PERMISSIONS.USER_DELETE,
+      onResetPassword: hasPermission(PERMISSIONS.SETTINGS_RESET_PASSWORD)
+        ? handleResetPassword
+        : undefined,
+      resetPasswordPermission: PERMISSIONS.SETTINGS_RESET_PASSWORD,
+    }),
+  ];
 
   return (
-    <div className="p-6 md:p-10 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">User Management</h1>
-          <p className="text-sm text-slate-500 font-medium mt-1">
-            {isSuperAdmin && "Create and manage subcity-level officers."}
-            {isSubcityLevel && "Create and manage woreda-level officers."}
-          </p>
-        </div>
-      </div>
+    <div className="p-6 space-y-6">
+      <PageHeader
+        title="User Management"
+        description={
+          isSuperAdmin
+            ? "Create and manage officers for subcities and woredas."
+            : "Create and manage woreda-level officers."
+        }
+        className="flex-col items-start! w-full! gap-4"
+      >
+        <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between w-full gap-4 mt-2">
+          <div className="relative w-full xl:w-72 shrink-0">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search officers..."
+              className="pl-10 h-11 rounded border-slate-200 w-full"
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
 
-      {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        </div>
-      ) : isSuperAdmin ? (
-        /* ─── SUPER ADMIN VIEW: Cities → Subcities → Officers ─── */
-        <div className="space-y-4">
-          {cities.map((city: any) => {
-            const citySubcities = availableSubcities.filter((s: any) => s.cityId === city.id);
-            return (
-              <div key={city.id} className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-                <div className="flex items-center justify-between px-5 py-4 bg-slate-50/80">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Building className="w-5 h-5 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-slate-900">{city.name}</h3>
-                      <p className="text-xs text-slate-400">{citySubcities.length} subcit{citySubcities.length !== 1 ? "ies" : "y"}</p>
-                    </div>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => { setGeoType("subcity"); setGeoParentId(city.id); setGeoName(""); setGeoCode(""); setGeoDialogOpen(true); }}
-                    className="h-8 text-xs font-bold border-dashed"
-                  >
-                    <Plus className="w-3 h-3 mr-1" />
-                    Add Subcity
-                  </Button>
-                </div>
+          <div className="flex flex-wrap items-center gap-2 md:gap-3 flex-1 lg:justify-start xl:justify-center">
+            <select
+              value={roleFilter}
+              onChange={(e) => {
+                setRoleFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 w-full sm:w-auto"
+            >
+              <option value="ALL">All Roles</option>
+              {Object.entries(ROLE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
 
-                <div className="p-4 space-y-3">
-                  {citySubcities.length === 0 ? (
-                    <p className="text-xs text-slate-400 text-center py-4">No subcities yet. Add one to start creating officers.</p>
-                  ) : (
-                    citySubcities.map((subcity: any) => {
-                      const subcityOffUsers = getSubcityUsers(subcity.id);
-                      const isExpanded = expandedSubcities.has(subcity.id);
-                      return (
-                        <div key={subcity.id} className="border border-slate-100 rounded-xl overflow-hidden">
-                          <div
-                            className="flex items-center justify-between px-4 py-3 bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors"
-                            onClick={() => toggleSubcity(subcity.id)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-slate-400" />
-                              <span className="font-semibold text-sm text-slate-700">{subcity.name}</span>
-                              <span className="text-xs text-slate-400">
-                                {subcityOffUsers.length} officer{subcityOffUsers.length !== 1 ? "s" : ""}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {SUBCITY_ROLES.map((r) => (
-                                <Button
-                                  key={r.value}
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingUser(null);
-                                    const initData = getInitialData(r.value, subcity.id, "subcity");
-                                    setEditingUser({ ...initData, _isNew: true });
-                                    setFormOpen(true);
-                                  }}
-                                  className="h-7 text-[10px] font-bold border-dashed"
-                                >
-                                  <Plus className="w-2.5 h-2.5 mr-0.5" />
-                                  {r.label.replace("Police Commander ", "PC ").replace("Peace Officer ", "PO ")}
-                                </Button>
-                              ))}
-                              {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />}
-                            </div>
-                          </div>
-                          {isExpanded && subcityOffUsers.length > 0 && (
-                            <div className="p-3 space-y-2">
-                              {subcityOffUsers.map(renderUserRow)}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-              </div>
-            );
-          })}
-          {cities.length === 0 && (
-            <div className="text-center py-20 text-slate-400">
-              <Building className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="font-medium">No cities found. Create cities in Geographic Units first.</p>
-            </div>
-          )}
-        </div>
-      ) : isSubcityLevel ? (
-        /* ─── SUBCITY OFFICER VIEW: Woredas → Officers ─── */
-        <div className="space-y-4">
-          {availableWoredas.length === 0 ? (
-            <div className="text-center py-20 text-slate-400">
-              <MapPin className="w-12 h-12 mx-auto mb-3 text-slate-300" />
-              <p className="font-medium">No woredas found under your subcity.</p>
+            <select
+              value={subcityFilter}
+              onChange={(e) => {
+                setSubcityFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 w-full sm:w-auto"
+            >
+              <option value="ALL">All Subcities</option>
+              {subcities.map((s: any) => (
+                <option key={s.id} value={s.id}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={statusFilter}
+              onChange={(e) => {
+                setStatusFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 w-full sm:w-auto"
+            >
+              <option value="ALL">All Status</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PENDING">Pending</option>
+              <option value="DISABLED">Disabled</option>
+            </select>
+
+            {(searchTerm !== "" ||
+              roleFilter !== "ALL" ||
+              statusFilter !== "ALL" ||
+              subcityFilter !== "ALL") && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearFilters}
+                className="h-11 w-11 rounded hidden sm:flex"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+
+            {(searchTerm !== "" ||
+              roleFilter !== "ALL" ||
+              statusFilter !== "ALL" ||
+              subcityFilter !== "ALL") && (
               <Button
                 variant="outline"
-                size="sm"
-                onClick={() => { setGeoType("woreda"); setGeoParentId((user as any)?.subcityId || ""); setGeoName(""); setGeoCode(""); setGeoDialogOpen(true); }}
-                className="mt-4 h-8 text-xs font-bold border-dashed"
+                onClick={clearFilters}
+                className="h-11 rounded sm:hidden flex-1 border-slate-200"
               >
-                <Plus className="w-3 h-3 mr-1" />
-                Add Woreda
+                <X className="h-4 w-4 mr-2" />
+                Clear
               </Button>
-            </div>
-          ) : (
-            availableWoredas.map((woreda: any) => {
-              const woredaOffUsers = getWoredaUsers(woreda.id);
-              return (
-                <div key={woreda.id} className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-sm">
-                  <div className="flex items-center justify-between px-5 py-4 bg-slate-50/80">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                        <FileText className="w-5 h-5 text-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-bold text-slate-900">{woreda.name}</h3>
-                        <p className="text-xs text-slate-400">{woredaOffUsers.length} officer{woredaOffUsers.length !== 1 ? "s" : ""}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {WOREDA_ROLES.map((r) => (
-                        <Button
-                          key={r.value}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setEditingUser(null);
-                            const initData = getInitialData(r.value, woreda.id, "woreda");
-                            setEditingUser({ ...initData, _isNew: true });
-                            setFormOpen(true);
-                          }}
-                          className="h-8 text-xs font-bold border-dashed"
-                        >
-                          <Plus className="w-3 h-3 mr-1" />
-                          {r.label.replace("Police Commander ", "PC ").replace("Peace Officer ", "PO ")}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                  {woredaOffUsers.length > 0 && (
-                    <div className="p-4 space-y-2">
-                      {woredaOffUsers.map(renderUserRow)}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      ) : null}
+            )}
+          </div>
 
-      {/* Officer Create/Edit Form */}
-      {formOpen && editingUser && (
+          <div className="flex items-center gap-2 shrink-0 w-full xl:w-auto">
+            <Button
+              onClick={() => {
+                setEditingUser({ role: UserRole.POLICE_COMMANDER_SUBCITY, _isNew: true });
+                setFormOpen(true);
+              }}
+              className="h-11 rounded px-5 bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Police Commander
+            </Button>
+            <Button
+              onClick={() => {
+                setEditingUser({ role: UserRole.PEACE_OFFICER_SUBCITY, _isNew: true });
+                setFormOpen(true);
+              }}
+              className="h-11 rounded px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none"
+            >
+              <Plus className="h-4 w-4 mr-1.5" />
+              Add Peace Officer
+            </Button>
+          </div>
+        </div>
+      </PageHeader>
+
+      <div className="bg-white rounded border border-slate-100 shadow-sm overflow-hidden">
+        <ReusableTable
+          data={users}
+          columns={columns}
+          getRowKey={(row) => row.id}
+          isLoading={loading}
+          emptyText={loading ? "Loading officers..." : "No officers found"}
+        />
+      </div>
+
+      <DashboardPagination
+        page={page}
+        totalPages={totalPages}
+        total={total}
+        onPageChange={setPage}
+        limit={limit}
+        onLimitChange={setLimit}
+      />
+
+      {formOpen && (
         <UserForm
-          onOpenChange={(open) => { if (!open) { setFormOpen(false); setEditingUser(null); } }}
+          onOpenChange={(open) => {
+            if (!open) {
+              setFormOpen(false);
+              setEditingUser(null);
+            }
+          }}
           onSave={handleFormSave}
-          initialData={editingUser._isNew ? editingUser : editingUser}
-          isNew={!!editingUser._isNew}
+          initialData={editingUser}
+          isNew={!!editingUser?._isNew}
           isLoading={formLoading}
+          defaultRole={editingUser?.role}
         />
       )}
 
-      {/* Quick Geo Unit Create Dialog */}
-      <Dialog open={geoDialogOpen} onOpenChange={(open) => { setGeoDialogOpen(open); if (!open) { setGeoName(""); setGeoCode(""); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add {geoType === "subcity" ? "Subcity" : "Woreda"}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-600">Name <span className="text-red-500">*</span></Label>
-              <Input placeholder={`e.g. ${geoType === "subcity" ? "Bole" : "01"}`} value={geoName} onChange={(e) => setGeoName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-600">Code <span className="text-red-500">*</span></Label>
-              <Input placeholder={`e.g. ${geoType === "subcity" ? "BOLE-01" : "AA-01-01"}`} value={geoCode} onChange={(e) => setGeoCode(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGeoDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleCreateGeoUnit} disabled={geoSaving}>
-              {geoSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              Create
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title={confirmAction === "delete" ? "Delete Officer" : "Reset Password"}
+        description={
+          confirmAction === "delete"
+            ? `Delete ${confirmTarget?.fullName}? This cannot be undone.`
+            : `Reset password for ${confirmTarget?.fullName}? A new password will be sent via SMS.`
+        }
+        confirmLabel={confirmAction === "delete" ? "Delete" : "Reset"}
+        variant="destructive"
+        loading={confirmLoading}
+        onConfirm={executeConfirm}
+      />
     </div>
   );
 }

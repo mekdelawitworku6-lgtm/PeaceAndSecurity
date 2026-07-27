@@ -21,7 +21,7 @@ RUN npm install --omit=dev
 
 COPY --from=builder /app/dist ./dist
 
-RUN mkdir -p /app/uploads
+RUN mkdir -p /app/uploads && chown -R node:node /app/uploads
 
 EXPOSE 5000
 

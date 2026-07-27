@@ -279,9 +279,16 @@ export async function processUploads(
   for (const item of items) {
     const mime = item.file.mimetype || mimeLookup(item.file.originalname) || "";
     const isImage = IMG_MIME_RE.test(String(mime));
-    const asset = isImage
-      ? await processImagePNG(item.file, opts, subDir)
-      : await saveRaw(item.file, opts, subDir);
+    let asset: SavedAsset;
+    if (isImage) {
+      try {
+        asset = await processImagePNG(item.file, opts, subDir);
+      } catch (err: any) {
+        asset = await saveRaw(item.file, opts, subDir);
+      }
+    } else {
+      asset = await saveRaw(item.file, opts, subDir);
+    }
     if (item.field) asset.field = item.field;
     results.push(asset);
   }

@@ -7,6 +7,7 @@ import { User } from "./entities/user.entity";
 
 import { OtpModule } from "../otp/otp.module";
 import { JwtModule } from "@nestjs/jwt";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { JwtModule } from "@nestjs/jwt";
     ConfigModule,
     OtpModule,
     JwtModule.register({}),
+    AuditModule,
   ],
   controllers: [UserController],
   providers: [UserService],

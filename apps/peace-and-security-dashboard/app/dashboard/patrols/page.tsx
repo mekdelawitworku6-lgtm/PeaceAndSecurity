@@ -19,14 +19,14 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { Search, X, Plus } from "lucide-react";
+import { Search, X, Plus, Info } from "lucide-react";
 import { PageHeader } from "@/components/layouts/page-header";
 import { DashboardPagination } from "@/components/tables/dashboard-pagination";
 import { DatePickerWithRange } from "@/components/ui/date-range-picker";
 import { DateRange } from "react-day-picker";
 import { format } from "date-fns";
 import { UserForm } from "@/components/forms/user-form";
-import apiClient from "@/lib/api-client";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function PatrolsPage() {
     const router = useRouter();
@@ -35,22 +35,32 @@ export default function PatrolsPage() {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
 
-    // Pagination State
     const [page, setPage] = useState(1);
     const [limit, setLimit] = useState(10);
     const [total, setTotal] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
 
-    // Filter State
     const [statusFilter, setStatusFilter] = useState<string>("ALL");
     const [dateRange, setDateRange] = useState<DateRange | undefined>();
     const [sortBy, setSortBy] = useState<string>("createdAt");
     const [sortOrder, setSortOrder] = useState<"ASC" | "DESC">("DESC");
 
-    // Modal States
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [formLoading, setFormLoading] = useState(false);
+
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmTarget, setConfirmTarget] = useState<User | null>(null);
+    const [confirmLoading, setConfirmLoading] = useState(false);
+    const [confirmAction, setConfirmAction] = useState<"delete" | "reset">("delete");
+
+    const userRole = user?.role as UserRole;
+    const canRegisterPatrol = [
+        UserRole.POLICE_COMMANDER_WOREDA,
+        UserRole.POLICE_COMMANDER_SUBCITY,
+        UserRole.POLICE_COMMANDER_CITY,
+        UserRole.PEACE_OFFICER_WOREDA,
+    ].includes(userRole);
 
     useEffect(() => {
         loadData(page);
@@ -80,9 +90,7 @@ export default function PatrolsPage() {
                 sortOrder,
             });
 
-            // Backend returns paginated response: { data, total, totalPages, ... }
             const userList = response.data || [];
-
             setUsers(
                 userList.map((u: any) => ({
                     ...u,
@@ -135,36 +143,36 @@ export default function PatrolsPage() {
         }
     };
 
-    const handleDeleteUser = async (user: User) => {
-        if (!confirm("Are you sure you want to toggle this patrol's status?")) return;
-        const loadingToast = toast.loading("Updating patrol status...");
-        try {
-            await userService.toggleUserStatus(user.id);
-            loadData();
-            toast.success("Patrol status updated successfully", { id: loadingToast });
-        } catch {
-            toast.error("Failed to update patrol status", { id: loadingToast });
-        }
+    const handleDeleteUser = (user: User) => {
+        setConfirmTarget(user);
+        setConfirmAction("delete");
+        setConfirmOpen(true);
     };
 
-    const handleResetPassword = async (user: User) => {
-        if (
-            !confirm(
-                `Are you sure you want to reset the password for ${user.fullName}? A new password will be sent to them via SMS.`,
-            )
-        )
-            return;
+    const handleResetPassword = (user: User) => {
+        setConfirmTarget(user);
+        setConfirmAction("reset");
+        setConfirmOpen(true);
+    };
 
-        const loadingToast = toast.loading("Resetting password...");
+    const executeConfirm = async () => {
+        if (!confirmTarget) return;
+        setConfirmLoading(true);
         try {
-            await userService.resetUserPassword(user.id);
-            toast.success("Password reset successfully. User notified via SMS.", {
-                id: loadingToast,
-            });
+            if (confirmAction === "delete") {
+                await patrolService.deletePatrol(confirmTarget.id);
+                toast.success(`${confirmTarget.fullName} deleted successfully`);
+                loadData(page);
+            } else {
+                await userService.resetUserPassword(confirmTarget.id);
+                toast.success(`Password reset for ${confirmTarget.fullName}. SMS sent.`);
+            }
+            setConfirmOpen(false);
+            setConfirmTarget(null);
         } catch (err: any) {
-            toast.error(err?.message || "Failed to reset password", {
-                id: loadingToast,
-            });
+            toast.error(err?.message || "Action failed");
+        } finally {
+            setConfirmLoading(false);
         }
     };
 
@@ -176,6 +184,7 @@ export default function PatrolsPage() {
 
         const loadingToast = toast.loading("Sending push notification...");
         try {
+            const { default: apiClient } = await import("@/lib/api-client");
             await apiClient.post("notifications/broadcast", {
                 title,
                 message,
@@ -214,7 +223,6 @@ export default function PatrolsPage() {
                 className="flex-col items-start! w-full! gap-4"
             >
                 <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between w-full gap-4 mt-2">
-                    {/* Left: Search */}
                     <div className="relative w-full xl:w-72 shrink-0">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                         <Input
@@ -225,7 +233,6 @@ export default function PatrolsPage() {
                         />
                     </div>
 
-                    {/* Middle: Filters */}
                     <div className="flex flex-wrap items-center gap-2 md:gap-3 flex-1 lg:justify-start xl:justify-center">
                         <Select value={statusFilter} onValueChange={setStatusFilter}>
                             <SelectTrigger className="flex-1 sm:flex-none w-full sm:w-[130px] h-11 rounded border-slate-200 bg-white">
@@ -243,35 +250,30 @@ export default function PatrolsPage() {
                             <DatePickerWithRange date={dateRange} setDate={setDateRange} />
                         </div>
 
-                        {(searchTerm !== "" ||
-                            statusFilter !== "ALL" ||
-                            dateRange?.from) && (
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={clearFilters}
-                                    className="h-11 w-11 rounded hidden sm:flex"
-                                >
-                                    <X className="h-4 w-4" />
-                                </Button>
-                            )}
+                        {(searchTerm !== "" || statusFilter !== "ALL" || dateRange?.from) && (
+                            <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={clearFilters}
+                                className="h-11 w-11 rounded hidden sm:flex"
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        )}
 
-                        {(searchTerm !== "" ||
-                            statusFilter !== "ALL" ||
-                            dateRange?.from) && (
-                                <Button
-                                    variant="outline"
-                                    onClick={clearFilters}
-                                    className="h-11 rounded sm:hidden flex-1 border-slate-200"
-                                >
-                                    <X className="h-4 w-4 mr-2" />
-                                    Clear
-                                </Button>
-                            )}
+                        {(searchTerm !== "" || statusFilter !== "ALL" || dateRange?.from) && (
+                            <Button
+                                variant="outline"
+                                onClick={clearFilters}
+                                className="h-11 rounded sm:hidden flex-1 border-slate-200"
+                            >
+                                <X className="h-4 w-4 mr-2" />
+                                Clear
+                            </Button>
+                        )}
                     </div>
 
-                    {/* Right: Add Button */}
-                    {[UserRole.PEACE_OFFICER_WOREDA, UserRole.POLICE_COMMANDER_WOREDA].includes(user?.role as UserRole) ? (
+                    {canRegisterPatrol ? (
                         <Button
                             onClick={handleAddUser}
                             className="h-11 rounded px-6 bg-primary hover:opacity-90 font-bold shadow-lg shadow-primary/20 shrink-0 w-full xl:w-auto"
@@ -279,7 +281,21 @@ export default function PatrolsPage() {
                             <Plus className="h-4 w-4 mr-2" />
                             Register Patrol
                         </Button>
-                    ) : null}
+                    ) : (
+                        <div className="relative group shrink-0 w-full xl:w-auto">
+                            <Button
+                                disabled
+                                className="h-11 rounded px-6 bg-slate-300 text-slate-500 font-bold cursor-not-allowed w-full xl:w-auto"
+                            >
+                                <Plus className="h-4 w-4 mr-2" />
+                                Register Patrol
+                            </Button>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-900 text-white text-[11px] font-medium rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg">
+                                Can only be created by Police Commander
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-slate-900" />
+                            </div>
+                        </div>
+                    )}
                 </div>
             </PageHeader>
 
@@ -318,6 +334,21 @@ export default function PatrolsPage() {
                     defaultRole="PATROL"
                 />
             )}
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title={confirmAction === "delete" ? "Delete Patrol Officer" : "Reset Password"}
+                description={
+                    confirmAction === "delete"
+                        ? `Delete ${confirmTarget?.fullName}? This cannot be undone.`
+                        : `Reset password for ${confirmTarget?.fullName}? A new password will be sent via SMS.`
+                }
+                confirmLabel={confirmAction === "delete" ? "Delete" : "Reset Password"}
+                variant="destructive"
+                loading={confirmLoading}
+                onConfirm={executeConfirm}
+            />
         </div>
     );
 }

@@ -33,13 +33,14 @@ import { UpdateUserFormDto } from "./dto/update-user-form.dto";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
-import { UserRole } from "../../common/enums/enums";
+import { UserRole, DataAccessType } from "../../common/enums/enums";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { memoryStorage } from "multer";
 import {
   processUploads,
   type MulterFile,
 } from "../../common/utils/file-upload.util";
+import { AuditService } from "../audit/audit.service";
 
 const ALLOWED_MIMES = new Set(["image/jpeg", "image/jpg", "image/png"]);
 const profileImageMulter = { storage: memoryStorage() };
@@ -85,6 +86,7 @@ export class UserController {
   constructor(
     @Inject(UserService)
     private readonly userService: UserService,
+    private readonly auditService: AuditService,
   ) {}
 
   @Get("all")
@@ -100,8 +102,15 @@ export class UserController {
     summary: "Get all users with filtering and pagination",
   })
   @ApiResponse({ status: 200, description: "Users retrieved successfully" })
-  async getAllUsers(@Query() filterDto: UserFilterDto) {
-    return this.userService.getAllUsers(filterDto);
+  async getAllUsers(@Query() filterDto: UserFilterDto, @Request() req: any) {
+    const result = await this.userService.getAllUsers(filterDto);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_USER_LIST,
+      targetEntity: "User",
+      accessPath: req.originalUrl,
+      description: `Listed users (page ${filterDto.page || 1})`,
+    });
+    return result;
   }
 
   @Get("profile")
@@ -109,7 +118,15 @@ export class UserController {
   @ApiResponse({ status: 200, description: "Profile retrieved successfully" })
   async getProfile(@Request() req: any) {
     const userId = req.user.id;
-    return this.userService.getUserProfile(userId);
+    const result = await this.userService.getUserProfile(userId);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_PROFILE,
+      targetEntity: "User",
+      targetId: userId,
+      accessPath: req.originalUrl,
+      description: `Viewed own profile`,
+    });
+    return result;
   }
 
   @Patch("profile")
@@ -145,8 +162,16 @@ export class UserController {
   )
   @ApiOperation({ summary: "Get user by ID" })
   @ApiResponse({ status: 200, description: "User retrieved successfully" })
-  async getUserById(@Param("id") id: string) {
-    return this.userService.getUser({ id });
+  async getUserById(@Param("id") id: string, @Request() req: any) {
+    const result = await this.userService.getUser({ id });
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_USER_PROFILE,
+      targetEntity: "User",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed user profile`,
+    });
+    return result;
   }
 
   @Put(":id/toggle-status")

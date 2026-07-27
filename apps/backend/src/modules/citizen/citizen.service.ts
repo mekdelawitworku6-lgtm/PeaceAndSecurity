@@ -48,10 +48,15 @@ export class CitizenService {
     const citizen = this.citizenRepository.create({
       fullName: dto.fullName,
       phoneNumber: normalizedPhone,
+      email: dto.email,
       userCode: generateRandomCode(8),
       status: UserStatus.PENDING,
       pin: null,
       profileImage: dto.profileImage,
+      preferredLanguage: dto.preferredLanguage,
+      devicePlatform: dto.devicePlatform,
+      appVersion: dto.appVersion,
+      deviceId: dto.deviceId,
     });
 
     const saved = await this.citizenRepository.save(citizen);
@@ -145,7 +150,7 @@ export class CitizenService {
     const citizen = await this.citizenRepository.findOne({ where: { id } });
     if (!citizen)
       throw new NotFoundException(`Citizen with ID ${id} not found`);
-    await this.citizenRepository.delete(id);
+    await this.citizenRepository.save({ ...citizen, deletedAt: new Date() });
     return successResponse("Citizen deleted successfully");
   }
 

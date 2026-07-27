@@ -33,6 +33,7 @@ import {
 import { CameraForm } from "@/components/forms/camera-form"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 
 export default function CamerasPage() {
     const dispatch = useAppDispatch()
@@ -42,6 +43,10 @@ export default function CamerasPage() {
     const [selectedCamera, setSelectedCamera] = useState<any>(null)
     const [view, setView] = useState<'grid' | 'map'>('grid')
     const [viewingCamera, setViewingCamera] = useState<any>(null)
+
+    const [confirmOpen, setConfirmOpen] = useState(false)
+    const [confirmTargetId, setConfirmTargetId] = useState<string | null>(null)
+    const [confirmLoading, setConfirmLoading] = useState(false)
 
     const cameraMarkers = cameras.map(cam => ({
         id: cam.id,
@@ -55,13 +60,23 @@ export default function CamerasPage() {
         dispatch(fetchCameras())
     }, [dispatch])
 
-    const handleDelete = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this camera?")) return
+    const handleDelete = (id: string) => {
+        setConfirmTargetId(id)
+        setConfirmOpen(true)
+    }
+
+    const executeDelete = async () => {
+        if (!confirmTargetId) return
+        setConfirmLoading(true)
         try {
-            await dispatch(deleteCamera(id)).unwrap()
+            await dispatch(deleteCamera(confirmTargetId)).unwrap()
             toast.success("Camera removed")
+            setConfirmOpen(false)
+            setConfirmTargetId(null)
         } catch (error) {
             toast.error("Failed to delete")
+        } finally {
+            setConfirmLoading(false)
         }
     }
 
@@ -223,6 +238,18 @@ export default function CamerasPage() {
                     <Button onClick={openCreateDialog} className="rounded-xl font-bold px-8">Add Camera</Button>
                 </div>
             )}
+
+            <ConfirmDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                title="Delete Camera"
+                description="Are you sure you want to delete this camera? This cannot be undone."
+                confirmLabel="Delete"
+                variant="destructive"
+                loading={confirmLoading}
+                onConfirm={executeDelete}
+            />
+
             {/* Camera Feed Dialog */}
             <Dialog open={!!viewingCamera} onOpenChange={() => setViewingCamera(null)}>
                 <DialogContent className="max-w-4xl rounded-3xl p-0 border-none shadow-2xl overflow-hidden bg-slate-950">

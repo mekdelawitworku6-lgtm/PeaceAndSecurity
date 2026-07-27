@@ -3,7 +3,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
 } from "typeorm";
-import { UserStatus } from "../../../common/enums/enums";
+import { UserStatus, DevicePlatform, VerificationStatus, PreferredLanguage } from "../../../common/enums/enums";
 import { BaseEntity } from "../../../common/baseentity/base.entity";
 
 
@@ -20,6 +20,9 @@ export class Citizen extends BaseEntity {
 
   @Column({ unique: true })
   phoneNumber: string;
+
+  @Column({ nullable: true })
+  email: string;
 
   /** Hashed PIN — used for mobile app login. Never exposed in responses. */
   @Column({ nullable: true, select: false })
@@ -40,4 +43,36 @@ export class Citizen extends BaseEntity {
 
   @Column({ nullable: true })
   fcmToken: string;
+
+  // ─── New Fields ─────────────────────────────────────────
+
+  @Column({
+    type: "enum",
+    enum: PreferredLanguage,
+    default: PreferredLanguage.AMHARIC,
+  })
+  preferredLanguage: PreferredLanguage;
+
+  @Column({
+    type: "enum",
+    enum: VerificationStatus,
+    default: VerificationStatus.PENDING,
+  })
+  verificationStatus: VerificationStatus;
+
+  @Column({ nullable: true })
+  lastLoginAt: Date;
+
+  @Column({
+    type: "enum",
+    enum: DevicePlatform,
+    nullable: true,
+  })
+  devicePlatform: DevicePlatform;
+
+  @Column({ nullable: true })
+  appVersion: string;
+
+  @Column({ nullable: true })
+  deviceId: string;
 }

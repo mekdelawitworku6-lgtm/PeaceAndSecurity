@@ -79,7 +79,7 @@ export class GeoService {
       throw new ConflictException("Cannot delete city with existing subcities");
     }
 
-    await this.cityRepo.delete(id);
+    await this.cityRepo.save({ ...city, deletedAt: new Date() });
     return successResponse("City deleted successfully");
   }
 
@@ -156,7 +156,7 @@ export class GeoService {
       throw new ConflictException("Cannot delete subcity with existing woredas");
     }
 
-    await this.subcityRepo.delete(id);
+    await this.subcityRepo.save({ ...subcity, deletedAt: new Date() });
     return successResponse("Subcity deleted successfully");
   }
 
@@ -227,7 +227,7 @@ export class GeoService {
   async deleteWoreda(id: string): Promise<ServiceResponse> {
     const woreda = await this.woredaRepo.findOne({ where: { id } });
     if (!woreda) throw new NotFoundException("Woreda not found");
-    await this.woredaRepo.delete(id);
+    await this.woredaRepo.save({ ...woreda, deletedAt: new Date() });
     return successResponse("Woreda deleted successfully");
   }
 

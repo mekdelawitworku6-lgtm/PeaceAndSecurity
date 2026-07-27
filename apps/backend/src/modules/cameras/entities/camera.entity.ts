@@ -1,17 +1,11 @@
 import {
   Entity,
-  PrimaryGeneratedColumn,
   Column,
-  CreateDateColumn,
-  UpdateDateColumn,
-  BaseEntity,
 } from "typeorm";
+import { BaseEntity } from "../../../common/baseentity/base.entity";
 
 @Entity("cameras")
 export class Camera extends BaseEntity {
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
-
   @Column({ unique: true })
   cameraId: string; // Hardware ID or similar
 
@@ -35,10 +29,4 @@ export class Camera extends BaseEntity {
 
   @Column({ type: "jsonb", nullable: true })
   metadata: any; // Additional camera info
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
 }

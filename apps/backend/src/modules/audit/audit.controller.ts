@@ -4,6 +4,7 @@ import {
   Param,
   Query,
   Res,
+  Req,
   UseGuards,
 } from "@nestjs/common";
 import {
@@ -16,7 +17,7 @@ import { AuditService } from "./audit.service";
 import { JwtAuthGuard } from "../../common/guards/jwt-auth.guard";
 import { RolesGuard } from "../../common/guards/roles.guard";
 import { Roles } from "../../common/decorators/roles.decorator";
-import { UserRole } from "../../common/enums/enums";
+import { UserRole, DataAccessType } from "../../common/enums/enums";
 
 @ApiTags("Audit Logs")
 @Controller("audit-logs")
@@ -50,8 +51,16 @@ export class AuditController {
       page?: number;
       limit?: number;
     },
+    @Req() req: any,
   ) {
-    return this.auditService.findAll(query);
+    const result = await this.auditService.findAll(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_AUDIT_LOGS,
+      targetEntity: "AuditLog",
+      accessPath: req.originalUrl,
+      description: `Viewed audit logs${query.entity ? ` for ${query.entity}` : ""}`,
+    });
+    return result;
   }
 
   @Get("export/csv")
@@ -60,7 +69,14 @@ export class AuditController {
   async exportCsv(
     @Query() query: { entity?: string; action?: string; startDate?: string; endDate?: string },
     @Res() res: Response,
+    @Req() req: any,
   ) {
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.EXPORT_CSV,
+      targetEntity: "AuditLog",
+      accessPath: req.originalUrl,
+      description: `Exported audit logs to CSV`,
+    });
     return this.auditService.exportCsv(query, res);
   }
 
@@ -70,8 +86,97 @@ export class AuditController {
   async exportPdf(
     @Query() query: { entity?: string; action?: string; startDate?: string; endDate?: string },
     @Res() res: Response,
+    @Req() req: any,
   ) {
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.EXPORT_PDF,
+      targetEntity: "AuditLog",
+      accessPath: req.originalUrl,
+      description: `Exported audit logs to PDF`,
+    });
     return this.auditService.exportPdf(query, res);
+  }
+
+  @Get("security-events")
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
+  @ApiOperation({ summary: "Get security events (login, OTP, password changes)" })
+  async findSecurityEvents(
+    @Query() query: {
+      eventType?: string;
+      actorId?: string;
+      success?: boolean;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+    },
+    @Req() req: any,
+  ) {
+    const result = await this.auditService.findSecurityEvents(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_AUDIT_LOGS,
+      targetEntity: "SecurityEvent",
+      accessPath: req.originalUrl,
+      description: `Viewed security events`,
+    });
+    return result;
+  }
+
+  @Get("data-access-events")
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
+  @ApiOperation({ summary: "Get data access events (who viewed what)" })
+  async findDataAccessEvents(
+    @Query() query: {
+      accessType?: string;
+      actorId?: string;
+      targetEntity?: string;
+      startDate?: string;
+      endDate?: string;
+      page?: number;
+      limit?: number;
+    },
+    @Req() req: any,
+  ) {
+    const result = await this.auditService.findDataAccessEvents(query);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_AUDIT_LOGS,
+      targetEntity: "DataAccessEvent",
+      accessPath: req.originalUrl,
+      description: `Viewed data access events`,
+    });
+    return result;
+  }
+
+  @Get("verify-chain")
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @ApiOperation({ summary: "Verify audit log hash chain integrity" })
+  async verifyChain(@Req() req: any) {
+    const result = await this.auditService.verifyAuditChain();
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_AUDIT_LOGS,
+      targetEntity: "AuditLog",
+      accessPath: req.originalUrl,
+      description: `Verified audit chain integrity`,
+    });
+    return result;
   }
 
   @Get("entity/:type/:id")
@@ -89,8 +194,17 @@ export class AuditController {
   async getEntityTrail(
     @Param("type") type: string,
     @Param("id") id: string,
+    @Req() req: any,
   ) {
-    return this.auditService.getEntityTrail(type, id);
+    const result = await this.auditService.getEntityTrail(type, id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_AUDIT_LOGS,
+      targetEntity: type,
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed audit trail for ${type} record`,
+    });
+    return result;
   }
 
   @Get(":id")
@@ -105,7 +219,15 @@ export class AuditController {
     UserRole.POLICE_COMMANDER_WOREDA,
   )
   @ApiOperation({ summary: "Get single audit log with full diff" })
-  async findOne(@Param("id") id: string) {
-    return this.auditService.findOne(id);
+  async findOne(@Param("id") id: string, @Req() req: any) {
+    const result = await this.auditService.findOne(id);
+    await this.auditService.logDataAccess({
+      accessType: DataAccessType.VIEW_AUDIT_LOGS,
+      targetEntity: "AuditLog",
+      targetId: id,
+      accessPath: req.originalUrl,
+      description: `Viewed single audit log record`,
+    });
+    return result;
   }
 }

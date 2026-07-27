@@ -7,11 +7,13 @@ import { Patrol } from "./entities/patrol.entity";
 import { PatrolTeam } from "./entities/patrol-team.entity";
 import { PatrolTeamController } from "./patrol-team.controller";
 import { PatrolTeamService } from "./patrol-team.service";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Patrol, PatrolTeam]),
     MulterModule.register({ storage: require("multer").memoryStorage() }),
+    AuditModule,
   ],
   controllers: [PatrolController, PatrolTeamController],
   providers: [PatrolService, PatrolTeamService],

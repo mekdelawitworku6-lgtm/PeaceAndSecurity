@@ -34,6 +34,19 @@ export enum UserRole {
   POLICE_COMMANDER_WOREDA = "POLICE_COMMANDER_WOREDA",
 }
 
+export const ROLE_LABELS: Record<string, string> = {
+  [UserRole.SYSTEM_SUPER_ADMIN]: "System Super Admin",
+  [UserRole.SYSTEM_ADMIN]: "System Admin",
+  [UserRole.PATROL]: "Patrol Officer",
+  [UserRole.CITIZEN]: "Citizen",
+  [UserRole.PEACE_SUPER_ADMIN]: "Peace Super Admin",
+  [UserRole.PEACE_OFFICER_SUBCITY]: "Peace Officer Subcity",
+  [UserRole.PEACE_OFFICER_WOREDA]: "Peace Officer Woreda",
+  [UserRole.POLICE_COMMANDER_CITY]: "Police Commander City",
+  [UserRole.POLICE_COMMANDER_SUBCITY]: "Police Commander Subcity",
+  [UserRole.POLICE_COMMANDER_WOREDA]: "Police Commander Woreda",
+};
+
 export enum OTPType {
     FORGOT_PASSWORD_OTP = "FORGOT-PASSWORD-OTP",
     REGISTRATION_OTP = "REGISTRATION-OTP",

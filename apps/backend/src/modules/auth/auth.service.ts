@@ -32,6 +32,7 @@ import {
   TokenType,
   UserRole,
   UserStatus,
+  SecurityEventType,
 } from "common/enums/enums";
 import { sendSMS } from "../../common/utils/sms-sender";
 import { normalizeEtPhone } from "common/utils/validator";
@@ -42,6 +43,8 @@ import {
 } from "../../common/types/service-response";
 import { generateRandomCode } from "../../common/utils/generator";
 import { processUploads } from "../../common/utils/file-upload.util";
+import { AuditService } from "../audit/audit.service";
+import { RequestContext } from "../audit/request-context";
 
 @Injectable()
 export class AuthService {
@@ -54,6 +57,7 @@ export class AuthService {
     private readonly citizenRepository: Repository<Citizen>,
     private readonly otpService: OtpService,
     private readonly jwtService: JwtService,
+    private readonly auditService: AuditService,
   ) { }
 
   /** ===== Shared PIN Helpers ===== */
@@ -117,6 +121,8 @@ export class AuthService {
         otpType: OTPType.REGISTRATION_OTP,
       });
 
+      console.log(`[DEV OTP] Phone: ${normalizedPhone} | Code: ${otp.otpCode}`);
+
       sendSMS({
         recipient: normalizedPhone,
         messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
@@ -174,7 +180,19 @@ export class AuthService {
         throw new UnauthorizedException("No PIN set. Please register first.");
 
       const pinOk = await this.comparePin(pin, citizen.pin);
-      if (!pinOk) throw new UnauthorizedException("Invalid credentials");
+      if (!pinOk) {
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.LOGIN_FAILURE,
+          actorId: citizen.id,
+          actorName: citizen.fullName,
+          targetUserId: citizen.id,
+          targetUserName: citizen.fullName,
+          success: false,
+          reason: "Invalid PIN",
+          metadata: { loginType: "CITIZEN" },
+        });
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
       const payload = {
         sub: citizen.id,
@@ -183,6 +201,16 @@ export class AuthService {
       };
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.LOGIN_SUCCESS,
+        actorId: citizen.id,
+        actorName: citizen.fullName,
+        targetUserId: citizen.id,
+        targetUserName: citizen.fullName,
+        success: true,
+        metadata: { loginType: "CITIZEN" },
+      });
 
       return successResponse("Login successful", {
         accessToken,
@@ -236,7 +264,19 @@ export class AuthService {
         );
 
       const pinOk = await this.comparePin(pin, patrol.pin);
-      if (!pinOk) throw new UnauthorizedException("Invalid credentials");
+      if (!pinOk) {
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.LOGIN_FAILURE,
+          actorId: patrol.id,
+          actorName: patrol.fullName,
+          targetUserId: patrol.id,
+          targetUserName: patrol.fullName,
+          success: false,
+          reason: "Invalid PIN",
+          metadata: { loginType: "PATROL" },
+        });
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
       const payload = {
         sub: patrol.id,
@@ -245,6 +285,16 @@ export class AuthService {
       };
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.LOGIN_SUCCESS,
+        actorId: patrol.id,
+        actorName: patrol.fullName,
+        targetUserId: patrol.id,
+        targetUserName: patrol.fullName,
+        success: true,
+        metadata: { loginType: "PATROL" },
+      });
 
       return successResponse("Patrol login successful", {
         accessToken,
@@ -388,6 +438,11 @@ export class AuthService {
           "PIN change is only available for Patrol and Citizen users",
         );
       }
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.PIN_CHANGED,
+        success: true,
+        metadata: { userId, role },
+      });
       return successResponse("PIN changed successfully.");
     } catch (error) {
       return errorResponse(error.message ?? "Failed to change PIN", error);
@@ -446,6 +501,13 @@ export class AuthService {
         userId: id,
         phoneNumber: normalizedPhone,
         otpType,
+      });
+
+      await this.auditService.logSecurityEvent({
+        eventType: pinType === PINType.SETUP ? SecurityEventType.OTP_REQUESTED : SecurityEventType.PIN_RESET_REQUESTED,
+        actorId: id,
+        success: true,
+        metadata: { role, pinType },
       });
 
       const recipient = normalizedPhone;
@@ -526,6 +588,13 @@ export class AuthService {
         throw new BadRequestException("Invalid role in reset token");
       }
 
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.PIN_RESET_COMPLETED,
+        actorId: userId,
+        success: true,
+        metadata: { role },
+      });
+
       return successResponse("PIN reset successfully.");
     } catch (error) {
       return errorResponse(error.message ?? "Failed to reset PIN", error);
@@ -586,6 +655,13 @@ export class AuthService {
         status: OTPStatus.REQUESTED,
       });
 
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.OTP_VERIFIED,
+        actorId: userId,
+        success: true,
+        metadata: { otpType },
+      });
+
       // Dashboard users remain PENDING until password is set.
       // status will be updated to ACTIVE in setUserPasswordWithToken.
       if (phone) user.isPhoneVerified = true;
@@ -634,6 +710,8 @@ export class AuthService {
       const userId = decoded.sub;
       const phone = decoded.phoneNumber;
 
+      await this.otpService.verifyOtp(userId, otpType, otpCode);
+
       if (role === UserRole.PATROL) {
         const patrol = await this.patrolRepository.findOne({
           where: { id: userId, phoneNumber: phone },
@@ -646,7 +724,12 @@ export class AuthService {
         if (!citizen) throw new NotFoundException("Citizen not found");
       }
 
-      await this.otpService.verifyOtp(userId, otpType, otpCode);
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.OTP_VERIFIED,
+        actorId: userId,
+        success: true,
+        metadata: { otpType, role },
+      });
 
       const setPinToken = signSetPasswordToken(this.jwtService, {
         sub: userId,
@@ -720,6 +803,13 @@ export class AuthService {
         otpType,
       });
 
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.OTP_REQUESTED,
+        actorId: userId,
+        success: true,
+        metadata: { otpType, resent: true },
+      });
+
       sendSMS({
         recipient: phone,
         messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
@@ -780,6 +870,13 @@ export class AuthService {
 
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.PIN_CHANGED,
+        actorId: userId,
+        success: true,
+        metadata: { role, action: "initial_set" },
+      });
 
       return successResponse("PIN set successfully. Login complete.", {
         accessToken,
@@ -895,6 +992,14 @@ export class AuthService {
         otpType: OTPType.FORGOT_PASSWORD_OTP,
       });
 
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.PASSWORD_RESET_REQUESTED,
+        actorId: user.id,
+        actorName: user.fullName,
+        success: true,
+        metadata: { phoneNumber: normalizedPhone },
+      });
+
       const recipient = normalizedPhone;
       sendSMS({
         recipient,
@@ -969,6 +1074,13 @@ export class AuthService {
         status: OTPStatus.REQUESTED,
       });
 
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.PASSWORD_RESET_COMPLETED,
+        actorId: userId,
+        actorName: user.fullName,
+        success: true,
+      });
+
       return successResponse("Password reset successfully.");
     } catch (error) {
       return errorResponse(error.message ?? "Failed to reset password", error);
@@ -989,6 +1101,13 @@ export class AuthService {
 
       user.password = await hashPassword(newPassword);
       await this.userRepository.save(user);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.PASSWORD_CHANGED,
+        actorId: userId,
+        actorName: user.fullName,
+        success: true,
+      });
 
       return successResponse("Password changed successfully.");
     } catch (error) {
@@ -1109,7 +1228,7 @@ export class AuthService {
         .where("citizen.phoneNumber = :phone", { phone: normalizedPhone })
         .getOne();
 
-      if (!citizen) throw new NotFoundException("Citizen not registered");
+      if (!citizen) throw new NotFoundException("User not found. Please register first.");
 
       if (citizen.status === UserStatus.DISABLED)
         return errorResponse(
@@ -1240,7 +1359,19 @@ export class AuthService {
         );
 
       const ok = await comparePassword(password!, user.password);
-      if (!ok) throw new UnauthorizedException("Invalid credentials");
+      if (!ok) {
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.LOGIN_FAILURE,
+          actorId: user.id,
+          actorName: user.fullName,
+          targetUserId: user.id,
+          targetUserName: user.fullName,
+          success: false,
+          reason: "Invalid password",
+          metadata: { loginType: "USER" },
+        });
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
       const payload = {
         sub: user.id,
@@ -1250,6 +1381,16 @@ export class AuthService {
       };
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.LOGIN_SUCCESS,
+        actorId: user.id,
+        actorName: user.fullName,
+        targetUserId: user.id,
+        targetUserName: user.fullName,
+        success: true,
+        metadata: { loginType: "USER" },
+      });
 
       return successResponse("Login successful", {
         accessToken,
@@ -1307,6 +1448,12 @@ export class AuthService {
           role: UserRole.PATROL,
         };
         const accessToken = signAccessToken(this.jwtService, payload);
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.TOKEN_REFRESH,
+          actorId: patrol.id,
+          success: true,
+          metadata: { role: UserRole.PATROL },
+        });
         return successResponse("Token refreshed successfully", { accessToken });
       }
 
@@ -1323,6 +1470,12 @@ export class AuthService {
           role: UserRole.CITIZEN,
         };
         const accessToken = signAccessToken(this.jwtService, payload);
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.TOKEN_REFRESH,
+          actorId: citizen.id,
+          success: true,
+          metadata: { role: UserRole.CITIZEN },
+        });
         return successResponse("Token refreshed successfully", { accessToken });
       }
 
@@ -1339,6 +1492,13 @@ export class AuthService {
         role: user.role,
       };
       const accessToken = signAccessToken(this.jwtService, payload);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.TOKEN_REFRESH,
+        actorId: user.id,
+        success: true,
+        metadata: { role: user.role },
+      });
 
       return successResponse("Token refreshed successfully", { accessToken });
     } catch (error) {

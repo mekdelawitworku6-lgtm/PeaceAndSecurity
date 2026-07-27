@@ -12,6 +12,7 @@ import { generateRandomCode } from "../../common/utils/generator";
 import { Report } from "./entities/report.entity";
 import { ReportLog } from "./entities/report-log.entity";
 import {
+  BusinessEventType,
   NoiseAreaType,
   NotificationType,
   ReportStatus,
@@ -21,6 +22,7 @@ import {
 import { Patrol } from "../patrol/entities/patrol.entity";
 import { ReportTypesService } from "../report-types/report-types.service";
 import { NotificationsGateway } from "../notifications/notifications.gateway";
+import { AuditService } from "../audit/audit.service";
 import { getDistance } from "../../common/utils/geo-util";
 import { processUploads } from "../../common/utils/file-upload.util";
 import { ReportType as ReportTypeEntity } from "../report-types/entities/report-type.entity";
@@ -39,6 +41,7 @@ export class ReportsService {
     private readonly userRepo: Repository<User>,
     private readonly reportTypesService: ReportTypesService,
     private readonly notificationsGateway: NotificationsGateway,
+    private readonly auditService: AuditService,
   ) { }
 
   private async findNearestPatrol(lat: number, lon: number, maxDistanceKm = 15): Promise<Patrol | null> {
@@ -160,7 +163,7 @@ export class ReportsService {
     return `Sector ${latBase}/${lonBase}`;
   }
 
-  async create(createReportDto: any, userId?: string, files?: { images?: any[]; video?: any[]; audio?: any[] }) {
+  async create(createReportDto: any, userId?: string, files?: { images?: any[]; video?: any[]; audio?: any[] }, ipAddress?: string) {
     if (files) {
       const savedAssets = await processUploads(
         files,
@@ -212,8 +215,9 @@ export class ReportsService {
       reportTypeEntity = (await this.reportTypesService.findOne(typeId)) as any;
     } else if (vType) {
       // Find type by name if ID not provided
-      const types = await this.reportTypesService.findAll();
-      reportTypeEntity = (types.find(t => t.name.toLowerCase() === vType.toLowerCase())) as any;
+      const result = await this.reportTypesService.findAll();
+      const types = Array.isArray(result) ? result : result.data || [];
+      reportTypeEntity = (types.find((t: any) => t.name.toLowerCase() === vType.toLowerCase())) as any;
     }
 
     if (reportTypeEntity) {
@@ -302,6 +306,18 @@ export class ReportsService {
       assignedPatrolId,
       assignedAt: assignedPatrolId ? new Date() : null,
       area,
+      // Incident information
+      incidentDateTime: createReportDto.incidentDateTime || null,
+      isOngoing: createReportDto.isOngoing || false,
+      isEmergency: createReportDto.isEmergency || false,
+      suspectInfo: createReportDto.suspectInfo || null,
+      victimInfo: createReportDto.victimInfo || null,
+      witnessInfo: createReportDto.witnessInfo || null,
+      // Device / security data
+      deviceId: createReportDto.deviceId || null,
+      devicePlatform: createReportDto.devicePlatform || null,
+      appVersion: createReportDto.appVersion || null,
+      ipAddress: ipAddress || null,
     });
 
     const savedReport = (await this.reportRepo.save(
@@ -397,6 +413,37 @@ export class ReportsService {
    * Get reports near a patrol officer's office address.
    * Uses the patrol's officeLatitude/officeLongitude from the patrols table.
    */
+  async findNearbyForCitizen(lat: number, lng: number, radiusKm = 10, query?: any) {
+    const qb = this.reportRepo
+      .createQueryBuilder("report")
+      .leftJoinAndSelect("report.assignedPatrol", "assignedPatrol")
+      .leftJoinAndSelect("report.reportType", "reportType");
+
+    if (query?.status) {
+      qb.andWhere("report.status = :status", { status: query.status });
+    }
+    if (query?.violationType) {
+      qb.andWhere("report.violationType = :vType", { vType: query.violationType });
+    }
+
+    const reports = await qb.orderBy("report.createdAt", "DESC").getMany();
+
+    const withDistance = reports
+      .map((r) => ({
+        ...r,
+        distanceKm:
+          getDistance(lat, lng, Number(r.latitude), Number(r.longitude)) / 1000,
+      }))
+      .filter((r) => r.distanceKm <= radiusKm)
+      .sort((a, b) => a.distanceKm - b.distanceKm);
+
+    return {
+      success: true,
+      message: "Nearby reports retrieved successfully",
+      data: withDistance,
+    };
+  }
+
   async findNearbyForPatrol(patrolId: string, radiusKm = 10, query?: any) {
     const patrol = await this.patrolRepo.findOne({ where: { id: patrolId } });
     if (!patrol) throw new NotFoundException("Patrol officer not found");
@@ -592,6 +639,14 @@ export class ReportsService {
       `Assigned to officer ${patrol.fullName}`,
     );
 
+    void this.auditService.logBusinessEvent({
+      eventType: BusinessEventType.REPORT_ASSIGNED,
+      entity: "Report",
+      entityId: report.id,
+      description: `Report assigned to patrol officer`,
+      metadata: { patrolId: patrol.id },
+    });
+
     // Real-time notification for the specific Patrol Officer
     this.notificationsGateway.notifyUser(patrolId, "PATROL", {
       title: "🚨 Urgent: Case Assigned",
@@ -651,6 +706,14 @@ export class ReportsService {
       { patrolId: patrolId },
       "Officer accepted the request",
     );
+
+    void this.auditService.logBusinessEvent({
+      eventType: BusinessEventType.PATROL_ACCEPTED,
+      entity: "Report",
+      entityId: report.id,
+      description: `Patrol officer accepted report`,
+      metadata: { patrolId },
+    });
 
     // Notify Admins
     this.notificationsGateway.sendToRole("SYSTEM_ADMIN", "patrol_accepted", {
@@ -773,11 +836,13 @@ export class ReportsService {
     }
 
     // Update patrol's current location in real-time
-    await this.patrolRepo.update(patrolId, {
-      latitude: data.latitude,
-      longitude: data.longitude,
-      lastLocationUpdate: new Date(),
-    });
+    const patrol = await this.patrolRepo.findOne({ where: { id: patrolId } });
+    if (patrol) {
+      patrol.latitude = data.latitude;
+      patrol.longitude = data.longitude;
+      patrol.lastLocationUpdate = new Date();
+      await this.patrolRepo.save(patrol);
+    }
 
     return saved;
   }
@@ -804,6 +869,14 @@ export class ReportsService {
     report.inspectionCompletedAt = new Date();
 
     const saved = await this.reportRepo.save(report);
+
+    void this.auditService.logBusinessEvent({
+      eventType: BusinessEventType.REPORT_CLOSED,
+      entity: "Report",
+      entityId: report.id,
+      description: `Report closed`,
+      metadata: { closedBy: closerId },
+    });
 
     const actor = isAdmin ? { userId: closerId } : { patrolId: closerId };
     await this.logStatus(
@@ -871,6 +944,14 @@ export class ReportsService {
       notes || "Report escalated to higher authority",
     );
 
+    void this.auditService.logBusinessEvent({
+      eventType: BusinessEventType.REPORT_ESCALATED,
+      entity: "Report",
+      entityId: report.id,
+      description: `Report escalated to higher authority`,
+      metadata: { escalatedBy: actorId },
+    });
+
     await this.notifyAdmins("Case Escalated", `Case ${report.caseId} was escalated.`, NotificationType.REPORT_STATUS_UPDATED, { reportId, caseId: report.caseId });
     await this.notifyStatusChange(saved, ReportStatus.ESCALATED, notes);
 
@@ -892,7 +973,7 @@ export class ReportsService {
   async remove(reportId: string) {
     const report = await this.findOne(reportId);
     await this.logRepo.delete({ reportId });
-    await this.reportRepo.remove(report);
+    await this.reportRepo.save({ ...report, deletedAt: new Date() });
   }
 
   async exportToCsv(query: any): Promise<string> {

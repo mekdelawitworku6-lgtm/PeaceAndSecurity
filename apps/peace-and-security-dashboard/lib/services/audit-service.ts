@@ -17,6 +17,16 @@ class AuditService {
     return response.data;
   }
 
+  async getSecurityEvents(params?: { page?: number; limit?: number; eventType?: string; actorId?: string; success?: boolean; startDate?: string; endDate?: string }) {
+    const response = await apiClient.get(API_ENDPOINTS.AUDIT_LOGS.SECURITY_EVENTS, { params });
+    return response.data;
+  }
+
+  async getDataAccessEvents(params?: { page?: number; limit?: number; accessType?: string; actorId?: string; targetEntity?: string; startDate?: string; endDate?: string }) {
+    const response = await apiClient.get(API_ENDPOINTS.AUDIT_LOGS.DATA_ACCESS_EVENTS, { params });
+    return response.data;
+  }
+
   async exportCsv(params: { entity?: string; action?: string; startDate?: string; endDate?: string }) {
     const response = await apiClient.get(API_ENDPOINTS.AUDIT_LOGS.EXPORT_CSV, { params, responseType: 'blob' });
     return response;

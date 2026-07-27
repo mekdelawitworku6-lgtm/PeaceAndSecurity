@@ -58,16 +58,16 @@ export function ReportTypeForm({ initialData, onSuccess, onCancel }: ReportTypeF
         try {
             setLoading(true)
             if (initialData?.id) {
-                await reportTypeService.update(initialData.id, values)
+                await reportTypeService.update(initialData.id, values, { skipToast: true })
                 toast.success("Report type updated successfully")
             } else {
-                await reportTypeService.create(values)
+                await reportTypeService.create(values, { skipToast: true })
                 toast.success("Report type created successfully")
             }
             onSuccess()
-        } catch (error) {
-            console.error(error)
-            toast.error("An error occurred. Please try again.")
+        } catch (error: any) {
+            const msg = error?.response?.data?.message || error?.message || "An error occurred. Please try again."
+            toast.error(Array.isArray(msg) ? msg[0] : msg)
         } finally {
             setLoading(false)
         }

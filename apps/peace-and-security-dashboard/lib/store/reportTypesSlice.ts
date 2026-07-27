@@ -4,16 +4,24 @@ import { reportTypeService } from '@/lib/services/report-type-service'
 interface ReportTypesState {
   items: any[]
   loading: boolean
+  page: number
+  total: number
+  totalPages: number
+  limit: number
 }
 
 const initialState: ReportTypesState = {
   items: [],
   loading: false,
+  page: 1,
+  total: 0,
+  totalPages: 1,
+  limit: 20,
 }
 
 export const fetchReportTypes = createAsyncThunk(
   'reportTypes/fetchAll',
-  async (params?: { search?: string; isActive?: string }) => {
+  async (params?: { search?: string; isActive?: string; page?: number; limit?: number }) => {
     const response = await reportTypeService.getAll(params)
     return response.data
   }
@@ -53,7 +61,12 @@ const reportTypesSlice = createSlice({
         state.loading = true
       })
       .addCase(fetchReportTypes.fulfilled, (state, action) => {
-        state.items = action.payload.reportTypes || action.payload.data || action.payload
+        const payload = action.payload
+        state.items = payload.data || payload.reportTypes || payload
+        state.total = payload.total ?? state.total
+        state.page = payload.page ?? state.page
+        state.limit = payload.limit ?? state.limit
+        state.totalPages = payload.totalPages ?? state.totalPages
         state.loading = false
       })
       .addCase(fetchReportTypes.rejected, (state) => {
@@ -76,5 +89,8 @@ const reportTypesSlice = createSlice({
 
 export const selectReportTypes = (state: { reportTypes: ReportTypesState }) => state.reportTypes.items
 export const selectReportTypesLoading = (state: { reportTypes: ReportTypesState }) => state.reportTypes.loading
+export const selectReportTypesPage = (state: { reportTypes: ReportTypesState }) => state.reportTypes.page
+export const selectReportTypesTotal = (state: { reportTypes: ReportTypesState }) => state.reportTypes.total
+export const selectReportTypesTotalPages = (state: { reportTypes: ReportTypesState }) => state.reportTypes.totalPages
 
 export default reportTypesSlice.reducer

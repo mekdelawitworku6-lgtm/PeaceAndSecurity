@@ -9,12 +9,14 @@ import { Citizen } from "../citizen/entities/citizen.entity";
 import { User } from "../user/entities/user.entity";
 import { ReportTypesModule } from "../report-types/report-types.module";
 import { NotificationsModule } from "../notifications/notifications.module";
+import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Report, ReportLog, Patrol, Citizen, User]),
     ReportTypesModule,
     NotificationsModule,
+    AuditModule,
   ],
   controllers: [ReportsController],
   providers: [ReportsService],
