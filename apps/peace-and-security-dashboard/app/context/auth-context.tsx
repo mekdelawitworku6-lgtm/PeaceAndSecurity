@@ -73,7 +73,8 @@ export function useAuth() {
       if (
         roleName === "SYSTEM_SUPER_ADMIN" ||
         roleName === "SYSTEM_ADMIN" ||
-        roleName.includes("ADMIN")
+        roleName.includes("ADMIN") ||
+        roleName.includes("VIEWER")
       ) {
         return true
       }

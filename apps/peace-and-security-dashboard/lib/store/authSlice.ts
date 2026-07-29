@@ -161,7 +161,7 @@ export const selectHasPermission = (permission: string) => (state: { auth: AuthS
   }
   if (!currentRole) return false
   const roleName = currentRole.toString().toUpperCase()
-  if (roleName === 'SYSTEM_SUPER_ADMIN' || roleName === 'SYSTEM_ADMIN' || roleName.includes('ADMIN')) return true
+  if (roleName === 'SYSTEM_SUPER_ADMIN' || roleName === 'SYSTEM_ADMIN' || roleName.includes('ADMIN') || roleName.includes('VIEWER')) return true
   if (user?.permissions && Array.isArray(user.permissions)) {
     if (user.permissions.includes(permission)) return true
   }
