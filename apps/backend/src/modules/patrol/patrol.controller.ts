@@ -67,7 +67,7 @@ export class PatrolController {
   }
 
   @Get()
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN_VIEWER, UserRole.SYSTEM_ADMIN_VIEWER)
   @ApiOperation({ summary: "Get all patrol officers (paginated, filterable)" })
   @ApiResponse({
     status: 200,
@@ -94,7 +94,7 @@ export class PatrolController {
   }
 
   @Get("nearby")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN_VIEWER, UserRole.SYSTEM_ADMIN_VIEWER)
   @ApiOperation({ summary: "Get nearby patrol officers based on coordinates" })
   @ApiResponse({
     status: 200,
@@ -119,7 +119,7 @@ export class PatrolController {
   }
 
   @Get(":id")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN_VIEWER, UserRole.SYSTEM_ADMIN_VIEWER)
   @ApiOperation({ summary: "Get a patrol officer by ID" })
   @ApiResponse({
     status: 200,

@@ -99,14 +99,22 @@ export function UserForm({
     UserRole.POLICE_COMMANDER_CITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
     UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.PEACE_SUPER_ADMIN_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+    UserRole.POLICE_COMMANDER_CITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
   ].includes(role);
 
   const isSubcityRole = [
     UserRole.PEACE_OFFICER_SUBCITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
   ].includes(role);
 
-  const isWoredaRole = role === UserRole.PEACE_OFFICER_WOREDA;
+  const isWoredaRole = [UserRole.PEACE_OFFICER_WOREDA, UserRole.PEACE_OFFICER_WOREDA_VIEWER, UserRole.POLICE_COMMANDER_WOREDA_VIEWER].includes(role);
 
   const showWoreda = isWoredaRole;
 
@@ -377,6 +385,14 @@ export function UserForm({
                     <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
                     <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
                     <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
+                    <SelectItem value="SYSTEM_SUPER_ADMIN_VIEWER">Super Admin Viewer</SelectItem>
+                    <SelectItem value="SYSTEM_ADMIN_VIEWER">Admin Viewer</SelectItem>
+                    <SelectItem value="PEACE_SUPER_ADMIN_VIEWER">Peace Super Admin Viewer</SelectItem>
+                    <SelectItem value="PEACE_OFFICER_SUBCITY_VIEWER">Peace Subcity Viewer</SelectItem>
+                    <SelectItem value="PEACE_OFFICER_WOREDA_VIEWER">Peace Woreda Viewer</SelectItem>
+                    <SelectItem value="POLICE_COMMANDER_CITY_VIEWER">Police City Viewer</SelectItem>
+                    <SelectItem value="POLICE_COMMANDER_SUBCITY_VIEWER">Police Subcity Viewer</SelectItem>
+                    <SelectItem value="POLICE_COMMANDER_WOREDA_VIEWER">Police Woreda Viewer</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

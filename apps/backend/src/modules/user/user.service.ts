@@ -57,8 +57,9 @@ export class UserService {
 
     const userRole = dto.role ?? UserRole.SYSTEM_ADMIN;
 
-    // Only allow dashboard roles here — patrol/citizen have their own endpoints
-    if (userRole === UserRole.PATROL || userRole === UserRole.CITIZEN) {
+    // Allow dashboard + viewer roles; patrol/citizen have their own endpoints
+    const mobileRoles = [UserRole.PATROL, UserRole.CITIZEN];
+    if (mobileRoles.includes(userRole)) {
       throw new BadRequestException(
         "Use the /patrols or /citizens endpoints to register patrol officers or citizens.",
       );

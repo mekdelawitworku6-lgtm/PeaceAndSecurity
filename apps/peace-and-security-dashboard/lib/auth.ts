@@ -108,4 +108,56 @@ export const rolePermissions: Record<UserRole, string[]> = {
     "patrol_teams",
     "audit_logs",
   ],
+
+  // Viewer roles (read-only access)
+  [UserRole.SYSTEM_SUPER_ADMIN_VIEWER]: [
+    "dashboard",
+    "reports",
+    "cameras",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.SYSTEM_ADMIN_VIEWER]: [
+    "dashboard",
+    "reports",
+    "cameras",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.PEACE_SUPER_ADMIN_VIEWER]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.PEACE_OFFICER_SUBCITY_VIEWER]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.PEACE_OFFICER_WOREDA_VIEWER]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.POLICE_COMMANDER_CITY_VIEWER]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.POLICE_COMMANDER_SUBCITY_VIEWER]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
+  [UserRole.POLICE_COMMANDER_WOREDA_VIEWER]: [
+    "dashboard",
+    "reports",
+    "audit_logs",
+    "settings",
+  ],
 };

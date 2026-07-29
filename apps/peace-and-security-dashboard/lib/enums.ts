@@ -16,6 +16,7 @@ export enum UserStatus {
  * - POLICE_COMMANDER_CITY: City-level Police Commander
  * - POLICE_COMMANDER_SUBCITY: Subcity Police Commander
  * - POLICE_COMMANDER_WOREDA: Woreda Police Commander
+ * - Viewer roles (read-only access to dashboards)
  */
 export enum UserRole {
   SYSTEM_SUPER_ADMIN = "SYSTEM_SUPER_ADMIN",
@@ -32,6 +33,16 @@ export enum UserRole {
   POLICE_COMMANDER_CITY = "POLICE_COMMANDER_CITY",
   POLICE_COMMANDER_SUBCITY = "POLICE_COMMANDER_SUBCITY",
   POLICE_COMMANDER_WOREDA = "POLICE_COMMANDER_WOREDA",
+
+  // Viewer roles (read-only)
+  SYSTEM_SUPER_ADMIN_VIEWER = "SYSTEM_SUPER_ADMIN_VIEWER",
+  SYSTEM_ADMIN_VIEWER = "SYSTEM_ADMIN_VIEWER",
+  PEACE_SUPER_ADMIN_VIEWER = "PEACE_SUPER_ADMIN_VIEWER",
+  PEACE_OFFICER_SUBCITY_VIEWER = "PEACE_OFFICER_SUBCITY_VIEWER",
+  PEACE_OFFICER_WOREDA_VIEWER = "PEACE_OFFICER_WOREDA_VIEWER",
+  POLICE_COMMANDER_CITY_VIEWER = "POLICE_COMMANDER_CITY_VIEWER",
+  POLICE_COMMANDER_SUBCITY_VIEWER = "POLICE_COMMANDER_SUBCITY_VIEWER",
+  POLICE_COMMANDER_WOREDA_VIEWER = "POLICE_COMMANDER_WOREDA_VIEWER",
 }
 
 export const ROLE_LABELS: Record<string, string> = {
@@ -45,6 +56,14 @@ export const ROLE_LABELS: Record<string, string> = {
   [UserRole.POLICE_COMMANDER_CITY]: "Police Commander City",
   [UserRole.POLICE_COMMANDER_SUBCITY]: "Police Commander Subcity",
   [UserRole.POLICE_COMMANDER_WOREDA]: "Police Commander Woreda",
+  [UserRole.SYSTEM_SUPER_ADMIN_VIEWER]: "Super Admin Viewer",
+  [UserRole.SYSTEM_ADMIN_VIEWER]: "Admin Viewer",
+  [UserRole.PEACE_SUPER_ADMIN_VIEWER]: "Peace Super Admin Viewer",
+  [UserRole.PEACE_OFFICER_SUBCITY_VIEWER]: "Peace Subcity Viewer",
+  [UserRole.PEACE_OFFICER_WOREDA_VIEWER]: "Peace Woreda Viewer",
+  [UserRole.POLICE_COMMANDER_CITY_VIEWER]: "Police City Viewer",
+  [UserRole.POLICE_COMMANDER_SUBCITY_VIEWER]: "Police Subcity Viewer",
+  [UserRole.POLICE_COMMANDER_WOREDA_VIEWER]: "Police Woreda Viewer",
 };
 
 export enum OTPType {
