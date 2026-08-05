@@ -3,8 +3,22 @@ import { DataSource } from "typeorm";
 import * as dotenv from "dotenv";
 import { User } from "../../modules/user/entities/user.entity";
 import { ReportType } from "../../modules/report-types/entities/report-type.entity";
+import { Citizen } from "../../modules/citizen/entities/citizen.entity";
+import { Report } from "../../modules/reports/entities/report.entity";
+import { ReportLog } from "../../modules/reports/entities/report-log.entity";
+import { Conversation } from "../../modules/chat/entities/conversation.entity";
+import { Message } from "../../modules/chat/entities/message.entity";
+import { Camera } from "../../modules/cameras/entities/camera.entity";
+import { CameraAlert } from "../../modules/cameras/entities/camera-alert.entity";
+import { Notification } from "../../modules/notifications/entities/notification.entity";
+import { Setting } from "../../modules/settings/setting.entity";
+import { Patrol } from "../../modules/patrol/entities/patrol.entity";
+import { City } from "../../modules/geo/entities/city.entity";
+import { Subcity } from "../../modules/geo/entities/subcity.entity";
+import { Woreda } from "../../modules/geo/entities/woreda.entity";
 import { AdminSeederService } from "./admin-seeder.service";
 import { ReportTypeSeederService } from "./report-type-seeder.service";
+import { DemoDataSeederService } from "./demo-data-seeder.service";
 
 dotenv.config();
 
@@ -16,7 +30,23 @@ async function runSeeds() {
         username: process.env.DB_USERNAME || "postgres",
         password: String(process.env.DB_PASSWORD ?? "postgres"),
         database: process.env.DB_NAME || "peace_and_security",
-        entities: [User, ReportType],
+        entities: [
+            User,
+            ReportType,
+            Citizen,
+            Report,
+            ReportLog,
+            Conversation,
+            Message,
+            Camera,
+            CameraAlert,
+            Notification,
+            Setting,
+            Patrol,
+            City,
+            Subcity,
+            Woreda,
+        ],
         ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
         synchronize: false,
     });
@@ -27,12 +57,21 @@ async function runSeeds() {
 
         const adminSeeder = new AdminSeederService(dataSource);
         const reportTypeSeeder = new ReportTypeSeederService(dataSource);
+        const demoSeeder = new DemoDataSeederService(dataSource);
 
         console.log("\n--- Seeding Admin ---");
         await adminSeeder.seedAdmin();
 
         console.log("\n--- Seeding Report Types ---");
         await reportTypeSeeder.seedReportTypes();
+
+        console.log("\n--- Seeding Demo Data ---");
+        await demoSeeder.seedCitizens();
+        await demoSeeder.seedReports();
+        await demoSeeder.seedConversations();
+        await demoSeeder.seedCameras();
+        await demoSeeder.seedNotifications();
+        await demoSeeder.seedSettings();
 
         console.log("\n✔ All seeding operations complete");
     } catch (error) {

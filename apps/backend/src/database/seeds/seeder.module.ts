@@ -12,6 +12,7 @@ import { AdminSeederService } from "./admin-seeder.service";
 import { ReportTypeSeederService } from "./report-type-seeder.service";
 import { ChatSeederService } from "./chat-seeder.service";
 import { AuditSeederService } from "./audit-seeder.service";
+import { DemoDataSeederService } from "./demo-data-seeder.service";
 
 @Module({
   imports: [
@@ -31,12 +32,14 @@ import { AuditSeederService } from "./audit-seeder.service";
     ReportTypeSeederService,
     ChatSeederService,
     AuditSeederService,
+    DemoDataSeederService,
   ],
   exports: [
     AdminSeederService,
     ReportTypeSeederService,
     ChatSeederService,
     AuditSeederService,
+    DemoDataSeederService,
   ],
 })
 export class SeederModule {}
