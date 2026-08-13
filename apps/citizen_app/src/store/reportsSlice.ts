@@ -12,6 +12,7 @@ import type { Report, ReportLog } from "../types";
 
 export interface ReportsState {
   items: Report[];
+  nearbyItems: Report[];
   detail: Report | null;
   history: ReportLog[];
   loading: boolean;
@@ -22,6 +23,7 @@ export interface ReportsState {
 
 const initialState: ReportsState = {
   items: [],
+  nearbyItems: [],
   detail: null,
   history: [],
   loading: false,
@@ -40,6 +42,19 @@ export const fetchMyReports = createAsyncThunk<Report[], void, { rejectValue: st
     }
   },
 );
+
+export const fetchNearbyReports = createAsyncThunk<
+  Report[],
+  { lat?: number; lng?: number; radiusKm?: number } | undefined,
+  { rejectValue: string }
+>("reports/nearby", async (params, { rejectWithValue }) => {
+  try {
+    const { fetchNearbyReportsApi } = await import("../api/reports");
+    return await fetchNearbyReportsApi(params?.lat, params?.lng, params?.radiusKm);
+  } catch (e) {
+    return rejectWithValue(handleError(e));
+  }
+});
 
 export const fetchReportDetail = createAsyncThunk<Report, string, { rejectValue: string }>(
   "reports/detail",
@@ -142,6 +157,9 @@ const reportsSlice = createSlice({
         state.submitting = false;
         state.error = action.payload ?? "Failed to submit report";
       })
+      .addCase(fetchNearbyReports.fulfilled, (state, action) => {
+        state.nearbyItems = action.payload;
+      })
       .addCase(trackReport.fulfilled, (state, action) => {
         state.detail = action.payload;
       });
@@ -151,6 +169,7 @@ const reportsSlice = createSlice({
 export const { clearReportsError, resetDetail, setFilters } = reportsSlice.actions;
 
 export const selectMyReports = (state: { reports: ReportsState }) => state.reports.items;
+export const selectNearbyReports = (state: { reports: ReportsState }) => state.reports.nearbyItems;
 export const selectReportsLoading = (state: { reports: ReportsState }) => state.reports.loading;
 export const selectReportsSubmitting = (state: { reports: ReportsState }) =>
   state.reports.submitting;

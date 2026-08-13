@@ -1,7 +1,10 @@
-import { client } from "./client";
+/**
+ * Mock report types API — returns fake data, no backend calls.
+ */
+import { MOCK_REPORT_TYPES } from "./mockData";
 import type { ReportType } from "../types";
 
 export async function fetchReportTypesApi(): Promise<ReportType[]> {
-  const res = await client.get<{ data: ReportType[] }>("/report-types");
-  return res.data.data ?? [];
+  await new Promise((r) => setTimeout(r, 200));
+  return [...MOCK_REPORT_TYPES];
 }

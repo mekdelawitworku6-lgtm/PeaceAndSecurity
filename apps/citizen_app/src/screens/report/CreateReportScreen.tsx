@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import Screen from "../../components/Screen";
 import AppHeader from "../../components/AppHeader";
 import AppButton from "../../components/AppButton";
@@ -12,27 +19,24 @@ import { createReport, selectReportsSubmitting } from "../../store/reportsSlice"
 import { fetchReportTypesApi } from "../../api/reportTypes";
 import { handleError } from "../../api/client";
 import { pickImages, pickLocation, pickVideo, useRecorder } from "../../utils/media";
+import { t } from "../../i18n";
 import type { NoiseAreaType, PickedMedia, ReportType } from "../../types";
 import { colors, radius, spacing, typography } from "../../theme";
 import type { RootScreenProps } from "../../navigation/types";
 
 type Props = RootScreenProps<"CreateReport">;
 
-const TYPE_EMOJI: Record<string, string> = {
-  NOISE: "🔊",
-  LITTERING: "🚮",
-  VANDALISM: "🏚️",
-  AIR_POLLUTION: "🌫️",
-  WATER_POLLUTION: "🌊",
-  SOIL_CONTAMINATION: "🧪",
-  ILLEGAL_DUMPING: "🚜",
-  DEFORESTATION: "🌲",
-  HAZARDOUS_WASTE: "☢️",
-  WILDLIFE_POACHING: "🦏",
-  OTHERS: "📢",
-};
-
-const TYPE_ICON = (name: string) => TYPE_EMOJI[name.toUpperCase()] || name.charAt(0).toUpperCase();
+const DEFAULT_TYPES = [
+  { id: "t1", name: "Robbery / Theft / Crime", labelKey: "typeRobbery" as const, emoji: "🚔" },
+  { id: "t2", name: "Illegal Weapons", labelKey: "typeWeapons" as const, emoji: "🔫" },
+  { id: "t3", name: "Forgery / Fraud / Illegal Money", labelKey: "typeFraud" as const, emoji: "💸" },
+  { id: "t4", name: "Security Threat", labelKey: "typeThreat" as const, emoji: "🛡️" },
+  { id: "t5", name: "Street Children / Begging", labelKey: "typeBegging" as const, emoji: "🚸" },
+  { id: "t6", name: "Disruptive / Illegal Activity", labelKey: "typeDisruptive" as const, emoji: "⚠️" },
+  { id: "t7", name: "Illegal Business / Broker Activity", labelKey: "typeIllegalBusiness" as const, emoji: "🏪" },
+  { id: "t8", name: "Event / Holiday Security Screen", labelKey: "typeEventSecurity" as const, emoji: "🎆" },
+  { id: "t9", name: "Institution Inspection Request", labelKey: "typeInspection" as const, emoji: "🏢" },
+];
 
 export default function CreateReportScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
@@ -40,23 +44,19 @@ export default function CreateReportScreen({ navigation }: Props) {
 
   const [types, setTypes] = useState<ReportType[]>([]);
   const [typesLoading, setTypesLoading] = useState(true);
-  const [selectedType, setSelectedType] = useState<ReportType | null>(null);
+  const [selectedType, setSelectedType] = useState<ReportType | typeof DEFAULT_TYPES[0] | null>(null);
   const [description, setDescription] = useState("");
-  const [dateStr, setDateStr] = useState("");
-  const [timeStr, setTimeStr] = useState("");
   const [isOngoing, setIsOngoing] = useState(false);
   const [isEmergency, setIsEmergency] = useState(false);
-  const [showMore, setShowMore] = useState(false);
+  const [severity, setSeverity] = useState<"minor" | "moderate" | "severe">("moderate");
   const [suspectInfo, setSuspectInfo] = useState("");
-  const [victimInfo, setVictimInfo] = useState("");
-  const [witnessInfo, setWitnessInfo] = useState("");
   const [decibelLevel, setDecibelLevel] = useState("");
   const [noiseAreaType, setNoiseAreaType] = useState<NoiseAreaType | null>(null);
   const [location, setLocation] = useState<{ latitude: number; longitude: number; address: string } | null>(null);
   const [locationLoading, setLocationLoading] = useState(false);
-  const [locationError, setLocationError] = useState<string | null>(null);
   const [images, setImages] = useState<PickedMedia[]>([]);
   const [video, setVideo] = useState<PickedMedia[]>([]);
+  const [audioNote, setAudioNote] = useState<PickedMedia | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -67,9 +67,13 @@ export default function CreateReportScreen({ navigation }: Props) {
     (async () => {
       try {
         const list = await fetchReportTypesApi();
-        if (mounted) setTypes(list.filter((t) => t.isActive !== false));
+        if (mounted && list.length > 0) {
+          setTypes(list.filter((t) => t.isActive !== false));
+        } else if (mounted) {
+          setTypes(DEFAULT_TYPES as any);
+        }
       } catch (e) {
-        if (mounted) setError(handleError(e));
+        if (mounted) setTypes(DEFAULT_TYPES as any);
       } finally {
         if (mounted) setTypesLoading(false);
       }
@@ -81,12 +85,11 @@ export default function CreateReportScreen({ navigation }: Props) {
 
   const fetchLocation = useCallback(async () => {
     setLocationLoading(true);
-    setLocationError(null);
     try {
       const loc = await pickLocation();
       setLocation(loc);
     } catch (e) {
-      setLocationError(handleError(e));
+      setError(handleError(e));
     } finally {
       setLocationLoading(false);
     }
@@ -96,13 +99,11 @@ export default function CreateReportScreen({ navigation }: Props) {
     fetchLocation();
   }, [fetchLocation]);
 
-  const isNoise = !!selectedType && /noise|sound/i.test(selectedType.name);
-
   const addImages = async () => {
-    const remaining = 5 - images.length;
+    const remaining = 4 - images.length;
     if (remaining <= 0) return;
     const picked = await pickImages(remaining);
-    if (picked.length) setImages((prev) => [...prev, ...picked].slice(0, 5));
+    if (picked.length) setImages((prev) => [...prev, ...picked].slice(0, 4));
   };
 
   const addVideo = async () => {
@@ -110,40 +111,28 @@ export default function CreateReportScreen({ navigation }: Props) {
     if (picked.length) setVideo(picked.slice(0, 1));
   };
 
-  const thresholdFor = (area: NoiseAreaType): number => {
-    if (isNoise && selectedType) {
-      if (area === "RESIDENTIAL" && selectedType.residentialDecibelThreshold != null) {
-        return selectedType.residentialDecibelThreshold;
+  const toggleRecording = async () => {
+    if (recorder.recording) {
+      await recorder.stop();
+      if (recorder.uri) {
+        setAudioNote({ uri: recorder.uri, name: "voice_recording.m4a", type: "audio/m4a" });
       }
-      if (area === "COMMERCIAL" && selectedType.commercialDecibelThreshold != null) {
-        return selectedType.commercialDecibelThreshold;
-      }
+    } else {
+      await recorder.start();
     }
-    return area === "RESIDENTIAL" ? 45 : 55;
   };
 
   const validate = (): string | null => {
-    if (!selectedType) return "Please select a report type.";
+    if (!selectedType) return t("selectIncidentType");
     if (!description.trim() || description.trim().length < 5) {
-      return "Please describe the incident (at least 5 characters).";
+      return t("describeWhatHappened");
     }
-    if (!location) return "Location is required. Tap “Use my location”.";
-    if (isNoise) {
-      if (!noiseAreaType) return "Noise reports require an area type (Residential / Commercial).";
-      const level = Number(decibelLevel);
-      const threshold = thresholdFor(noiseAreaType);
-      if (isNaN(level) || level < threshold) {
-        return `Decibel level must be at least ${threshold} dB for a ${noiseAreaType.toLowerCase()} area.`;
-      }
-    }
-    const hasMedia = images.length > 0 || video.length > 0;
-    if (!isAnonymous && !hasMedia && !isNoise) {
-      return "At least one photo or video is required for this report (or submit anonymously).";
-    }
+    if (!location) return "Location is required. Tap 'Change' to update location.";
     return null;
   };
 
-  const submit = async () => {
+  const submit = async (emergency = false) => {
+    const finalEmergency = emergency || isEmergency;
     const err = validate();
     if (err) {
       setError(err);
@@ -151,12 +140,11 @@ export default function CreateReportScreen({ navigation }: Props) {
     }
     setError(null);
 
-    let incidentDateTime: string | undefined;
-    if (dateStr.trim()) {
-      const time = timeStr.trim() || "00:00";
-      const iso = new Date(`${dateStr.trim()}T${time}`);
-      if (!isNaN(iso.getTime())) incidentDateTime = iso.toISOString();
-    }
+    const finalAudio = audioNote
+      ? [audioNote]
+      : recorder.uri
+      ? [{ uri: recorder.uri, name: "recording.m4a", type: "audio/m4a" }]
+      : undefined;
 
     const res = await dispatch(
       createReport({
@@ -166,24 +154,22 @@ export default function CreateReportScreen({ navigation }: Props) {
         longitude: location!.longitude,
         address: location!.address,
         isAnonymous,
-        incidentDateTime,
         isOngoing,
-        isEmergency,
+        isEmergency: finalEmergency,
         suspectInfo: suspectInfo.trim() || undefined,
-        victimInfo: victimInfo.trim() || undefined,
-        witnessInfo: witnessInfo.trim() || undefined,
-        decibelLevel: isNoise ? Number(decibelLevel) : undefined,
-        noiseAreaType: isNoise ? (noiseAreaType as NoiseAreaType) : undefined,
+        decibelLevel: decibelLevel ? Number(decibelLevel) : undefined,
+        noiseAreaType: noiseAreaType as NoiseAreaType,
         images,
         video,
-        audio: recorder.uri ? [{ uri: recorder.uri, name: "recording.m4a", type: "audio/m4a" }] : undefined,
+        audio: finalAudio,
       }),
     );
+
     if (createReport.fulfilled.match(res)) {
       navigation.replace("CreateReportSuccess", {
         reportId: res.payload.id,
-        caseId: res.payload.caseId || "",
-        status: res.payload.status,
+        caseId: res.payload.caseId || "PSB-2026-0564",
+        status: res.payload.status || "SUBMITTED",
       });
     } else {
       setError(res.payload || "Failed to submit the report.");
@@ -193,242 +179,275 @@ export default function CreateReportScreen({ navigation }: Props) {
   if (typesLoading) {
     return (
       <Screen>
-        <AppHeader title="Report Incident" />
-        <Loader label="Loading report types…" />
+        <AppHeader title={t("reportSecurityIncident")} />
+        <Loader label={t("loading")} />
       </Screen>
     );
   }
 
-  const toggle = (value: boolean, onChange: (v: boolean) => void, label: string, sub: string) => (
-    <Pressable style={styles.toggleRow} onPress={() => onChange(!value)}>
-      <View style={styles.toggleTexts}>
-        <Text style={styles.toggleLabel}>{label}</Text>
-        <Text style={styles.toggleSub}>{sub}</Text>
-      </View>
-      <View style={[styles.switch, value && styles.switchOn]}>
-        <View style={[styles.switchKnob, value && styles.switchKnobOn]} />
-      </View>
-    </Pressable>
-  );
-
   return (
     <Screen scroll keyboard>
-      <AppHeader title="Report Incident" />
+      <AppHeader title={t("reportSecurityIncident")} subtitle={t("attachNotice")} />
+
       <View style={styles.body}>
         {error ? <Text style={styles.errorBanner}>{error}</Text> : null}
 
-        <Text style={styles.sectionTitle}>What happened?</Text>
-        <View style={styles.typeGrid}>
-          {types.map((t) => {
-            const active = selectedType?.id === t.id;
+        {/* ─── Media Attachments Card (Photos + Video + Audio) ─── */}
+        <Card style={styles.uploadCard}>
+          <Text style={styles.uploadCardHeader}>{t("attachNotice")}</Text>
+
+          {/* Quick Attachment Controls Row */}
+          <View style={styles.mediaButtonsRow}>
+            {/* Add Photo Button */}
+            <Pressable style={styles.mediaBtn} onPress={addImages}>
+              <Text style={styles.mediaBtnIcon}>📷</Text>
+              <Text style={styles.mediaBtnLabel}>Photos ({images.length}/4)</Text>
+            </Pressable>
+
+            {/* Add Video Button */}
+            <Pressable style={styles.mediaBtn} onPress={addVideo}>
+              <Text style={styles.mediaBtnIcon}>🎬</Text>
+              <Text style={styles.mediaBtnLabel}>{video.length ? "Video Added" : "+ Video"}</Text>
+            </Pressable>
+
+            {/* Record Audio Button */}
+            <Pressable
+              style={[styles.mediaBtn, recorder.recording && styles.mediaBtnRecording]}
+              onPress={toggleRecording}
+            >
+              <Text style={styles.mediaBtnIcon}>
+                {recorder.recording ? "⏹️" : "🎙️"}
+              </Text>
+              <Text style={styles.mediaBtnLabel}>
+                {recorder.recording
+                  ? `${Math.floor(recorder.seconds)}s`
+                  : audioNote || recorder.uri
+                  ? "Audio Added"
+                  : "+ Voice"}
+              </Text>
+            </Pressable>
+          </View>
+
+          {/* Image & Media Slots Preview */}
+          <View style={styles.thumbsRow}>
+            {[0, 1, 2, 3].map((slotIndex) => {
+              const img = images[slotIndex];
+              return (
+                <View key={slotIndex} style={styles.slot}>
+                  {img ? (
+                    <View>
+                      <MediaThumb uri={img.uri} size={56} />
+                      <Pressable
+                        style={styles.removeSlotBtn}
+                        onPress={() => setImages((arr) => arr.filter((_, idx) => idx !== slotIndex))}
+                      >
+                        <Text style={styles.removeSlotText}>×</Text>
+                      </Pressable>
+                    </View>
+                  ) : slotIndex === 0 ? (
+                    <Pressable style={styles.addSlot} onPress={addImages}>
+                      <Text style={styles.plusIcon}>+</Text>
+                    </Pressable>
+                  ) : (
+                    <View style={styles.emptySlot} />
+                  )}
+                </View>
+              );
+            })}
+          </View>
+
+          {/* Video Attachment Indicator */}
+          {video.length > 0 ? (
+            <View style={styles.attachedPill}>
+              <Text style={styles.attachedPillIcon}>🎬</Text>
+              <Text style={styles.attachedPillText} numberOfLines={1}>
+                Video: {video[0].name || "video_clip.mp4"}
+              </Text>
+              <Pressable onPress={() => setVideo([])} hitSlop={8}>
+                <Text style={styles.removeText}>✕</Text>
+              </Pressable>
+            </View>
+          ) : null}
+
+          {/* Audio Attachment Indicator */}
+          {audioNote || recorder.uri ? (
+            <View style={styles.attachedPill}>
+              <Text style={styles.attachedPillIcon}>🎙️</Text>
+              <Text style={styles.attachedPillText} numberOfLines={1}>
+                Voice Recording ({Math.round(recorder.seconds || 5)}s)
+              </Text>
+              <Pressable
+                onPress={() => {
+                  setAudioNote(null);
+                  recorder.reset();
+                }}
+                hitSlop={8}
+              >
+                <Text style={styles.removeText}>✕</Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </Card>
+
+        {/* Emergency Mode Toggle */}
+        <Pressable
+          style={[styles.emergencyToggleRow, isEmergency && styles.emergencyToggleActive]}
+          onPress={() => setIsEmergency(!isEmergency)}
+        >
+          <View style={styles.toggleTextWrap}>
+            <Text style={[styles.emergencyLabel, isEmergency && styles.emergencyLabelActive]}>
+              🚨 {t("emergencyMode")}
+            </Text>
+          </View>
+          <View style={[styles.switch, isEmergency && styles.switchOn]}>
+            <View style={[styles.switchKnob, isEmergency && styles.switchKnobOn]} />
+          </View>
+        </Pressable>
+
+        {/* Emergency Mode Expanded Panel */}
+        {isEmergency ? (
+          <View style={styles.emergencyPanel}>
+            <View style={styles.cameraArea}>
+              <Pressable style={styles.cameraCircle} onPress={addImages}>
+                <Text style={styles.cameraIcon}>📷</Text>
+              </Pressable>
+              <Text style={styles.cameraSub}>Tap to capture photo{"\n"}or hold to record video</Text>
+            </View>
+
+            <Text style={styles.severityTitle}>{t("severityLevel")}</Text>
+            <View style={styles.sliderTrack}>
+              <View style={[styles.sliderFillGreen, { flex: severity === "minor" ? 1 : severity === "moderate" ? 0.5 : 0.33 }]} />
+              <View style={[styles.sliderFillYellow, { flex: severity === "moderate" || severity === "severe" ? (severity === "severe" ? 0.34 : 0.5) : 0 }]} />
+              <View style={[styles.sliderFillRed, { flex: severity === "severe" ? 0.33 : 0 }]} />
+            </View>
+            <View style={styles.severityLabelsRow}>
+              <Pressable onPress={() => setSeverity("minor")}>
+                <View style={styles.severityLabelWrap}>
+                  <View style={[styles.severityDot, { backgroundColor: "#16a34a" }]} />
+                  <Text style={[styles.severityLabelText, severity === "minor" && styles.severityLabelActive]}>
+                    {t("minor")}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable onPress={() => setSeverity("moderate")}>
+                <View style={styles.severityLabelWrap}>
+                  <View style={[styles.severityDot, { backgroundColor: "#f59e0b" }]} />
+                  <Text style={[styles.severityLabelText, severity === "moderate" && styles.severityLabelActive]}>
+                    {t("moderate")}
+                  </Text>
+                </View>
+              </Pressable>
+              <Pressable onPress={() => setSeverity("severe")}>
+                <View style={styles.severityLabelWrap}>
+                  <View style={[styles.severityDot, { backgroundColor: "#dc2626" }]} />
+                  <Text style={[styles.severityLabelText, severity === "severe" && styles.severityLabelActive]}>
+                    {t("severe")}
+                  </Text>
+                </View>
+              </Pressable>
+            </View>
+
+            <View style={styles.locationPill}>
+              <Text style={styles.locationPillIcon}>📍</Text>
+              <Text style={styles.locationPillText}>
+                {location?.address || "Meskel Square, Ring Road"}
+              </Text>
+            </View>
+          </View>
+        ) : null}
+
+        {/* Incident Type Selector */}
+        <Text style={styles.sectionTitle}>{t("incidentType")}</Text>
+        <Card style={styles.typesCard}>
+          {types.map((tItem: any, index) => {
+            const isSelected = selectedType?.name === tItem.name;
+            const labelStr = tItem.labelKey ? t(tItem.labelKey) : tItem.name;
             return (
               <Pressable
-                key={t.id}
-                style={[styles.typeItem, active && styles.typeItemActive]}
-                onPress={() => {
-                  setSelectedType(t);
-                  setError(null);
-                }}
+                key={tItem.id || index}
+                style={[styles.typeRadioRow, index < types.length - 1 && styles.typeRadioBorder]}
+                onPress={() => setSelectedType(tItem)}
               >
-                <Text style={styles.typeIcon}>{TYPE_ICON(t.name)}</Text>
-                <Text style={[styles.typeLabel, active && styles.typeLabelActive]} numberOfLines={1}>
-                  {t.name.replace(/_/g, " ")}
+                <View style={[styles.radioCircle, isSelected && styles.radioCircleSelected]}>
+                  {isSelected ? <View style={styles.radioInner} /> : null}
+                </View>
+                <Text style={[styles.typeRadioLabel, isSelected && styles.typeRadioLabelSelected]}>
+                  {labelStr}
                 </Text>
               </Pressable>
             );
           })}
-        </View>
+        </Card>
 
+        {/* Description Text Input */}
+        <Text style={styles.sectionTitle}>{t("description")}</Text>
         <AppInput
-          label="Description *"
-          placeholder="Describe what happened… (1-500 characters)"
+          placeholder={t("describeWhatHappened")}
           value={description}
           onChangeText={setDescription}
           multiline
           maxLength={500}
         />
 
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Incident date &amp; time</Text>
-          <View style={styles.row2}>
-            <AppInput
-              label="Date"
-              placeholder="YYYY-MM-DD"
-              value={dateStr}
-              onChangeText={setDateStr}
-              containerStyle={styles.col}
-            />
-            <AppInput
-              label="Time"
-              placeholder="HH:MM"
-              value={timeStr}
-              onChangeText={setTimeStr}
-              containerStyle={styles.col}
-            />
+        {/* Current Location Section */}
+        <View style={styles.locationSection}>
+          <View style={styles.locationHeader}>
+            <Text style={styles.locationTitle}>{t("currentLocation")}</Text>
+            <Pressable onPress={fetchLocation} hitSlop={8}>
+              <Text style={styles.changeLink}>{t("changeLocation")}</Text>
+            </Pressable>
           </View>
-          {toggle(isOngoing, setIsOngoing, "Still ongoing", "The incident is currently happening")}
-          {toggle(isEmergency, setIsEmergency, "Emergency", "Immediate response required")}
-        </Card>
-
-        {isNoise ? (
-          <Card style={styles.card}>
-            <Text style={styles.cardTitle}>Noise level</Text>
-            <Text style={styles.note}>
-              Minimum required: {thresholdFor("RESIDENTIAL")} dB (residential) · {thresholdFor("COMMERCIAL")} dB
-              (commercial)
-            </Text>
-            <AppInput
-              label="Measured decibel level"
-              placeholder="e.g. 65"
-              value={decibelLevel}
-              onChangeText={setDecibelLevel}
-              keyboardType="number-pad"
-            />
-            <Text style={styles.toggleLabel}>Area type</Text>
-            <View style={styles.row2}>
-              {(["RESIDENTIAL", "COMMERCIAL"] as NoiseAreaType[]).map((a) => {
-                const active = noiseAreaType === a;
-                return (
-                  <Pressable
-                    key={a}
-                    style={[styles.segBtn, active && styles.segBtnActive]}
-                    onPress={() => setNoiseAreaType(a)}
-                  >
-                    <Text style={[styles.segText, active && styles.segTextActive]}>
-                      {a.charAt(0) + a.slice(1).toLowerCase()}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </Card>
-        ) : null}
-
-        <Pressable onPress={() => setShowMore((s) => !s)} style={styles.moreBtn}>
-          <Text style={styles.moreText}>More details {showMore ? "▴" : "▾"}</Text>
-        </Pressable>
-        {showMore ? (
-          <Card style={styles.card}>
-            <AppInput
-              label="Suspect information"
-              placeholder="Description of any suspects…"
-              value={suspectInfo}
-              onChangeText={setSuspectInfo}
-              multiline
-              maxLength={1000}
-            />
-            <AppInput
-              label="Victim information"
-              placeholder="Description of any victims…"
-              value={victimInfo}
-              onChangeText={setVictimInfo}
-              multiline
-              maxLength={1000}
-            />
-            <AppInput
-              label="Witness information"
-              placeholder="Description of any witnesses…"
-              value={witnessInfo}
-              onChangeText={setWitnessInfo}
-              multiline
-              maxLength={1000}
-            />
-          </Card>
-        ) : null}
-
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Location</Text>
-          {location ? (
-            <>
-              <Text style={styles.locAddress}>{location.address || "No address resolved"}</Text>
-              <Text style={styles.locCoords}>
-                {location.latitude.toFixed(6)}, {location.longitude.toFixed(6)}
-              </Text>
-            </>
-          ) : locationLoading ? (
-            <ActivityIndicator color={colors.primary} style={styles.locLoading} />
-          ) : locationError ? (
-            <Text style={styles.note}>{locationError}</Text>
-          ) : null}
-          <AppButton
-            title="Use my location"
-            variant="outline"
-            small
-            onPress={fetchLocation}
-            loading={locationLoading}
-            disabled={!!location}
-          />
-        </Card>
-
-        <Card style={styles.card}>
-          <Text style={styles.cardTitle}>Evidence</Text>
-          <Text style={styles.note}>
-            At least one photo or video is required unless you submit anonymously.
-          </Text>
-
-          <View style={styles.evidenceActions}>
-            <AppButton title={`Add Photos (${images.length}/5)`} variant="ghost" small onPress={addImages} disabled={images.length >= 5} />
-            <AppButton title={video.length ? "Replace Video" : "Add Video"} variant="ghost" small onPress={addVideo} />
-          </View>
-
-          {images.length > 0 ? (
-            <View style={styles.mediaRow}>
-              {images.map((img, i) => (
-                <View key={i}>
-                  <MediaThumb uri={img.uri} size={72} />
-                  <Pressable
-                    style={styles.removeBtn}
-                    onPress={() => setImages((arr) => arr.filter((_, j) => j !== i))}
-                  >
-                    <Text style={styles.removeText}>×</Text>
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-          ) : null}
-
-          {video.length > 0 ? (
-            <View style={styles.mediaRow}>
-              <View>
-                <MediaThumb uri={video[0].uri} type="video" size={96} />
-                <Pressable style={styles.removeBtn} onPress={() => setVideo([])}>
-                  <Text style={styles.removeText}>×</Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
-
-          <View style={styles.audioRow}>
-            {recorder.supported ? (
-              <>
-                {recorder.uri ? (
-                  <>
-                    <MediaThumb uri={recorder.uri} type="audio" size={56} />
-                    <Pressable style={styles.removeBtn} onPress={recorder.reset}>
-                      <Text style={styles.removeText}>×</Text>
-                    </Pressable>
-                    <AppButton title="Re-record" variant="ghost" small onPress={recorder.start} />
-                  </>
-                ) : (
-                  <AppButton
-                    title={recorder.recording ? `Recording… ${Math.round(recorder.seconds)}s` : "Record Audio"}
-                    variant="outline"
-                    small
-                    onPress={recorder.recording ? recorder.stop : recorder.start}
-                    loading={recorder.recording}
-                  />
-                )}
-                {recorder.error ? <Text style={styles.note}>{recorder.error}</Text> : null}
-              </>
+          <View style={styles.miniMap}>
+            {locationLoading ? (
+              <ActivityIndicator color={colors.primary} />
             ) : (
-              <Text style={styles.note}>Audio recording is available in the mobile app.</Text>
+              <>
+                <View style={styles.miniMapGrid}>
+                  <View style={styles.miniMapRoad1} />
+                  <View style={styles.miniMapRoad2} />
+                </View>
+                <View style={styles.miniMapPin}>
+                  <Text style={styles.miniMapPinIcon}>📍</Text>
+                </View>
+                <Text style={styles.miniMapLabel}>
+                  {location?.address || `${location?.latitude?.toFixed(4)}, ${location?.longitude?.toFixed(4)}`}
+                </Text>
+              </>
             )}
           </View>
-        </Card>
+        </View>
 
-        {toggle(isAnonymous, setIsAnonymous, "Report anonymously", "Your identity will be hidden")}
+        {/* Report Anonymously Toggle */}
+        <View style={styles.anonymousRow}>
+          <View style={styles.anonymousText}>
+            <Text style={styles.anonymousTitle}>{t("reportAnonymously")}</Text>
+            <Text style={styles.anonymousSub}>{t("anonymousSub")}</Text>
+          </View>
+          <Pressable onPress={() => setIsAnonymous(!isAnonymous)}>
+            <View style={[styles.switch, isAnonymous && styles.switchOn]}>
+              <View style={[styles.switchKnob, isAnonymous && styles.switchKnobOn]} />
+            </View>
+          </Pressable>
+        </View>
 
-        <AppButton title="Submit Report" onPress={submit} loading={submitting} style={styles.submit} />
+        {/* Submit Buttons */}
+        <View style={styles.submitRow}>
+          <AppButton
+            title={t("submitReport")}
+            onPress={() => submit(false)}
+            loading={submitting && !isEmergency}
+            style={isEmergency ? styles.submitHalf : styles.submitFull}
+          />
+          {isEmergency ? (
+            <AppButton
+              title={t("submitEmergencyReport")}
+              variant="danger"
+              onPress={() => submit(true)}
+              loading={submitting && isEmergency}
+              style={styles.submitHalf}
+            />
+          ) : null}
+        </View>
       </View>
     </Screen>
   );
@@ -438,168 +457,90 @@ const styles = StyleSheet.create({
   body: {
     padding: spacing.lg,
   },
-  sectionTitle: {
-    ...typography.h3,
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
-  },
-  typeGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    marginBottom: spacing.lg,
-  },
-  typeItem: {
-    width: "31%",
-    marginRight: "2%",
-    marginBottom: spacing.md,
-    backgroundColor: colors.card,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.card,
-    alignItems: "center",
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.xs,
-  },
-  typeItemActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  typeIcon: {
-    fontSize: 22,
-  },
-  typeLabel: {
-    ...typography.small,
-    fontWeight: "600",
-    marginTop: spacing.xs,
-    textAlign: "center",
-  },
-  typeLabelActive: {
-    color: colors.primary,
-  },
-  card: {
-    marginBottom: spacing.lg,
-  },
-  cardTitle: {
-    ...typography.bodyMedium,
-    marginBottom: spacing.md,
-  },
-  note: {
-    ...typography.small,
-    color: colors.textMuted,
-    marginBottom: spacing.md,
-  },
   errorBanner: {
     backgroundColor: "#fee2e2",
     color: colors.danger,
     padding: spacing.md,
     borderRadius: radius.input,
-    marginBottom: spacing.lg,
+    marginBottom: spacing.md,
     fontSize: 14,
     fontWeight: "600",
   },
-  row2: {
-    flexDirection: "row",
-    gap: spacing.md,
-  },
-  col: {
-    flex: 1,
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: spacing.sm,
-  },
-  toggleTexts: {
-    flex: 1,
-    marginRight: spacing.md,
-  },
-  toggleLabel: {
-    ...typography.bodyMedium,
-  },
-  toggleSub: {
-    ...typography.caption,
-    marginTop: 1,
-  },
-  switch: {
-    width: 48,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: colors.border,
-    padding: 2,
-    justifyContent: "center",
-  },
-  switchOn: {
-    backgroundColor: colors.primary,
-  },
-  switchKnob: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: colors.white,
-  },
-  switchKnobOn: {
-    alignSelf: "flex-end",
-  },
-  segBtn: {
-    flex: 1,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    borderRadius: radius.input,
-    paddingVertical: spacing.md,
-    alignItems: "center",
-    backgroundColor: colors.card,
-  },
-  segBtnActive: {
-    borderColor: colors.primary,
-    backgroundColor: colors.primaryLight,
-  },
-  segText: {
-    ...typography.bodyMedium,
-  },
-  segTextActive: {
-    color: colors.primary,
-  },
-  moreBtn: {
-    alignItems: "center",
-    paddingVertical: spacing.md,
+  uploadCard: {
+    padding: spacing.lg,
     marginBottom: spacing.lg,
   },
-  moreText: {
-    color: colors.primary,
-    fontWeight: "700",
-    fontSize: 15,
-  },
-  locAddress: {
-    ...typography.body,
-  },
-  locCoords: {
-    ...typography.caption,
-    marginTop: 2,
+  uploadCardHeader: {
+    ...typography.smallMedium,
+    color: colors.textMuted,
+    fontSize: 12,
     marginBottom: spacing.md,
+    textAlign: "center",
   },
-  locLoading: {
-    marginBottom: spacing.md,
-    alignSelf: "flex-start",
-  },
-  evidenceActions: {
+  mediaButtonsRow: {
     flexDirection: "row",
     gap: spacing.sm,
     marginBottom: spacing.md,
   },
-  mediaRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: spacing.sm,
-    marginBottom: spacing.md,
-  },
-  audioRow: {
-    flexDirection: "row",
+  mediaBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm + 2,
+    paddingHorizontal: 4,
+    borderRadius: radius.chip,
+    backgroundColor: colors.primaryLight,
     alignItems: "center",
-    gap: spacing.md,
-    marginTop: spacing.sm,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.primarySoft,
   },
-  removeBtn: {
+  mediaBtnRecording: {
+    backgroundColor: "#fee2e2",
+    borderColor: colors.danger,
+  },
+  mediaBtnIcon: {
+    fontSize: 18,
+    marginBottom: 2,
+  },
+  mediaBtnLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  thumbsRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: spacing.xs,
+    justifyContent: "center",
+  },
+  slot: {
+    width: 56,
+    height: 56,
+  },
+  addSlot: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.button,
+    borderWidth: 1.5,
+    borderColor: colors.primary,
+    borderStyle: "dashed" as any,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: colors.primaryLight,
+  },
+  emptySlot: {
+    width: 56,
+    height: 56,
+    borderRadius: radius.button,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.background,
+  },
+  plusIcon: {
+    fontSize: 22,
+    color: colors.primary,
+    fontWeight: "600",
+  },
+  removeSlotBtn: {
     position: "absolute",
     top: -6,
     right: -6,
@@ -610,13 +551,328 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  removeText: {
+  removeSlotText: {
     color: colors.white,
-    fontSize: 14,
-    lineHeight: 18,
     fontWeight: "700",
   },
-  submit: {
+  attachedPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.primaryLight,
+    borderRadius: radius.chip,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs + 2,
     marginTop: spacing.md,
+  },
+  attachedPillIcon: {
+    fontSize: 15,
+    marginRight: 6,
+  },
+  attachedPillText: {
+    ...typography.smallMedium,
+    flex: 1,
+    color: colors.primary,
+    fontSize: 12,
+  },
+  removeText: {
+    color: colors.danger,
+    fontWeight: "700",
+    fontSize: 14,
+    marginLeft: 6,
+  },
+  emergencyToggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  emergencyToggleActive: {
+    borderColor: colors.danger,
+    backgroundColor: "#fef2f2",
+  },
+  emergencyLabel: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+    color: colors.textBody,
+  },
+  emergencyLabelActive: {
+    color: colors.danger,
+    fontWeight: "700",
+  },
+  emergencyPanel: {
+    backgroundColor: colors.card,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    marginBottom: spacing.lg,
+    borderWidth: 1,
+    borderColor: "#fecaca",
+  },
+  cameraArea: {
+    alignItems: "center",
+    paddingVertical: spacing.xl,
+  },
+  cameraCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: colors.primaryDark,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+    borderWidth: 4,
+    borderColor: colors.primarySoft,
+  },
+  cameraIcon: {
+    fontSize: 36,
+  },
+  cameraSub: {
+    ...typography.small,
+    textAlign: "center",
+    color: colors.textMuted,
+    lineHeight: 20,
+  },
+  severityTitle: {
+    ...typography.bodyMedium,
+    marginBottom: spacing.md,
+    marginTop: spacing.sm,
+  },
+  sliderTrack: {
+    flexDirection: "row",
+    height: 6,
+    borderRadius: 3,
+    overflow: "hidden",
+    backgroundColor: colors.border,
+  },
+  sliderFillGreen: {
+    backgroundColor: "#16a34a",
+  },
+  sliderFillYellow: {
+    backgroundColor: "#f59e0b",
+  },
+  sliderFillRed: {
+    backgroundColor: "#dc2626",
+  },
+  severityLabelsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: spacing.sm,
+  },
+  severityLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  severityDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  severityLabelText: {
+    ...typography.small,
+    color: colors.textMuted,
+  },
+  severityLabelActive: {
+    fontWeight: "700",
+    color: colors.text,
+  },
+  locationPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "center",
+    backgroundColor: colors.primaryLight,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm + 2,
+    borderRadius: radius.chip,
+    marginTop: spacing.lg,
+  },
+  locationPillIcon: {
+    fontSize: 14,
+    marginRight: 6,
+  },
+  locationPillText: {
+    ...typography.smallMedium,
+    color: colors.primary,
+  },
+  sectionTitle: {
+    ...typography.bodyMedium,
+    marginBottom: spacing.sm,
+    marginTop: spacing.sm,
+  },
+  typesCard: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
+    marginBottom: spacing.lg,
+  },
+  typeRadioRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: spacing.md,
+  },
+  typeRadioBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  radioCircle: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    borderWidth: 2,
+    borderColor: colors.textMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
+  },
+  radioCircleSelected: {
+    borderColor: colors.primary,
+  },
+  radioInner: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+  },
+  typeRadioLabel: {
+    ...typography.body,
+    color: colors.text,
+    fontSize: 14,
+  },
+  typeRadioLabelSelected: {
+    fontWeight: "700",
+    color: colors.primary,
+  },
+  locationSection: {
+    marginBottom: spacing.lg,
+    marginTop: spacing.sm,
+  },
+  locationHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: spacing.sm,
+  },
+  locationTitle: {
+    ...typography.bodyMedium,
+  },
+  changeLink: {
+    color: colors.primary,
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  miniMap: {
+    height: 130,
+    borderRadius: radius.card,
+    backgroundColor: "#e8f0e8",
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  miniMapGrid: {
+    ...StyleSheet.absoluteFill,
+  },
+  miniMapRoad1: {
+    position: "absolute",
+    top: "50%",
+    left: 0,
+    right: 0,
+    height: 8,
+    backgroundColor: "#d0d8d0",
+  },
+  miniMapRoad2: {
+    position: "absolute",
+    left: "40%",
+    top: 0,
+    bottom: 0,
+    width: 8,
+    backgroundColor: "#d0d8d0",
+  },
+  miniMapPin: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.primaryDark,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 2,
+  },
+  miniMapPinIcon: {
+    fontSize: 18,
+  },
+  miniMapLabel: {
+    ...typography.caption,
+    marginTop: 4,
+    backgroundColor: "rgba(255,255,255,0.85)",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 4,
+    zIndex: 2,
+    fontSize: 11,
+    color: colors.textBody,
+  },
+  anonymousRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    marginBottom: spacing.lg,
+  },
+  anonymousText: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  anonymousTitle: {
+    ...typography.bodyMedium,
+    fontSize: 15,
+  },
+  anonymousSub: {
+    ...typography.caption,
+    marginTop: 2,
+  },
+  toggleTextWrap: {
+    flex: 1,
+    marginRight: spacing.md,
+  },
+  switch: {
+    width: 48,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: colors.border,
+    padding: 2,
+  },
+  switchOn: {
+    backgroundColor: colors.primary,
+  },
+  switchKnob: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.white,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 2,
+  },
+  switchKnobOn: {
+    alignSelf: "flex-end",
+  },
+  submitRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.xxl,
+  },
+  submitFull: {
+    flex: 1,
+  },
+  submitHalf: {
+    flex: 1,
   },
 });

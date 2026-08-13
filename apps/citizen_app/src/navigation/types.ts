@@ -3,6 +3,8 @@ import type { BottomTabScreenProps } from "@react-navigation/bottom-tabs";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 
 export type AuthStackParamList = {
+  Splash: undefined;
+  Onboarding: undefined;
   Welcome: undefined;
   Login: undefined;
   Register: undefined;
@@ -15,6 +17,7 @@ export type AuthStackParamList = {
 
 export type MainTabParamList = {
   HomeTab: undefined;
+  MapTab: undefined;
   ReportsTab: undefined;
   ChatTab: undefined;
   NotificationsTab: undefined;
@@ -23,7 +26,7 @@ export type MainTabParamList = {
 
 export type RootStackParamList = {
   Auth: undefined;
-  MainTabs: undefined;
+  MainTabs: { screen?: keyof MainTabParamList; params?: any } | undefined;
   ReportDetail: { reportId: string; caseId?: string };
   CreateReport: undefined;
   CreateReportSuccess: { reportId: string; caseId: string; status: string };

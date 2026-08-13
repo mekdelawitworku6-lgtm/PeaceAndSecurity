@@ -110,6 +110,14 @@ const authSlice = createSlice({
     clearAuthError(state) {
       state.error = null;
     },
+    setGuestMode(state, action: { payload: boolean }) {
+      state.isGuest = action.payload;
+      if (action.payload) {
+        state.status = "signedIn";
+      } else {
+        state.status = "signedOut";
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -139,24 +147,6 @@ const authSlice = createSlice({
       .addCase(register.rejected, (state, action) => {
         state.status = "signedOut";
         state.error = action.payload ?? "Registration failed";
-      })
-      .addCase(verifyRegistration.pending, (state) => {
-        state.status = "loading";
-        state.error = null;
-      })
-      .addCase(verifyRegistration.fulfilled, (state, action) => {
-        state.user = action.payload.user;
-        state.accessToken = action.payload.accessToken;
-        state.refreshToken = action.payload.refreshToken;
-        state.status = "signedIn";
-        state.error = null;
-      })
-      .addCase(verifyRegistration.rejected, (state, action) => {
-        state.status = "signedOut";
-        state.error = action.payload ?? "Verification failed";
-      })
-      .addCase(resendOtp.rejected, (state, action) => {
-        state.error = action.payload ?? "Failed to resend code";
       })
       .addCase(verifyRegistration.pending, (state) => {
         state.status = "loading";
@@ -217,11 +207,12 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearAuthError } = authSlice.actions;
+export const { clearAuthError, setGuestMode } = authSlice.actions;
 
 export const selectAuthStatus = (state: { auth: AuthState }) => state.auth.status;
 export const selectUser = (state: { auth: AuthState }) => state.auth.user;
 export const selectToken = (state: { auth: AuthState }) => state.auth.accessToken;
 export const selectAuthError = (state: { auth: AuthState }) => state.auth.error;
+export const selectIsGuest = (state: { auth: AuthState }) => !!state.auth.isGuest;
 
 export default authSlice.reducer;

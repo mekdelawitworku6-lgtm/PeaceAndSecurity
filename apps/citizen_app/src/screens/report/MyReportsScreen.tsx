@@ -3,13 +3,15 @@ import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 import { useIsFocused } from "@react-navigation/native";
 import Screen from "../../components/Screen";
 import AppHeader from "../../components/AppHeader";
+import AppButton from "../../components/AppButton";
 import Card from "../../components/Card";
 import StatusBadge from "../../components/StatusBadge";
 import EmptyState from "../../components/EmptyState";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { fetchMyReports, selectMyReports, selectReportsLoading } from "../../store/reportsSlice";
 import { formatDateTime, reportTypeLabel } from "../../utils/format";
-import { colors, spacing, typography } from "../../theme";
+import { t } from "../../i18n";
+import { colors, radius, spacing, typography } from "../../theme";
 import type { Report } from "../../types";
 import type { TabScreenProps } from "../../navigation/types";
 
@@ -52,7 +54,7 @@ export default function MyReportsScreen({ navigation }: Props) {
           <StatusBadge status={item.status} />
         </View>
         {item.isEmergency ? (
-          <Text style={styles.emergency}>🚨 Emergency report</Text>
+          <Text style={styles.emergency}>Emergency report</Text>
         ) : null}
       </Card>
     </Pressable>
@@ -60,7 +62,19 @@ export default function MyReportsScreen({ navigation }: Props) {
 
   return (
     <Screen keyboard={false}>
-      <AppHeader title="My Reports" showBack={false} />
+      <AppHeader
+        title={t("tabReports")}
+        showBack={false}
+        right={
+          <Pressable
+            style={styles.addBtn}
+            onPress={() => navigation.navigate("CreateReport")}
+            hitSlop={8}
+          >
+            <Text style={styles.addBtnText}>+ {t("reportIncident")}</Text>
+          </Pressable>
+        }
+      />
       <FlatList
         data={reports}
         keyExtractor={(item) => item.id}
@@ -75,10 +89,9 @@ export default function MyReportsScreen({ navigation }: Props) {
             </View>
           ) : (
             <EmptyState
-              icon="📋"
-              title="No reports yet"
-              subtitle="Reports you submit will appear here with live status updates."
-              actionLabel="Report Incident"
+              title={t("noReportsYet")}
+              subtitle={t("noReportsSub")}
+              actionLabel={t("reportIncident")}
               onAction={() => navigation.navigate("CreateReport")}
             />
           )
@@ -92,6 +105,17 @@ const styles = StyleSheet.create({
   list: {
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
+  },
+  addBtn: {
+    backgroundColor: colors.primaryDark,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.chip,
+  },
+  addBtnText: {
+    color: colors.white,
+    fontWeight: "700",
+    fontSize: 12,
   },
   card: {
     marginBottom: spacing.md,

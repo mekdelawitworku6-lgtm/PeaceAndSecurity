@@ -1,94 +1,106 @@
-import { type ComponentType } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { StyleSheet, View } from "react-native";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import HomeScreen from "../screens/home/HomeScreen";
+import MapScreen from "../screens/map/MapScreen";
 import MyReportsScreen from "../screens/report/MyReportsScreen";
-import ConversationsScreen from "../screens/chat/ConversationsScreen";
-import NotificationsScreen from "../screens/notifications/NotificationsScreen";
 import SettingsScreen from "../screens/settings/SettingsScreen";
-import { useAppSelector } from "../store/hooks";
-import { selectUnreadCount } from "../store/notificationsSlice";
+import { HomeIcon, MapIcon, ReportsIcon, ProfileIcon } from "../components/Icons";
+import { getCurrentLanguage, subscribeLanguageChange, t, type Language } from "../i18n";
 import { colors } from "../theme";
 import type { MainTabParamList } from "./types";
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-const TABS: {
-  name: keyof MainTabParamList;
-  component: ComponentType<any>;
-  icon: string;
-  label: string;
-}[] = [
-  { name: "HomeTab", component: HomeScreen, icon: "🏠", label: "Home" },
-  { name: "ReportsTab", component: MyReportsScreen, icon: "📋", label: "Reports" },
-  { name: "ChatTab", component: ConversationsScreen, icon: "💬", label: "Chat" },
-  { name: "NotificationsTab", component: NotificationsScreen, icon: "🔔", label: "Alerts" },
-  { name: "SettingsTab", component: SettingsScreen, icon: "⚙️", label: "Settings" },
-];
-
 export default function MainNavigator() {
-  const unread = useAppSelector(selectUnreadCount);
+  const [lang, setLang] = useState<Language>(getCurrentLanguage());
+
+  useEffect(() => {
+    return subscribeLanguageChange((l) => setLang(l));
+  }, []);
+
   return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          borderTopColor: colors.border,
-          backgroundColor: colors.card,
-        },
-      }}
-    >
-      {TABS.map((t) => (
+    <View style={styles.container} key={lang}>
+      <Tab.Navigator
+        screenOptions={{
+          headerShown: false,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.textMuted,
+          tabBarStyle: styles.tabBar,
+          tabBarLabelStyle: styles.tabLabel,
+        }}
+      >
+        {/* Tab 1: Home */}
         <Tab.Screen
-          key={t.name}
-          name={t.name}
-          component={t.component}
+          name="HomeTab"
+          component={HomeScreen}
           options={{
-            title: t.label,
+            title: t("tabHome"),
             tabBarIcon: ({ focused }) => (
-              <View style={styles.iconWrap}>
-                <Text style={[styles.icon, { opacity: focused ? 1 : 0.55 }]}>{t.icon}</Text>
-                {t.name === "NotificationsTab" && unread > 0 ? (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{unread > 9 ? "9+" : unread}</Text>
-                  </View>
-                ) : null}
-              </View>
+              <HomeIcon size={20} color={focused ? colors.primary : colors.textMuted} />
             ),
           }}
         />
-      ))}
-    </Tab.Navigator>
+
+        {/* Tab 2: Map */}
+        <Tab.Screen
+          name="MapTab"
+          component={MapScreen}
+          options={{
+            title: t("tabMap"),
+            tabBarIcon: ({ focused }) => (
+              <MapIcon size={20} color={focused ? colors.primary : colors.textMuted} />
+            ),
+          }}
+        />
+
+        {/* Tab 3: Reports */}
+        <Tab.Screen
+          name="ReportsTab"
+          component={MyReportsScreen}
+          options={{
+            title: t("tabReports"),
+            tabBarIcon: ({ focused }) => (
+              <ReportsIcon size={20} color={focused ? colors.primary : colors.textMuted} />
+            ),
+          }}
+        />
+
+        {/* Tab 4: Profile */}
+        <Tab.Screen
+          name="SettingsTab"
+          component={SettingsScreen}
+          options={{
+            title: t("quickProfile"),
+            tabBarIcon: ({ focused }) => (
+              <ProfileIcon size={20} color={focused ? colors.primary : colors.textMuted} />
+            ),
+          }}
+        />
+      </Tab.Navigator>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  iconWrap: {
-    width: 28,
-    height: 26,
-    alignItems: "center",
-    justifyContent: "center",
+  container: {
+    flex: 1,
   },
-  icon: {
-    fontSize: 20,
+  tabBar: {
+    borderTopColor: colors.border,
+    backgroundColor: colors.card,
+    height: 64,
+    paddingBottom: 8,
+    paddingTop: 6,
+    shadowColor: "#000",
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 4,
   },
-  badge: {
-    position: "absolute",
-    top: -2,
-    right: -8,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: colors.danger,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 3,
-  },
-  badgeText: {
-    color: colors.white,
-    fontSize: 9,
-    fontWeight: "700",
+  tabLabel: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 3,
   },
 });

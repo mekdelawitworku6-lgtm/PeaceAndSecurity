@@ -1,12 +1,13 @@
-import { client } from "./client";
-import { APP_VERSION } from "../config";
+/**
+ * Mock reports API — returns fake data, no backend calls.
+ */
 import {
-  appendBoolean,
-  appendMedia,
-  appendString,
-  getDeviceId,
-  getDevicePlatform,
-} from "../utils/media";
+  createMockReport,
+  MOCK_MY_REPORTS,
+  MOCK_NEARBY_REPORTS,
+  MOCK_REPORT_HISTORY,
+  MOCK_REPORT_TYPES,
+} from "./mockData";
 import type {
   NoiseAreaType,
   PickedMedia,
@@ -35,57 +36,51 @@ export interface CreateReportPayload {
   audio?: PickedMedia[];
 }
 
-export async function createReport(payload: CreateReportPayload): Promise<Report> {
-  const fd = new FormData();
-  appendString(fd, "violationType", payload.violationType);
-  appendString(fd, "reportType", payload.violationType);
-  appendString(fd, "reportDescription", payload.reportDescription);
-  appendString(fd, "latitude", payload.latitude);
-  appendString(fd, "longitude", payload.longitude);
-  appendString(fd, "address", payload.address);
-  appendBoolean(fd, "isAnonymous", !!payload.isAnonymous);
-  appendBoolean(fd, "isOngoing", !!payload.isOngoing);
-  appendBoolean(fd, "isEmergency", !!payload.isEmergency);
-  appendString(fd, "incidentDateTime", payload.incidentDateTime);
-  appendString(fd, "suspectInfo", payload.suspectInfo);
-  appendString(fd, "victimInfo", payload.victimInfo);
-  appendString(fd, "witnessInfo", payload.witnessInfo);
-  appendString(fd, "decibelLevel", payload.decibelLevel);
-  appendString(fd, "noiseAreaType", payload.noiseAreaType);
-  appendString(fd, "deviceId", getDeviceId());
-  appendString(fd, "devicePlatform", getDevicePlatform());
-  appendString(fd, "appVersion", APP_VERSION);
-  appendMedia(fd, "images", payload.images ?? [], "image/jpeg");
-  appendMedia(fd, "video", payload.video ?? [], "video/mp4");
-  appendMedia(fd, "audio", payload.audio ?? [], "audio/m4a");
+const delay = (ms = 400) => new Promise((r) => setTimeout(r, ms));
 
-  const res = await client.post<{ data: Report }>("/reports", fd, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
-  return res.data.data;
+export async function createReport(payload: CreateReportPayload): Promise<Report> {
+  await delay(800);
+  return createMockReport(payload);
 }
 
 export async function fetchMyReportsApi(): Promise<Report[]> {
-  const res = await client.get<{ data: Report[] }>("/reports/my-reports");
-  return res.data.data ?? [];
+  await delay();
+  return [...MOCK_MY_REPORTS];
 }
 
 export async function fetchReportDetailApi(id: string): Promise<Report> {
-  const res = await client.get<{ data: Report }>(`/reports/${id}`);
-  return res.data.data;
+  await delay();
+  const found = [...MOCK_MY_REPORTS, ...MOCK_NEARBY_REPORTS].find((r) => r.id === id);
+  if (found) return found;
+  return MOCK_MY_REPORTS[0];
 }
 
-export async function fetchReportHistoryApi(id: string): Promise<ReportLog[]> {
-  const res = await client.get<{ data: ReportLog[] }>(`/reports/${id}/history`);
-  return res.data.data ?? [];
+export async function fetchReportHistoryApi(_id: string): Promise<ReportLog[]> {
+  await delay();
+  return [...MOCK_REPORT_HISTORY];
 }
 
 export async function trackReportApi(caseId: string): Promise<Report> {
-  const res = await client.get<{ data: Report }>(`/reports/track/${caseId}`);
-  return res.data.data;
+  await delay(600);
+  const found = [...MOCK_MY_REPORTS, ...MOCK_NEARBY_REPORTS].find((r) => r.caseId === caseId);
+  if (found) return found;
+  // Return a plausible default if not found
+  return {
+    ...MOCK_MY_REPORTS[0],
+    caseId,
+  };
+}
+
+export async function fetchNearbyReportsApi(
+  _lat = 9.0107,
+  _lng = 38.7612,
+  _radiusKm = 25,
+): Promise<Report[]> {
+  await delay();
+  return [...MOCK_NEARBY_REPORTS];
 }
 
 export async function fetchReportTypesApi(): Promise<ReportType[]> {
-  const res = await client.get<{ data: ReportType[] }>("/report-types");
-  return res.data.data ?? [];
+  await delay(200);
+  return [...MOCK_REPORT_TYPES];
 }

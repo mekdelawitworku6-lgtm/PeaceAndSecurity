@@ -1,21 +1,28 @@
-import { client } from "./client";
+/**
+ * Mock notifications API — returns fake data, no backend calls.
+ */
+import { MOCK_NOTIFICATIONS } from "./mockData";
 import type { AppNotification } from "../types";
 
-export async function fetchNotificationsApi(limit = 20): Promise<AppNotification[]> {
-  const res = await client.get<AppNotification[]>(`/notifications?limit=${limit}`);
-  if (Array.isArray(res.data)) return res.data;
-  return ((res.data as { data?: AppNotification[] }).data ?? []);
+const delay = (ms = 300) => new Promise((r) => setTimeout(r, ms));
+
+export async function fetchNotificationsApi(_limit = 20): Promise<AppNotification[]> {
+  await delay();
+  return [...MOCK_NOTIFICATIONS];
 }
 
 export async function fetchUnreadCountApi(): Promise<number> {
-  const res = await client.get<{ count: number }>("/notifications/unread-count");
-  return res.data.count ?? 0;
+  await delay(100);
+  return MOCK_NOTIFICATIONS.filter((n) => !n.isRead).length;
 }
 
 export async function markReadApi(id: string): Promise<void> {
-  await client.post(`/notifications/${id}/mark-read`);
+  await delay(100);
+  const item = MOCK_NOTIFICATIONS.find((n) => n.id === id);
+  if (item) item.isRead = true;
 }
 
 export async function markAllReadApi(): Promise<void> {
-  await client.post("/notifications/mark-all-read");
+  await delay(200);
+  MOCK_NOTIFICATIONS.forEach((n) => { n.isRead = true; });
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -12,29 +12,18 @@ import Screen from "../../components/Screen";
 import Card from "../../components/Card";
 import StatusBadge from "../../components/StatusBadge";
 import AppButton from "../../components/AppButton";
-import MediaThumb from "../../components/MediaThumb";
 import EmptyState from "../../components/EmptyState";
+import { AlertIcon, BellIcon, MapIcon, ShieldIcon } from "../../components/Icons";
 import { useAppDispatch, useAppSelector } from "../../store/hooks";
 import { selectUser } from "../../store/authSlice";
-import { createReport, fetchMyReports, selectMyReports, selectReportsLoading } from "../../store/reportsSlice";
+import { fetchMyReports, selectMyReports, selectReportsLoading } from "../../store/reportsSlice";
 import { fetchUnreadCount, selectUnreadCount } from "../../store/notificationsSlice";
-import { handleError } from "../../api/client";
-import { pickImages, pickLocation } from "../../utils/media";
-import { timeAgo } from "../../utils/format";
-import { reportTypeLabel } from "../../utils/format";
-import type { PickedMedia } from "../../types";
+import { getCurrentLanguage, setAppLanguage, subscribeLanguageChange, t, type Language } from "../../i18n";
+import { timeAgo, reportTypeLabel } from "../../utils/format";
 import { colors, radius, spacing, typography } from "../../theme";
 import type { TabScreenProps } from "../../navigation/types";
 
 type Props = TabScreenProps<"HomeTab">;
-
-const QUICK_ACTIONS = [
-  { key: "report", label: "Report Incident", icon: "🚨", route: "CreateReport" },
-  { key: "myreports", label: "My Reports", icon: "📋", route: "ReportsTab" },
-  { key: "chat", label: "Chat", icon: "💬", route: "ChatTab" },
-  { key: "alerts", label: "Notifications", icon: "🔔", route: "NotificationsTab" },
-  { key: "track", label: "Track Case", icon: "📍", route: "TrackCase" },
-] as const;
 
 export default function HomeScreen({ navigation }: Props) {
   const dispatch = useAppDispatch();
@@ -44,13 +33,13 @@ export default function HomeScreen({ navigation }: Props) {
   const unread = useAppSelector(selectUnreadCount);
   const isFocused = useIsFocused();
 
+  const [lang, setLang] = useState<Language>(getCurrentLanguage());
+  const [langModalOpen, setLangModalOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
-  const [sosOpen, setSosOpen] = useState(false);
-  const [sosPhoto, setSosPhoto] = useState<PickedMedia[]>([]);
-  const [sosSubmitting, setSosSubmitting] = useState(false);
-  const [sosResult, setSosResult] = useState<string | null>(null);
-  const [sosReport, setSosReport] = useState<{ id: string; caseId?: string } | null>(null);
-  const pressedRef = useRef(false);
+
+  useEffect(() => {
+    return subscribeLanguageChange((l) => setLang(l));
+  }, []);
 
   const load = useCallback(async () => {
     await dispatch(fetchMyReports());
@@ -67,107 +56,88 @@ export default function HomeScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
-  const openSos = () => {
-    setSosOpen(true);
-    setSosPhoto([]);
-    setSosResult(null);
-    setSosReport(null);
-    pressedRef.current = false;
+  const changeLanguage = async (l: Language) => {
+    await setAppLanguage(l);
+    setLang(l);
+    setLangModalOpen(false);
   };
-
-  const addSosPhoto = async () => {
-    const picked = await pickImages(3);
-    if (picked.length) setSosPhoto((p) => [...p, ...picked].slice(0, 3));
-  };
-
-  const submitSos = async () => {
-    if (pressedRef.current) return;
-    pressedRef.current = true;
-    setSosSubmitting(true);
-    setSosResult(null);
-    try {
-      const loc = await pickLocation();
-      const anonymous = sosPhoto.length === 0;
-      const res = await dispatch(
-        createReport({
-          violationType: "EMERGENCY",
-          reportDescription: "Emergency situation reported via the SOS button.",
-          latitude: loc.latitude,
-          longitude: loc.longitude,
-          address: loc.address,
-          isEmergency: true,
-          isOngoing: true,
-          isAnonymous: anonymous,
-          images: sosPhoto,
-        }),
-      );
-      if (createReport.fulfilled.match(res)) {
-        const report = res.payload;
-        setSosReport({ id: report.id, caseId: report.caseId });
-        setSosResult(
-          `Emergency report sent. Case ${report.caseId ?? ""} has been submitted and patrol response is being coordinated.`,
-        );
-        await dispatch(fetchMyReports());
-      } else {
-        setSosResult(res.payload || "Failed to send the emergency report.");
-      }
-    } catch (e) {
-      setSosResult(handleError(e));
-    } finally {
-      setSosSubmitting(false);
-    }
-  };
-
-  const firstName = user?.fullName?.split(" ")[0] ?? "";
 
   return (
-    <Screen scroll onRefresh={onRefresh} refreshing={refreshing}>
-      <View style={styles.hero}>
-        <View style={styles.heroTop}>
-          <View style={styles.heroText}>
-            <Text style={styles.greeting}>Hello{firstName ? `, ${firstName}` : ""} 👋</Text>
-            <Text style={styles.heroSub}>Peace &amp; Security · Citizen App</Text>
+    <Screen scroll onRefresh={onRefresh} refreshing={refreshing} key={lang} padding={false}>
+      {/* Top Header Card */}
+      <View style={styles.header}>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerUserWrap}>
+            <View style={styles.avatarCircle}>
+              <ShieldIcon size={22} color={colors.white} />
+            </View>
+            <View>
+              <Text style={styles.greetingText}>
+                {t("goodMorning")}, {user?.fullName || "AAPSB"}
+              </Text>
+              <Text style={styles.greetingSub}>{t("addisAbabaCitizens")}</Text>
+            </View>
           </View>
+
+          <View style={styles.headerControls}>
+            <Pressable
+              style={styles.langPill}
+              onPress={() => setLangModalOpen(true)}
+              hitSlop={8}
+            >
+              <Text style={styles.langPillText}>{lang.toUpperCase()}</Text>
+            </Pressable>
+
+            <Pressable
+              onPress={() => navigation.navigate("NotificationsTab")}
+              style={styles.bellBtn}
+              hitSlop={8}
+            >
+              <BellIcon size={18} color={colors.white} />
+              {unread > 0 ? (
+                <View style={styles.bellBadge}>
+                  <Text style={styles.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text>
+                </View>
+              ) : null}
+            </Pressable>
+          </View>
+        </View>
+      </View>
+
+      {/* Main Content Container */}
+      <View style={styles.content}>
+        {/* Action Cards */}
+        <View style={styles.actionRow}>
+          {/* Card 1: Report Incident */}
           <Pressable
-            onPress={() => navigation.navigate("NotificationsTab")}
-            style={styles.bell}
-            hitSlop={8}
+            style={styles.darkActionCard}
+            onPress={() => navigation.navigate("CreateReport")}
           >
-            <Text style={styles.bellIcon}>🔔</Text>
-            {unread > 0 ? (
-              <View style={styles.bellBadge}>
-                <Text style={styles.bellBadgeText}>{unread > 9 ? "9+" : unread}</Text>
-              </View>
-            ) : null}
+            <View style={styles.actionIconBadge}>
+              <AlertIcon size={18} color={colors.white} />
+            </View>
+            <Text style={styles.actionTitle}>{t("reportIncident")}</Text>
+            <Text style={styles.actionSub}>{t("reportIncidentSub")}</Text>
+          </Pressable>
+
+          {/* Card 2: View Incident Map */}
+          <Pressable
+            style={styles.darkActionCard}
+            onPress={() => navigation.navigate("MapTab")}
+          >
+            <View style={styles.actionIconBadge}>
+              <MapIcon size={18} color={colors.white} />
+            </View>
+            <Text style={styles.actionTitle}>{t("viewIncidentMap")}</Text>
+            <Text style={styles.actionSub}>{t("viewIncidentMapSub")}</Text>
           </Pressable>
         </View>
 
-        <Pressable style={styles.sosButton} onPress={openSos} accessibilityRole="button">
-          <Text style={styles.sosIcon}>🆘</Text>
-          <Text style={styles.sosText}>EMERGENCY SOS</Text>
-          <Text style={styles.sosSub}>Send your location for immediate help</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.body}>
-        <Text style={styles.sectionTitle}>Quick actions</Text>
-        <View style={styles.grid}>
-          {QUICK_ACTIONS.map((a) => (
-            <Pressable
-              key={a.key}
-              style={styles.gridItem}
-              onPress={() => navigation.navigate(a.route)}
-            >
-              <Text style={styles.gridIcon}>{a.icon}</Text>
-              <Text style={styles.gridLabel}>{a.label}</Text>
-            </Pressable>
-          ))}
-        </View>
-
-        <View style={styles.recentHeader}>
-          <Text style={styles.sectionTitle}>Recent reports</Text>
+        {/* Recent Reports */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>{t("recentReports")}</Text>
           <Pressable onPress={() => navigation.navigate("ReportsTab")} hitSlop={8}>
-            <Text style={styles.seeAll}>See all</Text>
+            <Text style={styles.seeAllText}>{t("seeAll")}</Text>
           </Pressable>
         </View>
 
@@ -176,10 +146,9 @@ export default function HomeScreen({ navigation }: Props) {
         ) : reports.length === 0 ? (
           <Card style={styles.emptyCard}>
             <EmptyState
-              icon="🕊️"
-              title="No reports yet"
-              subtitle="Use “Report Incident” to submit your first report."
-              actionLabel="Report Incident"
+              title={t("noReportsYet")}
+              subtitle={t("noReportsSub")}
+              actionLabel={t("reportIncident")}
               onAction={() => navigation.navigate("CreateReport")}
             />
           </Card>
@@ -189,15 +158,14 @@ export default function HomeScreen({ navigation }: Props) {
               key={r.id}
               onPress={() => navigation.navigate("ReportDetail", { reportId: r.id })}
             >
-              <Card style={styles.reportCard}>
+              <Card style={styles.reportItemCard}>
                 <View style={styles.reportRow}>
-                  <View style={styles.reportInfo}>
-                    <Text style={styles.reportTitle}>{reportTypeLabel(r.reportType || r.violationType)}</Text>
-                    <Text style={styles.reportMeta}>
-                      {r.caseId || "—"} · {timeAgo(r.createdAt)}
+                  <View style={styles.reportMain}>
+                    <Text style={styles.reportTypeTitle}>
+                      {reportTypeLabel(r.reportType?.name || r.violationType)}
                     </Text>
-                    <Text style={styles.reportMeta} numberOfLines={1}>
-                      {r.address || `${r.latitude?.toFixed(4)}, ${r.longitude?.toFixed(4)}`}
+                    <Text style={styles.reportTimeLocation}>
+                      {timeAgo(r.createdAt)} • {r.address || "Meskel Square, Addis Ababa"}
                     </Text>
                   </View>
                   <StatusBadge status={r.status} />
@@ -206,120 +174,129 @@ export default function HomeScreen({ navigation }: Props) {
             </Pressable>
           ))
         )}
+
+        {/* Impact Stats */}
+        <Text style={[styles.sectionTitle, styles.statsHeader]}>{t("impactStats")}</Text>
+        <View style={styles.statsRow}>
+          <Card style={styles.statBox}>
+            <Text style={styles.statVal}>1,284</Text>
+            <Text style={styles.statName}>{t("reportsThisMonth")}</Text>
+            <Text style={styles.statBadgeGreen}>{t("vsLastMonth")}</Text>
+          </Card>
+
+          <Card style={styles.statBox}>
+            <Text style={styles.statVal}>1.8h</Text>
+            <Text style={styles.statName}>{t("avgResponseTime")}</Text>
+            <Text style={styles.statBadgeBlue}>{t("improvement")}</Text>
+          </Card>
+        </View>
       </View>
 
+      {/* Language Modal */}
       <Modal
-        visible={sosOpen}
-        animationType="slide"
+        visible={langModalOpen}
         transparent
-        onRequestClose={() => setSosOpen(false)}
+        animationType="fade"
+        onRequestClose={() => setLangModalOpen(false)}
       >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>🆘 Emergency SOS</Text>
-            <Text style={styles.modalSub}>
-              Your current location will be sent immediately with your report.
-            </Text>
+        <Pressable style={styles.modalBackdrop} onPress={() => setLangModalOpen(false)}>
+          <View style={styles.langModalCard}>
+            <Text style={styles.langModalTitle}>{t("selectLanguage")}</Text>
 
-            {sosPhoto.length > 0 ? (
-              <View style={styles.photoRow}>
-                {sosPhoto.map((p, i) => (
-                  <View key={i}>
-                    <MediaThumb uri={p.uri} size={64} />
-                    <Pressable
-                      style={styles.removeBtn}
-                      onPress={() => setSosPhoto((arr) => arr.filter((_, j) => j !== i))}
-                    >
-                      <Text style={styles.removeText}>×</Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+            <Pressable style={styles.langItem} onPress={() => changeLanguage("en")}>
+              <Text style={[styles.langItemText, lang === "en" && styles.langItemActive]}>
+                English
+              </Text>
+              {lang === "en" ? <Text style={styles.checkMark}>✓</Text> : null}
+            </Pressable>
 
-            {sosResult ? (
-              <Text style={styles.sosResult}>{sosResult}</Text>
-            ) : null}
+            <Pressable style={styles.langItem} onPress={() => changeLanguage("am")}>
+              <Text style={[styles.langItemText, lang === "am" && styles.langItemActive]}>
+                አማርኛ (Amharic)
+              </Text>
+              {lang === "am" ? <Text style={styles.checkMark}>✓</Text> : null}
+            </Pressable>
 
-            <View style={styles.modalActions}>
-              <AppButton
-                title="Add photo (optional)"
-                variant="ghost"
-                small
-                onPress={addSosPhoto}
-                disabled={sosSubmitting}
-              />
-              <View style={styles.modalMain}>
-                <AppButton
-                  title={sosSubmitting ? "Sending…" : "Send SOS"}
-                  variant="danger"
-                  onPress={submitSos}
-                  loading={sosSubmitting}
-                  disabled={!!sosResult && !sosReport}
-                />
-                {sosReport ? (
-                  <AppButton
-                    title="View report"
-                    small
-                    onPress={() => {
-                      setSosOpen(false);
-                      navigation.navigate("ReportDetail", { reportId: sosReport.id, caseId: sosReport.caseId });
-                    }}
-                    style={styles.modalSpacing}
-                  />
-                ) : null}
-                <AppButton
-                  title="Close"
-                  variant="ghost"
-                  onPress={() => setSosOpen(false)}
-                  disabled={sosSubmitting}
-                  style={styles.modalSpacing}
-                />
-              </View>
-            </View>
+            <Pressable style={styles.langItem} onPress={() => changeLanguage("om")}>
+              <Text style={[styles.langItemText, lang === "om" && styles.langItemActive]}>
+                Afaan Oromoo (Oromo)
+              </Text>
+              {lang === "om" ? <Text style={styles.checkMark}>✓</Text> : null}
+            </Pressable>
+
+            <AppButton
+              title={t("close")}
+              variant="ghost"
+              onPress={() => setLangModalOpen(false)}
+              style={{ marginTop: spacing.md }}
+            />
           </View>
-        </View>
+        </Pressable>
       </Modal>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: {
+  header: {
     backgroundColor: colors.primaryDark,
-    padding: spacing.lg,
-    borderBottomLeftRadius: radius.card,
-    borderBottomRightRadius: radius.card,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.xxl + 10,
+    paddingBottom: spacing.xl,
   },
-  heroTop: {
+  headerTopRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: spacing.lg,
   },
-  heroText: {
+  headerUserWrap: {
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
+    marginRight: spacing.sm,
   },
-  greeting: {
-    ...typography.h2,
-    color: colors.white,
-  },
-  heroSub: {
-    ...typography.small,
-    color: colors.primarySoft,
-    marginTop: 2,
-  },
-  bell: {
+  avatarCircle: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: "rgba(255,255,255,0.12)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     alignItems: "center",
     justifyContent: "center",
-    marginLeft: spacing.md,
+    marginRight: spacing.md,
   },
-  bellIcon: {
-    fontSize: 20,
+  greetingText: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: colors.white,
+  },
+  greetingSub: {
+    fontSize: 12,
+    color: colors.primarySoft,
+    marginTop: 2,
+  },
+  headerControls: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+  },
+  langPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: radius.chip,
+    backgroundColor: "rgba(255,255,255,0.18)",
+  },
+  langPillText: {
+    color: colors.white,
+    fontWeight: "800",
+    fontSize: 12,
+  },
+  bellBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   bellBadge: {
     position: "absolute",
@@ -338,66 +315,60 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: "700",
   },
-  sosButton: {
-    backgroundColor: colors.danger,
-    borderRadius: radius.button,
-    paddingVertical: spacing.lg,
-    alignItems: "center",
-  },
-  sosIcon: {
-    fontSize: 28,
-  },
-  sosText: {
-    color: colors.white,
-    fontSize: 20,
-    fontWeight: "800",
-    letterSpacing: 1,
-    marginTop: 2,
-  },
-  sosSub: {
-    color: "#fecaca",
-    fontSize: 12,
-    marginTop: 4,
-  },
-  body: {
+  content: {
     padding: spacing.lg,
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.xl,
+  },
+  darkActionCard: {
+    flex: 1,
+    backgroundColor: colors.primaryDark,
+    borderRadius: radius.card,
+    padding: spacing.lg,
+    minHeight: 125,
+    justifyContent: "space-between",
+    shadowColor: colors.primary,
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  actionIconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+  },
+  actionTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: colors.white,
+    marginBottom: 2,
+  },
+  actionSub: {
+    fontSize: 12,
+    color: colors.primarySoft,
+  },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
   },
   sectionTitle: {
     ...typography.h3,
-    marginTop: spacing.md,
-    marginBottom: spacing.md,
+    fontSize: 17,
+    fontWeight: "700",
   },
-  grid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  gridItem: {
-    width: "30%",
-    backgroundColor: colors.card,
-    borderRadius: radius.card,
-    alignItems: "center",
-    paddingVertical: spacing.lg,
-    marginBottom: spacing.md,
-    ...({ borderWidth: 1, borderColor: colors.border } as object),
-  },
-  gridIcon: {
-    fontSize: 26,
-  },
-  gridLabel: {
-    ...typography.small,
-    fontWeight: "600",
-    marginTop: spacing.sm,
-    textAlign: "center",
-  },
-  recentHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  seeAll: {
+  seeAllText: {
     color: colors.primary,
-    fontWeight: "600",
+    fontWeight: "700",
     fontSize: 13,
   },
   loader: {
@@ -406,24 +377,65 @@ const styles = StyleSheet.create({
   emptyCard: {
     padding: spacing.lg,
   },
-  reportCard: {
+  reportItemCard: {
     marginBottom: spacing.md,
+    padding: spacing.lg,
   },
   reportRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  reportInfo: {
+  reportMain: {
     flex: 1,
     marginRight: spacing.md,
   },
-  reportTitle: {
+  reportTypeTitle: {
     ...typography.bodyMedium,
+    fontSize: 15,
+    fontWeight: "700",
   },
-  reportMeta: {
+  reportTimeLocation: {
     ...typography.caption,
+    marginTop: 4,
+    color: colors.textMuted,
+    fontSize: 12,
+  },
+  statsHeader: {
+    marginTop: spacing.md,
+    marginBottom: spacing.md,
+  },
+  statsRow: {
+    flexDirection: "row",
+    gap: spacing.md,
+    marginBottom: spacing.xxl,
+  },
+  statBox: {
+    flex: 1,
+    padding: spacing.lg,
+  },
+  statVal: {
+    fontSize: 28,
+    fontWeight: "800",
+    color: colors.primary,
+  },
+  statName: {
+    ...typography.smallMedium,
     marginTop: 2,
+    fontSize: 12,
+    color: colors.textBody,
+  },
+  statBadgeGreen: {
+    fontSize: 12,
+    color: colors.success,
+    fontWeight: "700",
+    marginTop: 6,
+  },
+  statBadgeBlue: {
+    fontSize: 12,
+    color: colors.info,
+    fontWeight: "700",
+    marginTop: 6,
   },
   modalBackdrop: {
     flex: 1,
@@ -431,57 +443,35 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: spacing.xl,
   },
-  modalCard: {
+  langModalCard: {
     backgroundColor: colors.card,
     borderRadius: radius.card,
     padding: spacing.xl,
   },
-  modalTitle: {
+  langModalTitle: {
     ...typography.h2,
-  },
-  modalSub: {
-    ...typography.body,
-    marginTop: spacing.xs,
     marginBottom: spacing.lg,
+    textAlign: "center",
   },
-  photoRow: {
+  langItem: {
     flexDirection: "row",
-    marginBottom: spacing.lg,
-    gap: spacing.sm,
-  },
-  removeBtn: {
-    position: "absolute",
-    top: -6,
-    right: -6,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: colors.danger,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  removeText: {
-    color: colors.white,
-    fontSize: 14,
-    lineHeight: 18,
+  langItemText: {
+    ...typography.bodyMedium,
+    fontSize: 16,
+  },
+  langItemActive: {
+    color: colors.primary,
     fontWeight: "700",
   },
-  sosResult: {
-    backgroundColor: colors.primaryLight,
-    borderRadius: radius.input,
-    padding: spacing.md,
-    color: colors.primaryDark,
-    fontSize: 14,
-    fontWeight: "600",
-    marginBottom: spacing.lg,
-  },
-  modalActions: {
-    gap: spacing.md,
-  },
-  modalMain: {
-    gap: spacing.md,
-  },
-  modalSpacing: {
-    marginTop: spacing.sm,
+  checkMark: {
+    color: colors.primary,
+    fontWeight: "700",
+    fontSize: 18,
   },
 });
