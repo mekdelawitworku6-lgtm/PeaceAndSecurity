@@ -15,11 +15,22 @@ export class ChatService {
     private readonly messageRepo: Repository<Message>,
   ) {}
 
-  async getAllConversations(): Promise<ServiceResponse> {
-    const conversations = await this.conversationRepo.find({
-      order: { createdAt: "DESC" },
-      relations: ["report"],
-    });
+  async getAllConversations(
+    patrolId?: string,
+    citizenId?: string,
+  ): Promise<ServiceResponse> {
+    const qb = this.conversationRepo
+      .createQueryBuilder("conversation")
+      .leftJoinAndSelect("conversation.report", "report")
+      .orderBy("conversation.createdAt", "DESC");
+
+    if (patrolId) {
+      qb.where("report.assignedPatrolId = :patrolId", { patrolId });
+    } else if (citizenId) {
+      qb.where("report.reporterId = :citizenId", { citizenId });
+    }
+
+    const conversations = await qb.getMany();
 
     const enriched = await Promise.all(
       conversations.map(async (conv) => {

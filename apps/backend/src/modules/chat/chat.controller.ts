@@ -33,7 +33,13 @@ export class ChatController {
   @Get("conversations")
   @ApiOperation({ summary: "Get all conversations" })
   async getAllConversations(@Request() req: any) {
-    const result = await this.chatService.getAllConversations();
+    const role = req.user?.role;
+    const patrolId = role === "PATROL" ? req.user?.id : undefined;
+    const citizenId = role === "CITIZEN" ? req.user?.id : undefined;
+    const result = await this.chatService.getAllConversations(
+      patrolId,
+      citizenId,
+    );
     await this.auditService.logDataAccess({
       accessType: DataAccessType.VIEW_CONVERSATION_LIST,
       targetEntity: "Conversation",
