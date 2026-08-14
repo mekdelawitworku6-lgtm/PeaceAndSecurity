@@ -454,22 +454,35 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                           const SizedBox(height: 12),
                         ],
                         _buildActionButtons(state, report),
-                        const SizedBox(height: 12),
-                        AppButton(
-                          title: '💬 ${t('chatAboutReport')}',
-                          variant: AppButtonVariant.ghost,
-                          loading: _chatting,
-                          onPressed: () => _openChat(
-                            report.caseId ?? 'Report',
-                            report.typeLabel,
-                          ),
-                        ),
                       ],
                     ),
                   ),
           ),
         ],
       ),
+      bottomNavigationBar: report == null
+          ? null
+          : Container(
+              decoration: BoxDecoration(
+                color: AppColors.card,
+                border: Border(top: BorderSide(color: AppColors.divider)),
+              ),
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 16, vertical: 10),
+                  child: AppButton(
+                    title: '💬 ${t('chatAboutReport')}',
+                    variant: AppButtonVariant.primary,
+                    loading: _chatting,
+                    onPressed: () => _openChat(
+                      report.caseId ?? 'Report',
+                      report.typeLabel,
+                    ),
+                  ),
+                ),
+              ),
+            ),
     );
   }
 
