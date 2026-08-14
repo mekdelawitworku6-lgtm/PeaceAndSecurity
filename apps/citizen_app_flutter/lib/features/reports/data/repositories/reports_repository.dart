@@ -47,8 +47,42 @@ class CreateReportPayload {
   });
 }
 
+class HomeStats {
+  final int reportsThisMonth;
+  final int reportsLastMonth;
+  final int? reportsDeltaPct;
+  final int avgResponseMinutes;
+  final int prevAvgResponseMinutes;
+  final int? responseDeltaPct;
+
+  const HomeStats({
+    required this.reportsThisMonth,
+    required this.reportsLastMonth,
+    this.reportsDeltaPct,
+    required this.avgResponseMinutes,
+    required this.prevAvgResponseMinutes,
+    this.responseDeltaPct,
+  });
+
+  factory HomeStats.fromJson(Map<String, dynamic> json) => HomeStats(
+        reportsThisMonth: (json['reportsThisMonth'] as num?)?.toInt() ?? 0,
+        reportsLastMonth: (json['reportsLastMonth'] as num?)?.toInt() ?? 0,
+        reportsDeltaPct: (json['reportsDeltaPct'] as num?)?.toInt(),
+        avgResponseMinutes:
+            (json['avgResponseMinutes'] as num?)?.toInt() ?? 0,
+        prevAvgResponseMinutes:
+            (json['prevAvgResponseMinutes'] as num?)?.toInt() ?? 0,
+        responseDeltaPct: (json['responseDeltaPct'] as num?)?.toInt(),
+      );
+}
+
 class ReportsRepository {
   final _api = ApiClient.instance;
+
+  Future<HomeStats> fetchHomeStats() async {
+    final res = await _api.get('/reports/stats');
+    return HomeStats.fromJson(res['data'] as Map<String, dynamic>);
+  }
 
   Future<List<Report>> fetchMyReports() async {
     final res = await _api.get('/reports/my-reports');

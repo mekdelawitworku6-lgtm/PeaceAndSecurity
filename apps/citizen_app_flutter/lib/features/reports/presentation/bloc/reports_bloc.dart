@@ -19,6 +19,7 @@ class ReportsBloc extends Bloc<ReportsEvent, ReportsState> {
     on<ReportsTrackRequested>(_onTrack);
     on<ReportsCreateRequested>(_onCreate);
     on<ReportsFetchTypesRequested>(_onFetchTypes);
+    on<ReportsFetchStatsRequested>(_onFetchStats);
     on<ReportsResetDetailRequested>(_onResetDetail);
     on<ReportsErrorCleared>(_onClearError);
   }
@@ -104,6 +105,16 @@ class ReportsBloc extends Bloc<ReportsEvent, ReportsState> {
     try {
       final types = await repository.fetchReportTypes();
       emit(state.copyWith(reportTypes: types, error: null));
+    } catch (e) {
+      emit(state.copyWith(error: _msg(e)));
+    }
+  }
+
+  Future<void> _onFetchStats(
+      ReportsFetchStatsRequested event, Emitter<ReportsState> emit) async {
+    try {
+      final stats = await repository.fetchHomeStats();
+      emit(state.copyWith(stats: stats, error: null));
     } catch (e) {
       emit(state.copyWith(error: _msg(e)));
     }

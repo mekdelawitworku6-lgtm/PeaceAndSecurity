@@ -777,6 +777,7 @@ class AppLocalizations {
       'om': 'Sarara ala',
       'ti': 'ወጻኢ መስመር',
     },
+    'vsLastMonth': {'en': 'vs last month', 'am': 'ካለፈው ወር', 'om': 'Jiʼa darbe wajjiin', 'ti': 'ምስ ዝሓለፈ ወርሒ'},
     'loading': {
       'en': 'Loading…',
       'am': 'በመጫን ላይ…',

@@ -58,8 +58,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
-        onRefresh: () async {
+onRefresh: () async {
           context.read<ReportsBloc>().add(ReportsFetchMyRequested());
+          context.read<ReportsBloc>().add(ReportsFetchStatsRequested());
+        context.read<ReportsBloc>().add(ReportsFetchStatsRequested());
           context.read<NotificationsBloc>().add(NotificationsFetchUnreadRequested());
         },
         color: AppColors.primary,
@@ -143,18 +145,18 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         Expanded(
                           child: _StatCard(
-                            value: '1,284',
+                            value: _formatCount(reports.stats?.reportsThisMonth),
                             label: t('reportsThisMonth'),
-                            delta: '+12% vs last month',
+                            delta: _deltaText(reports.stats?.reportsDeltaPct, t),
                             color: AppColors.success,
                           ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: _StatCard(
-                            value: '1.8h',
+                            value: _formatMinutes(reports.stats?.avgResponseMinutes),
                             label: t('avgResponseTime'),
-                            delta: '-14m improvement',
+                            delta: _deltaText(reports.stats?.responseDeltaPct, t),
                             color: AppColors.info,
                           ),
                         ),
@@ -445,13 +447,40 @@ class _StatCard extends StatelessWidget {
           Text(value, style: AppTypography.h2.copyWith(color: AppColors.primary)),
           const SizedBox(height: 4),
           Text(label, style: AppTypography.small),
-          const SizedBox(height: 6),
-          Text(
-            delta,
-            style: AppTypography.caption.copyWith(color: color),
-          ),
+          if (delta.isNotEmpty) ...[
+            const SizedBox(height: 6),
+            Text(
+              delta,
+              style: AppTypography.caption.copyWith(color: color),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+String _formatCount(int? n) {
+  if (n == null) return '—';
+  final s = n.toString();
+  final buf = StringBuffer();
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+    buf.write(s[i]);
+  }
+  return buf.toString();
+}
+
+String _formatMinutes(int? minutes) {
+  if (minutes == null || minutes <= 0) return '—';
+  if (minutes >= 60) {
+    return '${(minutes / 60).toStringAsFixed(1)}h';
+  }
+  return '${minutes}m';
+}
+
+String _deltaText(int? pct, String Function(String) t) {
+  if (pct == null) return '';
+  final sign = pct >= 0 ? '+' : '';
+  return '$sign$pct% ${t('vsLastMonth')}';
 }

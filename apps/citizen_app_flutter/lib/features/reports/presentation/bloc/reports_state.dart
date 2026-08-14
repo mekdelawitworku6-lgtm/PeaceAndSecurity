@@ -6,6 +6,7 @@ class ReportsState extends Equatable {
   final Report? detail;
   final List<ReportLog> history;
   final List<ReportType> reportTypes;
+  final HomeStats? stats;
   final bool loading;
   final bool detailLoading;
   final bool submitting;
@@ -17,6 +18,7 @@ class ReportsState extends Equatable {
     this.detail,
     this.history = const [],
     this.reportTypes = const [],
+    this.stats,
     this.loading = false,
     this.detailLoading = false,
     this.submitting = false,
@@ -29,6 +31,7 @@ class ReportsState extends Equatable {
     Report? detail,
     List<ReportLog>? history,
     List<ReportType>? reportTypes,
+    HomeStats? stats,
     bool? loading,
     bool? detailLoading,
     bool? submitting,
@@ -40,6 +43,7 @@ class ReportsState extends Equatable {
         detail: detail ?? this.detail,
         history: history ?? this.history,
         reportTypes: reportTypes ?? this.reportTypes,
+        stats: stats ?? this.stats,
         loading: loading ?? this.loading,
         detailLoading: detailLoading ?? this.detailLoading,
         submitting: submitting ?? this.submitting,
@@ -53,6 +57,7 @@ class ReportsState extends Equatable {
         detail,
         history,
         reportTypes,
+        stats,
         loading,
         detailLoading,
         submitting,

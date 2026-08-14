@@ -752,6 +752,7 @@ class AppLocalizations {
       'ti': 'ገና ናይ ግዜ መዝገብ የለን።',
     },
     'chats': {'en': 'Chats', 'am': 'ውይይቶች', 'om': 'Haasa\'ii', 'ti': 'ምይይጣታት'},
+    'vsLastMonth': {'en': 'vs last month', 'am': 'ካለፈው ወር', 'om': 'Jiʼa darbe wajjiin', 'ti': 'ምስ ዝሓለፈ ወርሒ'},
     'loading': {
       'en': 'Loading…',
       'am': 'በመጫን ላይ…',

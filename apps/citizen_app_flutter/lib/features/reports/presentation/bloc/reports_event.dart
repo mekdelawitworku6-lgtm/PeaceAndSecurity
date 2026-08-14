@@ -63,6 +63,8 @@ class ReportsCreateRequested extends ReportsEvent {
 
 class ReportsFetchTypesRequested extends ReportsEvent {}
 
+class ReportsFetchStatsRequested extends ReportsEvent {}
+
 class ReportsResetDetailRequested extends ReportsEvent {}
 
 class ReportsErrorCleared extends ReportsEvent {}
