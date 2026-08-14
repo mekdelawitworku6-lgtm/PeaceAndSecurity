@@ -29,13 +29,13 @@ class ApiClient {
         headers: {
           'x-device-platform': 'ANDROID',
           'x-app-version': AppConfig.appVersion,
-          'x-device-id': SessionManager.instance.deviceId,
         },
       ),
     );
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (options, handler) {
+          options.headers['x-device-id'] = SessionManager.instance.deviceId;
           final token = SessionManager.instance.accessToken;
           if (token != null &&
               token.isNotEmpty &&

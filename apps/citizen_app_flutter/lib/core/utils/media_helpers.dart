@@ -60,7 +60,8 @@ class MediaHelpers {
   }
 
   static PickedMedia _fromXFile(XFile x, String fallbackMime) {
-    final ext = path.extension(x.path).toLowerCase();
+    final realName = kIsWeb && x.name.isNotEmpty ? x.name : x.path;
+    final ext = path.extension(realName).toLowerCase();
     final mime = switch (ext) {
       '.png' => 'image/png',
       '.jpg' || '.jpeg' => 'image/jpeg',
@@ -71,7 +72,7 @@ class MediaHelpers {
     };
     return PickedMedia(
       uri: x.path,
-      name: path.basename(x.path),
+      name: path.basename(realName),
       mimeType: mime,
       file: File(x.path),
       xfile: x,
@@ -196,7 +197,11 @@ class AudioRecorderController {
 
 String assetUrl(String? url) {
   if (url == null || url.isEmpty) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http') ||
+      url.startsWith('blob:') ||
+      url.startsWith('data:')) {
+    return url;
+  }
   return '${AppConfig.socketUrl}$url';
 }
 
