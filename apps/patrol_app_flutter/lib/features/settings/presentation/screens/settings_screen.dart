@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/utils/media_helpers.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/language_bloc.dart';
@@ -27,12 +28,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: Text(t('cancel')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Log out'),
+            child: Text(t('logOut')),
           ),
         ],
       ),
@@ -44,6 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _showLanguageSheet() async {
+    final t = context.l10n().t;
     final langBloc = context.read<LanguageBloc>();
     final current = langBloc.currentLanguage;
     showModalBottomSheet(
@@ -56,11 +58,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Padding(
-              padding: EdgeInsets.all(16),
+            Padding(
+              padding: const EdgeInsets.all(16),
               child: Text(
-                'Select Language',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+                t('selectLanguage'),
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
               ),
             ),
             ListTile(
@@ -109,9 +111,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
         children: [
-          const Text(
-            'Settings',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+          Text(
+            t('settings'),
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           AppCard(
@@ -121,12 +123,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 CircleAvatar(
                   radius: 26,
                   backgroundColor: AppColors.primarySoft,
-                  child: Text(
-                    (user?.fullName.isNotEmpty ?? false)
-                        ? user!.fullName.substring(0, 1).toUpperCase()
-                        : 'P',
-                    style: AppTypography.h3.copyWith(color: AppColors.primary),
-                  ),
+                  backgroundImage: (user?.profileImage?.isNotEmpty ?? false)
+                      ? NetworkImage(
+                          assetUrl(user!.profileImage!),
+                        )
+                      : null,
+                  onBackgroundImageError: (_, _) {},
+                  child: (user?.profileImage?.isNotEmpty ?? false)
+                      ? null
+                      : Text(
+                          (user?.fullName.isNotEmpty ?? false)
+                              ? user!.fullName.substring(0, 1).toUpperCase()
+                              : 'P',
+                          style: AppTypography.h3.copyWith(
+                            color: AppColors.primary,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -134,12 +146,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user?.fullName ?? 'Patrol Officer',
+                        user?.fullName ?? t('patrolOfficer'),
                         style: AppTypography.smallMedium,
                       ),
                       if (user?.userCode != null)
                         Text(
-                          'ID: ${user?.userCode}',
+                          t('idLabel', {'code': user!.userCode!}),
                           style: AppTypography.caption,
                         ),
                       if (phone != null)
@@ -192,13 +204,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           _SettingsTile(
             icon: Icons.info_outline,
-            label: 'About',
+            label: t('about'),
             onTap: () => showAboutDialog(
               context: context,
               applicationName: 'Peace & Security Patrol',
               applicationVersion: 'v1.0.0',
-              children: const [
-                Text('Patrol officer app for the Addis Ababa Peace & Security system.'),
+              children: [
+                Text(t('aboutApp')),
               ],
             ),
           ),

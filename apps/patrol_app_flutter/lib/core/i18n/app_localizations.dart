@@ -202,6 +202,13 @@ class AppLocalizations {
     'changePin': {'en': 'Change PIN', 'am': 'ፒን ቀይር', 'om': 'PIIN\'ii Jijjiiri'},
     'logOut': {'en': 'Log out', 'am': 'ውጣ', 'om': 'Ba\'i'},
     'logOutConfirm': {'en': 'Are you sure you want to log out?', 'am': 'መውጣት እርግጠኛ ነዎት?', 'om': 'Ba\'uu mirkaneeffattee?'},
+    'about': {'en': 'About', 'am': 'ስለ መተግበሪያው', 'om': 'Waa\'ee'},
+    'idLabel': {'en': 'ID: {code}', 'am': 'መለያ፡ {code}', 'om': 'Lakkoofsa: {code}'},
+    'aboutApp': {
+      'en': 'Patrol officer app for the Addis Ababa Peace & Security system.',
+      'am': 'የአዲስ አበባ ሰላም እና ደህንነት ስርዓት የፖትሮል መኮንን መተግበሪያ።',
+      'om': 'Appii qondaala poolisii nageenyaa fi tasgabbii Finfinneetiif.',
+    },
     'trackCaseSub': {'en': 'Enter the case ID you received when submitting your report.', 'am': 'ሪፖርትዎን ሲያስገቡ የተቀበሉትን የጉዳይ መለያ ያስገቡ።', 'om': 'Imaan dhimma yeroo gabaasa dhiyeesitan argattan galchi.'},
     'caseId': {'en': 'Case ID', 'am': 'የጉዳይ መለያ', 'om': 'Imaan Dhimma'},
     'submit': {'en': 'Submit', 'am': 'አስገባ', 'om': 'Dhiyeessi'},
