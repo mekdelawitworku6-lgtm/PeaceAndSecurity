@@ -5,7 +5,7 @@ import {
   UnauthorizedException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, In } from "typeorm";
+import { Repository, In, Between, Not, IsNull, MoreThanOrEqual } from "typeorm";
 import { sendSMS } from "../../common/utils/sms-sender";
 import { normalizeEtPhone } from "../../common/utils/validator";
 import { generateRandomCode } from "../../common/utils/generator";
@@ -597,6 +597,71 @@ export class ReportsService {
       page,
       limit,
       totalPages,
+    };
+  }
+
+  async getHomeStats() {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+
+    const reportsThisMonth = await this.reportRepo.count({
+      where: { createdAt: MoreThanOrEqual(monthStart) },
+    });
+    const reportsLastMonth = await this.reportRepo.count({
+      where: { createdAt: Between(lastMonthStart, monthStart) },
+    });
+    const reportsDeltaPct =
+      reportsLastMonth > 0
+        ? Math.round(
+            ((reportsThisMonth - reportsLastMonth) / reportsLastMonth) * 100,
+          )
+        : null;
+
+    const assigned = await this.reportRepo.find({
+      select: ["id", "createdAt", "assignedAt"],
+      where: { assignedAt: Not(IsNull()) },
+    });
+
+    const msToMin = (ms: number) => ms / 60000;
+    let avgResponseMinutes = 0;
+    let prevAvgResponseMinutes = 0;
+    if (assigned.length > 0) {
+      const thisMonth = assigned.filter(
+        (r) => r.assignedAt && r.assignedAt >= monthStart,
+      );
+      const prevMonth = assigned.filter(
+        (r) =>
+          r.assignedAt && r.assignedAt >= lastMonthStart && r.assignedAt < monthStart,
+      );
+      const sum = (list: typeof assigned) =>
+        list.reduce((acc, r) => acc + (r.assignedAt.getTime() - r.createdAt.getTime()), 0);
+      if (thisMonth.length > 0) {
+        avgResponseMinutes = Math.round(msToMin(sum(thisMonth)) / thisMonth.length);
+      } else {
+        avgResponseMinutes = Math.round(msToMin(sum(assigned)) / assigned.length);
+      }
+      if (prevMonth.length > 0) {
+        prevAvgResponseMinutes =
+          Math.round(msToMin(sum(prevMonth)) / prevMonth.length);
+      }
+    }
+    const responseDeltaPct =
+      prevAvgResponseMinutes > 0
+        ? Math.round(
+            ((avgResponseMinutes - prevAvgResponseMinutes) /
+              prevAvgResponseMinutes) *
+              100,
+          )
+        : null;
+
+    return {
+      reportsThisMonth,
+      reportsLastMonth,
+      reportsDeltaPct,
+      avgResponseMinutes,
+      prevAvgResponseMinutes,
+      responseDeltaPct,
     };
   }
 

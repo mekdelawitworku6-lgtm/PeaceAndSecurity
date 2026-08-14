@@ -177,6 +177,14 @@ export class ReportsController {
   }
 
 
+  @Get("stats")
+  @UseGuards(OptionalJwtAuthGuard)
+  @ApiOperation({ summary: "Public home screen stats (monthly reports, avg response time)" })
+  async getHomeStats() {
+    const stats = await this.reportsService.getHomeStats();
+    return successResponse("Home stats retrieved", stats);
+  }
+
   @Get(":id")
   @UseGuards(OptionalJwtAuthGuard)
   @ApiBearerAuth()
