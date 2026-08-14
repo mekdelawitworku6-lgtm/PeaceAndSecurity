@@ -172,69 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 20),
             Row(
               children: [
-                Text(
-                  'Quick Actions',
-                  style: AppTypography.h3,
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.location_searching,
-                    label: 'Nearby Reports',
-                    color: AppColors.accent,
-                    onTap: () => context.go('/nearby'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.assignment_outlined,
-                    label: 'My Assigned',
-                    color: AppColors.primary,
-                    onTap: () => context.go('/assigned'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.chat_bubble_outline,
-                    label: 'Inbox',
-                    color: AppColors.info,
-                    onTap: () => context.go('/conversations'),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.fact_check_outlined,
-                    label: 'Work Reports',
-                    color: AppColors.success,
-                    onTap: () => context.go('/work-reports'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _QuickAction(
-                    icon: Icons.logout,
-                    label: 'Logout',
-                    color: AppColors.danger,
-                    onTap: () =>
-                        context.read<AuthBloc>().add(AuthLogoutRequested()),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
                 Expanded(
                   child: Text('Recent Assigned', style: AppTypography.h3),
                 ),
@@ -382,48 +319,6 @@ class _StatCard extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-        decoration: BoxDecoration(
-          color: AppColors.card,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: AppShadows.card,
-        ),
-        child: Column(
-          children: [
-            Icon(icon, size: 22, color: color),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: AppTypography.caption.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
