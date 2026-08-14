@@ -104,7 +104,7 @@ function TeamRolesTab() {
   const team = useAppSelector(selectUsers);
   const loading = useAppSelector(selectUsersLoading);
   const [showInvite, setShowInvite] = useState(false);
-  const [inviteForm, setInviteForm] = useState({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "", password: "" });
+  const [inviteForm, setInviteForm] = useState({ fullName: "", email: "", role: "SYSTEM_ADMIN_VIEWER", phoneNumber: "", password: "" });
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
@@ -130,7 +130,7 @@ function TeamRolesTab() {
       if (inviteForm.phoneNumber) formData.append("phoneNumber", inviteForm.phoneNumber);
       await dispatch(registerUser(formData)).unwrap();
       setShowInvite(false);
-      setInviteForm({ fullName: "", email: "", role: "SYSTEM_ADMIN", phoneNumber: "", password: "" });
+      setInviteForm({ fullName: "", email: "", role: "SYSTEM_ADMIN_VIEWER", phoneNumber: "", password: "" });
       toast.success("User created successfully");
       dispatch(fetchUsers({ limit: 50, isStaffUser: true }));
     } catch (err: any) {
@@ -254,16 +254,8 @@ function TeamRolesTab() {
                   <Select value={inviteForm.role} onValueChange={(v) => setInviteForm({ ...inviteForm, role: v })}>
                     <SelectTrigger className="h-11 rounded-lg border-slate-200"><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
-                      <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
-                      <SelectItem value="PEACE_SUPER_ADMIN">Peace and Security Super Admin</SelectItem>
-                      <SelectItem value="PEACE_OFFICER_SUBCITY">Peace and Security Officer Subcity</SelectItem>
-                      <SelectItem value="PEACE_OFFICER_WOREDA">Peace and Security Officer Woreda</SelectItem>
-                      <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
-                      <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
-                      <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
-                      <SelectItem value="SYSTEM_SUPER_ADMIN_VIEWER">Super Admin Viewer</SelectItem>
-                      <SelectItem value="SYSTEM_ADMIN_VIEWER">Admin Viewer</SelectItem>
+                      <SelectItem value="SYSTEM_SUPER_ADMIN_VIEWER">System Super Admin Viewer</SelectItem>
+                      <SelectItem value="SYSTEM_ADMIN_VIEWER">System Admin Viewer</SelectItem>
                       <SelectItem value="PEACE_SUPER_ADMIN_VIEWER">Peace and Security Super Admin Viewer</SelectItem>
                       <SelectItem value="PEACE_OFFICER_SUBCITY_VIEWER">Peace and Security Subcity Viewer</SelectItem>
                       <SelectItem value="PEACE_OFFICER_WOREDA_VIEWER">Peace and Security Woreda Viewer</SelectItem>
