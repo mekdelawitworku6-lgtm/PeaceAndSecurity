@@ -41,10 +41,10 @@ class PatrolUser {
         status: json['status'] as String?,
         assignedArea: json['assignedArea'] as String?,
         officeAddress: json['officeAddress'] as String?,
-        officeLatitude: (json['officeLatitude'] as num?)?.toDouble(),
-        officeLongitude: (json['officeLongitude'] as num?)?.toDouble(),
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
+        officeLatitude: num.tryParse('${json['officeLatitude']}')?.toDouble(),
+        officeLongitude: num.tryParse('${json['officeLongitude']}')?.toDouble(),
+        latitude: num.tryParse('${json['latitude']}')?.toDouble(),
+        longitude: num.tryParse('${json['longitude']}')?.toDouble(),
         createdAt: json['createdAt'] as String?,
       );
 
