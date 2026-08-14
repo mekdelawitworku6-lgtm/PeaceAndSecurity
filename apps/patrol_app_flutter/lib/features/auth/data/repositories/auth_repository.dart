@@ -27,6 +27,11 @@ class AuthRepository {
     });
   }
 
+  Future<PatrolUser> fetchMyProfile() async {
+    final res = await _api.get('/patrols/me/profile');
+    return PatrolUser.fromJson(res['data'] as Map<String, dynamic>);
+  }
+
   Future<String> refreshAccessToken() async {
     final res = await _api.post('/auth/refresh', data: {
       'refreshToken': SessionManager.instance.refreshToken,

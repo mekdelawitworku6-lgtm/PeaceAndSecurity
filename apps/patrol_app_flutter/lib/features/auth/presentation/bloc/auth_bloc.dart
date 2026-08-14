@@ -25,9 +25,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   Future<void> _onHydrate(
       AuthHydrateRequested event, Emitter<AuthState> emit) async {
     await sessionManager.hydrate();
-    final user = sessionManager.user;
+    var user = sessionManager.user;
     final token = sessionManager.accessToken;
     if (user != null && token != null && token.isNotEmpty) {
+      try {
+        final fresh = await repository.fetchMyProfile();
+        user = fresh;
+        await sessionManager.saveSession(
+          access: sessionManager.accessToken!,
+          refresh: sessionManager.refreshToken!,
+          user: fresh,
+        );
+      } catch (_) {}
       _connectSockets(user);
       emit(state.copyWith(
         status: AuthStatus.signedIn,
