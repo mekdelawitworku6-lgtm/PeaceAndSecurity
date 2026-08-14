@@ -5,6 +5,7 @@ import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/models/report.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
+import '../../../../core/widgets/incident_map.dart';
 import '../../../reports/presentation/bloc/reports_bloc.dart';
 
 class MapScreen extends StatefulWidget {
@@ -49,9 +50,10 @@ class _MapScreenState extends State<MapScreen> {
     }).toList();
   }
 
-  Color _pinColor(Report r) {
-    final type = (r.violationType ?? '').toUpperCase();
-    if (r.isEmergency || type.contains('CRIME') || type.contains('ROBBERY')) {
+  Color _pinColor(Map<String, dynamic> m) {
+    final type = '${m['type']}'.toUpperCase();
+    final emergency = m['emergency'] == true;
+    if (emergency || type.contains('CRIME') || type.contains('ROBBERY')) {
       return AppColors.danger;
     }
     if (type.contains('ILLEGAL') || type.contains('VANDALISM')) {
@@ -150,10 +152,27 @@ class _MapScreenState extends State<MapScreen> {
             child: Stack(
               children: [
                 Positioned.fill(
-                  child: _FakeMap(
-                    reports: items,
-                    pinColor: _pinColor,
-                    onPinTap: (r) => setState(() => _selectedReport = r),
+                  child: IncidentMap(
+                    markers: items
+                        .where((r) =>
+                            r.latitude != 0 && r.longitude != 0)
+                        .map((r) => {
+                              'id': r.id,
+                              'latitude': r.latitude,
+                              'longitude': r.longitude,
+                              'type': r.violationType ?? '',
+                              'emergency': r.isEmergency,
+                            })
+                        .toList(),
+                    markerColor: (m) => _pinColor(m),
+                    onMarkerTap: (m) {
+                      final id = '${m['id']}';
+                      setState(() {
+                        _selectedReport = nearby
+                            .where((r) => r.id == id)
+                            .firstOrNull;
+                      });
+                    },
                     selectedId: _selectedReport?.id,
                   ),
                 ),
@@ -269,97 +288,3 @@ class _LegendDot extends StatelessWidget {
   }
 }
 
-class _FakeMap extends StatelessWidget {
-  final List<Report> reports;
-  final Color Function(Report) pinColor;
-  final ValueChanged<Report> onPinTap;
-  final String? selectedId;
-
-  const _FakeMap({
-    required this.reports,
-    required this.pinColor,
-    required this.onPinTap,
-    this.selectedId,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-        return Container(
-          color: const Color(0xFFdde5d6),
-          child: Stack(
-            children: [
-              // fake roads
-              Positioned(
-                left: 0,
-                right: 0,
-                top: h * 0.35,
-                child: Container(height: 6, color: const Color(0xFFc3cdb8)),
-              ),
-              Positioned(
-                left: w * 0.3,
-                top: 0,
-                bottom: 0,
-                child: Container(width: 5, color: const Color(0xFFc3cdb8)),
-              ),
-              Positioned(
-                left: w * 0.65,
-                top: h * 0.7,
-                right: 0,
-                child: Container(height: 5, color: const Color(0xFFc3cdb8)),
-              ),
-              Positioned(
-                left: 16,
-                top: h * 0.2,
-                child: _MapLabel('Legedadi Condominium'),
-              ),
-              Positioned(
-                right: 16,
-                top: h * 0.65,
-                child: _MapLabel('Hotel Mexico'),
-              ),
-              for (var i = 0; i < reports.length && i < 10; i++)
-                Positioned(
-                  left: w * (0.12 + (i * 0.08) % 0.76),
-                  top: h * (0.12 + (i * 0.13) % 0.7),
-                  child: GestureDetector(
-                    onTap: () => onPinTap(reports[i]),
-                    child: Container(
-                      width: selectedId == reports[i].id ? 22 : 16,
-                      height: selectedId == reports[i].id ? 22 : 16,
-                      decoration: BoxDecoration(
-                        color: pinColor(reports[i]),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppColors.white, width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _MapLabel extends StatelessWidget {
-  final String text;
-
-  const _MapLabel(this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Text(text, style: AppTypography.caption),
-    );
-  }
-}

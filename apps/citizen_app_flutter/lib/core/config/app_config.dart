@@ -36,6 +36,10 @@ class AppConfig {
   static const String appName = 'Peace & Security';
   static const String appTagline = 'Report. Respond. Resolve.';
 
+  static const String googleMapsApiKey =
+      String.fromEnvironment('GOOGLE_MAPS_API_KEY',
+          defaultValue: 'AIzaSyCs08QJJNus03eKg9CYlCX5wS_LJNUOnyI');
+
   static bool get isDarkMode => false;
 
   static ThemeData get theme {

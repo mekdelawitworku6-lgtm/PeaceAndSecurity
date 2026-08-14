@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/models/report_type.dart';
@@ -12,6 +13,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_input.dart';
+import '../../../../core/widgets/incident_map.dart';
 import '../../../../core/widgets/media_thumb.dart';
 import '../../../../core/widgets/screen.dart';
 import '../../data/repositories/reports_repository.dart';
@@ -196,7 +198,9 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
         final report = state.detail!;
         context.go(
           '/create-report-success/${report.id}'
-          '?caseId=${report.caseId ?? ''}&status=${report.status}',
+          '?caseId=${report.caseId ?? ''}&status=${report.status}'
+          '&lat=${_location?.latitude ?? 9.03}'
+          '&lng=${_location?.longitude ?? 38.74}',
         );
       },
       builder: (context, state) {
@@ -505,6 +509,10 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
                         location: _location,
                         loading: _locLoading,
                         onRefresh: _fetchLocation,
+                        onMapTap: (loc) => setState(() {
+                          _location = loc;
+                          _locLoading = false;
+                        }),
                       ),
                       const SizedBox(height: 16),
                       _AnonymousToggle(
@@ -687,16 +695,19 @@ class _LocationCard extends StatelessWidget {
   final LocationResult? location;
   final bool loading;
   final VoidCallback onRefresh;
+  final ValueChanged<LocationResult> onMapTap;
 
   const _LocationCard({
     required this.location,
     required this.loading,
     required this.onRefresh,
+    required this.onMapTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final t = context.l10n().t;
+    final loc = location;
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,57 +727,54 @@ class _LocationCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Container(
-            height: 130,
-            decoration: BoxDecoration(
-              color: const Color(0xFFe8f0e8),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Stack(
-              children: [
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 50,
-                  child: Container(height: 4, color: const Color(0xFFc3cdb8)),
-                ),
-                Positioned(
-                  left: 80,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(width: 4, color: const Color(0xFFc3cdb8)),
-                ),
-                Center(
-                  child: loading
-                      ? const CircularProgressIndicator(color: AppColors.primary)
-                      : const Icon(Icons.location_pin, size: 36, color: AppColors.primary),
-                ),
-                if (!loading && location != null)
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 8,
-                    child: Center(
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: AppColors.white.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          location!.address.isNotEmpty
-                              ? location!.address
-                              : '${location!.latitude.toStringAsFixed(4)}, '
-                                  '${location!.longitude.toStringAsFixed(4)}',
-                          style: AppTypography.caption,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: SizedBox(
+              height: 130,
+              child: loading || loc == null
+                  ? Container(
+                      color: AppColors.card,
+                      child: Center(
+                        child: loading
+                            ? const CircularProgressIndicator(
+                                color: AppColors.primary)
+                            : const Icon(
+                                Icons.location_off_outlined,
+                                color: AppColors.textMuted,
+                              ),
+                      ),
+                    )
+                  : IncidentMap(
+                      initialCenter: LatLng(loc.latitude, loc.longitude),
+                      initialZoom: 15,
+                      draggablePin: LatLng(loc.latitude, loc.longitude),
+                      markers: const [],
+                      markerColor: (m) => AppColors.primary,
+                      onMapTap: (pos) => onMapTap(
+                        LocationResult(
+                          latitude: pos.latitude,
+                          longitude: pos.longitude,
+                          address:
+                              '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}',
                         ),
                       ),
                     ),
-                  ),
-              ],
             ),
           ),
+          if (!loading && loc != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              loc.address.isNotEmpty
+                  ? loc.address
+                  : '${loc.latitude.toStringAsFixed(4)}, '
+                      '${loc.longitude.toStringAsFixed(4)}',
+              style: AppTypography.caption.copyWith(
+                color: AppColors.textMuted,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
         ],
       ),
     );

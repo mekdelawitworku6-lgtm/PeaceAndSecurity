@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -14,12 +15,16 @@ class CreateReportSuccessScreen extends StatelessWidget {
   final String reportId;
   final String caseId;
   final String status;
+  final double latitude;
+  final double longitude;
 
   const CreateReportSuccessScreen({
     super.key,
     required this.reportId,
     required this.caseId,
     required this.status,
+    this.latitude = 9.03,
+    this.longitude = 38.74,
   });
 
   @override
@@ -143,7 +148,15 @@ class CreateReportSuccessScreen extends StatelessWidget {
               AppButton(
                 title: '🗺 ${t('viewOnMap')}',
                 variant: AppButtonVariant.outline,
-                onPressed: () => context.go('/map'),
+                onPressed: () async {
+                  final url = 'https://www.google.com/maps/search/?api=1'
+                      '&query=$latitude,$longitude';
+                  final launched = await launchUrl(
+                    Uri.parse(url),
+                    mode: LaunchMode.externalApplication,
+                  );
+                  if (!launched && context.mounted) context.go('/map');
+                },
               ),
               const SizedBox(height: 12),
               TextButton(

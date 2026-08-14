@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -119,6 +120,43 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             ],
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        if (report.latitude != 0 && report.longitude != 0)
+                          InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => launchUrl(
+                              Uri.parse(
+                                'https://www.google.com/maps/search/?api=1'
+                                '&query=${report.latitude},${report.longitude}',
+                              ),
+                              mode: LaunchMode.externalApplication,
+                            ),
+                            child: AppCard(
+                              padding: const EdgeInsets.all(12),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.location_on_outlined,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      '${report.latitude.toStringAsFixed(5)}, '
+                                      '${report.longitude.toStringAsFixed(5)}',
+                                      style: AppTypography.smallMedium,
+                                    ),
+                                  ),
+                                  Icon(
+                                    Icons.chevron_right,
+                                    size: 18,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         const SizedBox(height: 16),
                         if (report.imageUrls.isNotEmpty) ...[
                           _SectionTitle('Photos'),

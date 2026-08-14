@@ -96,6 +96,10 @@ class AppRouter {
           reportId: state.pathParameters['reportId']!,
           caseId: state.uri.queryParameters['caseId'] ?? '',
           status: state.uri.queryParameters['status'] ?? 'SUBMITTED',
+          latitude:
+              double.tryParse(state.uri.queryParameters['lat'] ?? '') ?? 9.03,
+          longitude:
+              double.tryParse(state.uri.queryParameters['lng'] ?? '') ?? 38.74,
         ),
       ),
       GoRoute(
