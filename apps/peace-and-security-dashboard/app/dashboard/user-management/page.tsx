@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/app/context/auth-context";
-import { UserRole, ROLE_LABELS } from "@/lib/auth";
+import { UserRole, ROLE_LABELS, getCreatableRoles } from "@/lib/auth";
 import { PERMISSIONS } from "@/lib/permissions";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
@@ -39,9 +39,26 @@ import {
 } from "lucide-react";
 import { getImageUrl, cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ChevronDown } from "lucide-react";
+
+const ROLE_BUTTON_LABELS: Partial<Record<UserRole, string>> = {
+  [UserRole.PEACE_OFFICER_SUBCITY]: "Add Subcity Peace and Security Officer",
+  [UserRole.PEACE_OFFICER_WOREDA]: "Add Woreda Peace and Security Officer",
+  [UserRole.POLICE_COMMANDER_CITY]: "Add City Police Commander",
+  [UserRole.POLICE_COMMANDER_SUBCITY]: "Add Subcity Police Commander",
+  [UserRole.POLICE_COMMANDER_WOREDA]: "Add Woreda Police Commander",
+  [UserRole.PEACE_SUPER_ADMIN]: "Add Peace and Security Super Admin",
+};
 
 export default function UserManagementPage() {
   const { user, hasPermission } = useAuth();
+  const creatableRoles = getCreatableRoles(user?.role);
   const dispatch = useAppDispatch();
   const cities = useAppSelector(selectCities);
   const subcities = useAppSelector(selectSubcities);
@@ -409,26 +426,30 @@ export default function UserManagementPage() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0 w-full xl:w-auto">
-            <Button
-              onClick={() => {
-                setEditingUser({ role: UserRole.POLICE_COMMANDER_SUBCITY, _isNew: true });
-                setFormOpen(true);
-              }}
-              className="h-11 rounded px-5 bg-amber-500 hover:bg-amber-600 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Add Police Commander
-            </Button>
-            <Button
-              onClick={() => {
-                setEditingUser({ role: UserRole.PEACE_OFFICER_SUBCITY, _isNew: true });
-                setFormOpen(true);
-              }}
-              className="h-11 rounded px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none"
-            >
-              <Plus className="h-4 w-4 mr-1.5" />
-              Add Peace and Security Officer
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button className="h-11 rounded px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none">
+                  <Plus className="h-4 w-4 mr-1.5" />
+                  Add Officer
+                  <ChevronDown className="h-4 w-4 ml-1" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-72">
+                {(Object.keys(ROLE_BUTTON_LABELS) as UserRole[])
+                  .filter((r) => creatableRoles.includes(r))
+                  .map((r) => (
+                    <DropdownMenuItem
+                      key={r}
+                      onClick={() => {
+                        setEditingUser({ role: r, _isNew: true });
+                        setFormOpen(true);
+                      }}
+                    >
+                      {ROLE_BUTTON_LABELS[r]}
+                    </DropdownMenuItem>
+                  ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </PageHeader>
