@@ -129,15 +129,15 @@ class Report {
             : null,
         violationType: json['violationType'] as String?,
         reportDescription: json['reportDescription'] as String?,
-        latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
-        longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+        latitude: num.tryParse('${json['latitude']}')?.toDouble() ?? 0,
+        longitude: num.tryParse('${json['longitude']}')?.toDouble() ?? 0,
         address: json['address'] as String?,
         area: json['area'] as String?,
         imageUrls: _stringList(json['imageUrls']),
         videoUrls: _stringList(json['videoUrls']),
         audioUrls: _stringList(json['audioUrls']),
         evidenceUrls: _stringList(json['evidenceUrls']),
-        decibelLevel: (json['decibelLevel'] as num?)?.toDouble(),
+        decibelLevel: num.tryParse('${json['decibelLevel']}')?.toDouble(),
         noiseAreaType: json['noiseAreaType'] as String?,
         noisePollutionStatus: json['noisePollutionStatus'] as String?,
         isAnonymous: json['isAnonymous'] as bool? ?? false,
@@ -310,8 +310,8 @@ class NearbyLocation {
   const NearbyLocation({required this.latitude, required this.longitude, this.address});
 
   factory NearbyLocation.fromJson(Map<String, dynamic> json) => NearbyLocation(
-        latitude: (json['latitude'] as num?)?.toDouble() ?? 0,
-        longitude: (json['longitude'] as num?)?.toDouble() ?? 0,
+        latitude: num.tryParse('${json['latitude']}')?.toDouble() ?? 0,
+        longitude: num.tryParse('${json['longitude']}')?.toDouble() ?? 0,
         address: json['address'] as String?,
       );
 }
