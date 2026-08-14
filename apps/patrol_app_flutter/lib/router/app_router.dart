@@ -81,10 +81,6 @@ class AppRouter {
         builder: (context, state) => const NearbyReportsScreen(),
       ),
       GoRoute(
-        path: '/work-reports',
-        builder: (context, state) => const WorkReportsScreen(),
-      ),
-      GoRoute(
         path: '/chat/:conversationId',
         builder: (context, state) => ChatScreen(
           conversationId: state.pathParameters['conversationId']!,
