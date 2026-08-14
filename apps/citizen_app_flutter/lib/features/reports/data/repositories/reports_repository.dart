@@ -120,7 +120,17 @@ class ReportsRepository {
     addString('appVersion', '1.0.0');
 
     for (final img in payload.images) {
-      if (img.file != null) {
+      if (img.xfile != null) {
+        form.files.add(MapEntry(
+          'images',
+          MultipartFile.fromBytes(
+            await img.xfile!.readAsBytes(),
+            filename: img.fileName,
+            contentType:
+                DioMediaType.parse(img.mimeType ?? 'image/jpeg'),
+          ),
+        ));
+      } else if (img.file != null) {
         form.files.add(MapEntry(
           'images',
           MultipartFile.fromFileSync(
@@ -131,7 +141,17 @@ class ReportsRepository {
         ));
       }
     }
-    if (payload.video != null && payload.video!.file != null) {
+    if (payload.video != null && payload.video!.xfile != null) {
+      form.files.add(MapEntry(
+        'video',
+        MultipartFile.fromBytes(
+          await payload.video!.xfile!.readAsBytes(),
+          filename: payload.video!.fileName,
+          contentType:
+              DioMediaType.parse(payload.video!.mimeType ?? 'video/mp4'),
+        ),
+      ));
+    } else if (payload.video != null && payload.video!.file != null) {
       form.files.add(MapEntry(
         'video',
         MultipartFile.fromFileSync(

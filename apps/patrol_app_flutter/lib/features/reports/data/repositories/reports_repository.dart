@@ -119,7 +119,17 @@ class ReportsRepository {
     form.fields.add(MapEntry('latitude', payload.latitude.toString()));
     form.fields.add(MapEntry('longitude', payload.longitude.toString()));
     for (final media in payload.evidence) {
-      if (media.file != null) {
+      if (media.xfile != null) {
+        form.files.add(MapEntry(
+          'patrolEvidence',
+          MultipartFile.fromBytes(
+            await media.xfile!.readAsBytes(),
+            filename: media.fileName,
+            contentType:
+                DioMediaType.parse(media.mimeType ?? 'image/jpeg'),
+          ),
+        ));
+      } else if (media.file != null) {
         form.files.add(MapEntry(
           'patrolEvidence',
           MultipartFile.fromFileSync(

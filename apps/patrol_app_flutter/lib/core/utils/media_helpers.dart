@@ -15,12 +15,14 @@ class PickedMedia {
   final String? name;
   final String? mimeType;
   final File? file;
+  final XFile? xfile;
 
   const PickedMedia({
     required this.uri,
     this.name,
     this.mimeType,
     this.file,
+    this.xfile,
   });
 
   String get fileName => name ?? path.basename(uri);
@@ -71,6 +73,7 @@ class MediaHelpers {
       name: path.basename(x.path),
       mimeType: mime,
       file: File(x.path),
+      xfile: x,
     );
   }
 

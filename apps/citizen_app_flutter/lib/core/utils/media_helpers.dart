@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
@@ -15,12 +16,14 @@ class PickedMedia {
   final String? name;
   final String? mimeType;
   final File? file;
+  final XFile? xfile;
 
   const PickedMedia({
     required this.uri,
     this.name,
     this.mimeType,
     this.file,
+    this.xfile,
   });
 
   String get fileName => name ?? path.basename(uri);
@@ -71,6 +74,7 @@ class MediaHelpers {
       name: path.basename(x.path),
       mimeType: mime,
       file: File(x.path),
+      xfile: x,
     );
   }
 
@@ -177,6 +181,9 @@ class AudioRecorderController {
   }
 
   Future<String> _tempDir() async {
+    if (kIsWeb) {
+      throw Exception('Audio recording is not supported on web. Please use the mobile app to record audio.');
+    }
     final dir = await getTemporaryDirectory();
     return dir.path;
   }
