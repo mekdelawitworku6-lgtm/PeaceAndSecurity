@@ -13,6 +13,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/app_input.dart';
+import '../../../../core/widgets/app_switch.dart';
 import '../../../../core/widgets/incident_map.dart';
 import '../../../../core/widgets/media_thumb.dart';
 import '../../../../core/widgets/screen.dart';
@@ -680,9 +681,9 @@ class _EmergencyToggle extends StatelessWidget {
               style: AppTypography.smallMedium,
             ),
           ),
-          Switch(
+          AppSwitch(
             value: enabled,
-            activeThumbColor: AppColors.primary,
+            activeColor: AppColors.danger,
             onChanged: onChanged,
           ),
         ],
@@ -803,7 +804,7 @@ class _AnonymousToggle extends StatelessWidget {
               ],
             ),
           ),
-          Switch(value: value, activeThumbColor: AppColors.primary, onChanged: onChanged),
+          AppSwitch(value: value, onChanged: onChanged),
         ],
       ),
     );
