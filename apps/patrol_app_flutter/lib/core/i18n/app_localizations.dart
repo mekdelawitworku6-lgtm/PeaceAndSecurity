@@ -778,6 +778,12 @@ class AppLocalizations {
       'ti': 'ወጻኢ መስመር',
     },
     'vsLastMonth': {'en': 'vs last month', 'am': 'ካለፈው ወር', 'om': 'Jiʼa darbe wajjiin', 'ti': 'ምስ ዝሓለፈ ወርሒ'},
+    'recentAssigned': {'en': 'Recent Assigned', 'am': 'የቅርብ የተመደበ', 'om': 'Haala dhiyoo ramadame', 'ti': 'ቀረባ ተመዲቡ'},
+    'locating': {'en': 'Locating…', 'am': 'ቦታ በማፈላለግ ላይ…', 'om': 'Bakka barbaadichaa…', 'ti': 'እናረኽበ…'},
+    'audioRecordingOptional': {'en': 'Audio recording (optional)', 'am': 'የድምጽ ቅጂ (አማራጭ)', 'om': 'Sagalee waraabuu (filannoo)', 'ti': 'ቅዳሕ ድምጺ (ኣማራጺ)'},
+    'titleDescriptionRequired': {'en': 'Title and description are required', 'am': 'ርዕስ እና መግለጫ ያስፈልጋሉ', 'om': 'Mata duree fi ibsa barbaachisa', 'ti': 'ኣርእስትን መግለጺን የድልዩ'},
+    'workReportSuccess': {'en': 'Work report submitted successfully', 'am': 'የስራ ሪፖርት በተሳካ ሁኔታ ቀርቧል', 'om': 'Gabaasni hojii milkaaʼinaan dhiyaate', 'ti': 'ናይ ስራሕ ሪፖርት ብዕዉትነት ተላኢኹ'},
+    'workReportFailed': {'en': 'Failed to submit work report', 'am': 'የስራ ሪፖርት ማቅረብ አልተሳካም', 'om': 'Gabaasa hojii dhiyeessuun hin milkoofne', 'ti': 'ናይ ስራሕ ሪፖርት ምልኣኽ ኣይተኻኸለን'},
     'loading': {
       'en': 'Loading…',
       'am': 'በመጫን ላይ…',

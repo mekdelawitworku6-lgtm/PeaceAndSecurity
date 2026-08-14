@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/media_helpers.dart';
@@ -184,7 +185,7 @@ class _FollowUpScreenState extends State<FollowUpScreen> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text('Locating…', style: AppTypography.small),
+                              Text(context.l10n().t('locating'), style: AppTypography.small),
                             ],
                           )
                         else if (_latitude != null)
@@ -282,7 +283,7 @@ class _FollowUpScreenState extends State<FollowUpScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  Text('Audio recording (optional)', style: AppTypography.label),
+                  Text(context.l10n().t('audioRecordingOptional'), style: AppTypography.label),
                   const SizedBox(height: 8),
                   AppButton(
                     title: _recording

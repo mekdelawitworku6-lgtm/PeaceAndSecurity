@@ -213,7 +213,7 @@ class _HomeScreenState extends State<HomeScreen> {
             Row(
               children: [
                 Expanded(
-                  child: Text('Recent Assigned', style: AppTypography.h3),
+                  child: Text(t('recentAssigned'), style: AppTypography.h3),
                 ),
                 TextButton(
                   onPressed: () => context.go('/assigned'),

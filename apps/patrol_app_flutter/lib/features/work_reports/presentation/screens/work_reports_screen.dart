@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
@@ -271,7 +272,7 @@ class _SubmitWorkReportScreenState extends State<SubmitWorkReportScreen> {
   Future<void> _submit() async {
     if (_title.text.trim().isEmpty || _description.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Title and description are required')),
+        SnackBar(content: Text(context.l10n().t('titleDescriptionRequired'))),
       );
       return;
     }
@@ -289,12 +290,12 @@ class _SubmitWorkReportScreenState extends State<SubmitWorkReportScreen> {
       if (!mounted) return;
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Work report submitted successfully')),
+        SnackBar(content: Text(context.l10n().t('workReportSuccess'))),
       );
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to submit work report')),
+          SnackBar(content: Text(context.l10n().t('workReportFailed'))),
         );
       }
     } finally {
