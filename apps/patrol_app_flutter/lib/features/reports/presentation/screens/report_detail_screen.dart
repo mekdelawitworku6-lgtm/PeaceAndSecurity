@@ -48,7 +48,7 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
     try {
       final conv = await ChatRepository().openConversation(widget.reportId);
       if (mounted) {
-        context.go('/chat/${conv.id}?title=${Uri.encodeComponent('$caseId · $typeLabel')}');
+        context.push('/chat/${conv.id}?title=${Uri.encodeComponent('$caseId · $typeLabel')}');
       }
     } catch (e) {
       if (mounted) {
