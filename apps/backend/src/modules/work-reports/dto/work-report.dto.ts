@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsString,
   IsOptional,
@@ -101,11 +102,13 @@ export class WorkReportFilterDto {
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   page?: number;
 
   @ApiPropertyOptional({ default: 10 })
   @IsOptional()
+  @Type(() => Number)
   @IsNumber()
   limit?: number;
 }

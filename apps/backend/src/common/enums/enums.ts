@@ -25,6 +25,9 @@ export enum UserRole {
   POLICE_COMMANDER_WOREDA_VIEWER = "POLICE_COMMANDER_WOREDA_VIEWER",
 }
 
+// Any role ending with this suffix is read-only
+export const VIEWER_ROLE_SUFFIX = "_VIEWER";
+
 export enum OTPType {
   FORGOT_PASSWORD_OTP = "FORGOT-PASSWORD-OTP",
   REGISTRATION_OTP = "REGISTRATION-OTP",

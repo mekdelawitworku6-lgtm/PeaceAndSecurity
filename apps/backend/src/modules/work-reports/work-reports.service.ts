@@ -13,7 +13,7 @@ import {
   ReviewWorkReportDto,
   WorkReportFilterDto,
 } from "./dto/work-report.dto";
-import { UserRole, WorkReportStatus } from "../../common/enums/enums";
+import { UserRole, WorkReportStatus, VIEWER_ROLE_SUFFIX } from "../../common/enums/enums";
 import { successResponse } from "../../common/types/service-response";
 import { User } from "../user/entities/user.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
@@ -100,10 +100,7 @@ export class WorkReportsService {
 
     if (user.role === UserRole.PATROL || user.role === UserRole.CITIZEN) {
       qb.andWhere("wr.reporterId = :reporterId", { reporterId: user.id });
-    } else if (
-      user.role === UserRole.SYSTEM_SUPER_ADMIN_VIEWER ||
-      user.role === UserRole.SYSTEM_ADMIN_VIEWER
-    ) {
+    } else if (user.role.endsWith(VIEWER_ROLE_SUFFIX)) {
       qb.andWhere("1=1");
     } else if (!STAFF_ROLES.has(user.role)) {
       qb.andWhere("wr.reporterId = :reporterId", { reporterId: user.id });
@@ -142,8 +139,7 @@ export class WorkReportsService {
     const canView =
       isOwn ||
       STAFF_ROLES.has(user.role) ||
-      user.role === UserRole.SYSTEM_SUPER_ADMIN_VIEWER ||
-      user.role === UserRole.SYSTEM_ADMIN_VIEWER;
+      user.role.endsWith(VIEWER_ROLE_SUFFIX);
     if (!canView) throw new ForbiddenException("Not allowed to view this report");
 
     return successResponse("Work report retrieved successfully", report);
