@@ -10,11 +10,15 @@ import { selectLoginError, clearLoginError } from "@/lib/store/authSlice";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AlertCircle, Eye, EyeOff } from "lucide-react";
+import { AlertCircle, Eye, EyeOff, ChevronDown, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
 
+const PHONE_PREFIX = "+251";
+
 export function LoginForm() {
+  const [method, setMethod] = useState<"email" | "phone">("email");
   const [identifier, setIdentifier] = useState("");
+  const [phoneDigits, setPhoneDigits] = useState("");
   const [password, setPassword] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -39,10 +43,27 @@ export function LoginForm() {
     }
   }, [loginError, dispatch]);
 
+  const handleMethodChange = (m: "email" | "phone") => {
+    setMethod(m);
+    setErrors({});
+    setError("");
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").replace(/^0+/, "");
+    const normalized = digits.startsWith("9") ? digits.slice(0, 9) : `9${digits}`.slice(0, 9);
+    setPhoneDigits(normalized);
+    if (errors.identifier) setErrors({ ...errors, identifier: "" });
+  };
+
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!identifier) {
+    if (method === "email" && !identifier) {
       setErrors({ identifier: "Email is required" });
+      return;
+    }
+    if (method === "phone" && phoneDigits.length < 9) {
+      setErrors({ identifier: "Enter a valid 9-digit phone number" });
       return;
     }
     if (!password) {
@@ -54,14 +75,11 @@ export function LoginForm() {
     setLoading(true);
 
     try {
-      const isEmail = identifier.includes("@");
-      const cleanIdentifier = identifier.trim();
-
-      await login(
-        isEmail ? cleanIdentifier.toLowerCase() : undefined,
-        password,
-        !isEmail ? cleanIdentifier : undefined,
-      );
+      if (method === "email") {
+        await login(identifier.trim().toLowerCase(), password, undefined);
+      } else {
+        await login(undefined, password, `${PHONE_PREFIX}${phoneDigits}`);
+      }
 
       toast.success("Login successful!");
       router.push("/dashboard");
@@ -103,24 +121,69 @@ export function LoginForm() {
         </div>
 
         <div className="space-y-1.5 text-left">
-          <label className="text-xs font-semibold text-slate-700">
-            Email or Phone Number
-          </label>
-          <Input
-            type="text"
-            placeholder="Enter your email"
-            value={identifier}
-            onChange={(e) => {
-              setIdentifier(e.target.value);
-              if (errors.identifier) setErrors({ ...errors, identifier: "" });
-            }}
-            disabled={loading}
-            className={`h-12 bg-white border border-slate-200 rounded-xl px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all ${
-              errors.identifier ? "border-destructive bg-destructive/5" : ""
-            }`}
-            autoFocus
-            required
-          />
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-semibold text-slate-700">
+              Email or Phone Number
+            </label>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setMethod(method === "email" ? "phone" : "email")}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors cursor-pointer"
+              >
+                {method === "email" ? (
+                  <>
+                    <Mail size={14} /> Use Phone Number
+                  </>
+                ) : (
+                  <>
+                    <Phone size={14} /> Use Email
+                  </>
+                )}
+                <ChevronDown size={14} />
+              </button>
+            </div>
+          </div>
+
+          {method === "email" ? (
+            <Input
+              type="text"
+              placeholder="Enter your email"
+              value={identifier}
+              onChange={(e) => {
+                setIdentifier(e.target.value);
+                if (errors.identifier) setErrors({ ...errors, identifier: "" });
+              }}
+              disabled={loading}
+              className={`h-12 bg-white border border-slate-200 rounded-xl px-4 text-sm focus:ring-2 focus:ring-primary/20 transition-all ${
+                errors.identifier ? "border-destructive bg-destructive/5" : ""
+              }`}
+              autoFocus
+              required
+            />
+          ) : (
+            <div
+              className={`flex h-12 bg-white border border-slate-200 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all ${
+                errors.identifier ? "border-destructive bg-destructive/5" : ""
+              }`}
+            >
+              <span className="inline-flex items-center px-3 text-sm font-semibold text-slate-600 bg-slate-100 border-r border-slate-200">
+                {PHONE_PREFIX}
+              </span>
+              <Input
+                type="tel"
+                inputMode="numeric"
+                placeholder="9XXXXXXXX"
+                value={phoneDigits}
+                onChange={handlePhoneChange}
+                disabled={loading}
+                className="h-full flex-1 border-0 rounded-none bg-transparent px-3 text-sm focus:ring-0"
+                autoFocus
+                required
+              />
+            </div>
+          )}
           {errors.identifier && (
             <p className="text-[11px] text-destructive font-bold pl-2 pt-0.5">
               {errors.identifier}
@@ -179,7 +242,11 @@ export function LoginForm() {
         <Button
           type="submit"
           className="w-full h-12 text-sm font-semibold bg-primary text-primary-foreground hover:bg-primary/95 transition-all rounded-xl mt-4"
-          disabled={loading || !identifier || !password}
+          disabled={
+            loading ||
+            (method === "email" ? !identifier : phoneDigits.length < 9) ||
+            !password
+          }
         >
           {loading ? "Verifying..." : "Login"}
         </Button>

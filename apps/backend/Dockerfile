@@ -3,21 +3,23 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install -g pnpm@9 --registry=https://registry.npmjs.org --fetch-retries=5
+
+COPY package.json .npmrc ./
+RUN pnpm install --force
 
 COPY . .
-RUN npm run build
+RUN pnpm run build
 
 # -- production stage --
 FROM node:20-alpine AS production
 
 WORKDIR /app
 
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init && npm install -g pnpm@9 --registry=https://registry.npmjs.org --fetch-retries=5
 
-COPY package.json package-lock.json* ./
-RUN npm install --omit=dev
+COPY package.json .npmrc ./
+RUN pnpm install --prod
 
 COPY --from=builder /app/dist ./dist
 
