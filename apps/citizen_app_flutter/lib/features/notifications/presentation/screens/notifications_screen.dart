@@ -100,7 +100,7 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
                           }
                           final reportId = n.data?['reportId'] as String?;
                           if (reportId != null) {
-                            context.go(
+                            context.push(
                               '/report-detail/$reportId'
                               '?caseId=${n.data?['caseId'] ?? ''}',
                             );

@@ -131,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             padding: const EdgeInsets.only(bottom: 10),
                             child: _RecentReportRow(
                               report: r,
-                              onTap: () => context.go(
+                              onTap: () => context.push(
                                 '/report-detail/${r.id}?caseId=${r.caseId ?? ''}',
                               ),
                             ),

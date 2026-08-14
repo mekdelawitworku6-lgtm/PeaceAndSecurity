@@ -102,6 +102,9 @@ class AppRouter {
               double.tryParse(state.uri.queryParameters['lat'] ?? '') ?? 9.03,
           longitude:
               double.tryParse(state.uri.queryParameters['lng'] ?? '') ?? 38.74,
+          address: state.uri.queryParameters['address'] ?? '',
+          submittedOn: state.uri.queryParameters['submittedOn'] ?? '',
+          assignedTo: state.uri.queryParameters['assignedTo'] ?? '',
         ),
       ),
       GoRoute(

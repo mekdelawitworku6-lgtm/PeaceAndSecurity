@@ -363,7 +363,7 @@ class _ProfileReportRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppCard(
-      onTap: () => context.go(
+      onTap: () => context.push(
         '/report-detail/${report.id}?caseId=${report.caseId ?? ''}',
       ),
       child: Row(
@@ -633,7 +633,7 @@ class _NotificationsTab extends StatelessWidget {
                   }
                   final reportId = n.data?['reportId'] as String?;
                   if (reportId != null) {
-                    context.go(
+                    context.push(
                       '/report-detail/$reportId'
                       '?caseId=${n.data?['caseId'] ?? ''}',
                     );

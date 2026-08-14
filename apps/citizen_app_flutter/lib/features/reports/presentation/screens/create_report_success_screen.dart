@@ -17,6 +17,9 @@ class CreateReportSuccessScreen extends StatelessWidget {
   final String status;
   final double latitude;
   final double longitude;
+  final String address;
+  final String submittedOn;
+  final String assignedTo;
 
   const CreateReportSuccessScreen({
     super.key,
@@ -25,6 +28,9 @@ class CreateReportSuccessScreen extends StatelessWidget {
     required this.status,
     this.latitude = 9.03,
     this.longitude = 38.74,
+    this.address = '',
+    this.submittedOn = '',
+    this.assignedTo = '',
   });
 
   @override
@@ -123,16 +129,24 @@ class CreateReportSuccessScreen extends StatelessWidget {
                     const SizedBox(height: 12),
                     const Divider(color: AppColors.divider),
                     const SizedBox(height: 12),
-                    _MetaRow(text: 'Bole Sub-City, Addis Ababa, Ethiopia'),
-                    const SizedBox(height: 8),
                     _MetaRow(
-                      text: t('submittedOn', {
-                        'date': Formatters.formatDateTime(
-                            DateTime.now().toIso8601String()),
-                      }),
+                      text: address.isEmpty
+                          ? 'Bole Sub-City, Addis Ababa, Ethiopia'
+                          : address,
                     ),
                     const SizedBox(height: 8),
-                    _MetaRow(text: t('assignedTo')),
+                    _MetaRow(
+                      text: submittedOn.isEmpty
+                          ? t('submittedOn', {
+                              'date': Formatters.formatDateTime(
+                                  DateTime.now().toIso8601String()),
+                            })
+                          : t('submittedOn', {
+                              'date': Formatters.formatDateTime(submittedOn),
+                            }),
+                    ),
+                    const SizedBox(height: 8),
+                    _MetaRow(text: assignedTo.isEmpty ? t('assignedTo') : assignedTo),
                   ],
                 ),
               ),

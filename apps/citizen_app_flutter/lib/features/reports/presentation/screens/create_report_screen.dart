@@ -197,11 +197,19 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
           prev.submitting && !curr.submitting && curr.detail != null,
       listener: (context, state) {
         final report = state.detail!;
+        final assignedArea =
+            report.assignedPatrol?.assignedArea ?? report.area ?? '';
+        final assignedLabel = assignedArea.isEmpty
+            ? 'Pending assignment to a security unit'
+            : 'Assigned to $assignedArea Security Unit';
         context.go(
           '/create-report-success/${report.id}'
           '?caseId=${report.caseId ?? ''}&status=${report.status}'
           '&lat=${_location?.latitude ?? 9.03}'
-          '&lng=${_location?.longitude ?? 38.74}',
+          '&lng=${_location?.longitude ?? 38.74}'
+          '&address=${Uri.encodeComponent(report.address ?? '')}'
+          '&submittedOn=${report.createdAt ?? ''}'
+          '&assignedTo=${Uri.encodeComponent(assignedLabel)}',
         );
       },
       builder: (context, state) {

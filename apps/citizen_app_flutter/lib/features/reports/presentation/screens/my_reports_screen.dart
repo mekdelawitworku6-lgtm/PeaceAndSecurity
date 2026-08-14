@@ -97,7 +97,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                           itemCount: reports.length,
                           itemBuilder: (context, i) => _ReportListItem(
                             report: reports[i],
-                            onTap: () => context.go(
+                            onTap: () => context.push(
                               '/report-detail/${reports[i].id}'
                               '?caseId=${reports[i].caseId ?? ''}',
                             ),

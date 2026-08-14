@@ -177,7 +177,7 @@ class _TrackedReportCard extends StatelessWidget {
             const SizedBox(height: 16),
             AppButton(
               title: 'Open full report',
-              onPressed: () => context.go(
+              onPressed: () => context.push(
                 '/report-detail/${report.id}?caseId=${report.caseId ?? ''}',
               ),
             ),
