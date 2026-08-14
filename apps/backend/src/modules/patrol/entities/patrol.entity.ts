@@ -69,6 +69,10 @@ export class Patrol extends BaseEntity {
   @Column({ nullable: true })
   woredaId: string;
 
+  /** Police commander this patrol officer reports to */
+  @Column({ nullable: true })
+  commanderId: string;
+
   /** Patrol team this officer belongs to */
   @Column({ nullable: true })
   teamId: string;

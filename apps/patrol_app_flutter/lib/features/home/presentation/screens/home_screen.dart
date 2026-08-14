@@ -169,6 +169,46 @@ class _HomeScreenState extends State<HomeScreen> {
               resolved: resolved,
               closed: closed,
             ),
+            const SizedBox(height: 16),
+            AppCard(
+              padding: const EdgeInsets.all(16),
+              onTap: () => context.push('/team'),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primarySoft,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.groups_outlined,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(t('myTeam'), style: AppTypography.h3),
+                        const SizedBox(height: 2),
+                        Text(
+                          t('teamMembers'),
+                          style: AppTypography.small.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    Icons.chevron_right,
+                    color: AppColors.textMuted,
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 20),
             Row(
               children: [

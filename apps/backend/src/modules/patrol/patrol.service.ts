@@ -59,6 +59,7 @@ export class PatrolService {
       officeLatitude: dto.officeLatitude,
       officeLongitude: dto.officeLongitude,
       assignedArea: dto.assignedArea,
+      commanderId: dto.commanderId,
       profileImage: dto.profileImage,
     });
 

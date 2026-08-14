@@ -7,6 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { PatrolTeam } from "./entities/patrol-team.entity";
 import { Patrol } from "./entities/patrol.entity";
+import { Woreda } from "../geo/entities/woreda.entity";
 import { CreatePatrolTeamDto, UpdatePatrolTeamDto } from "./dto/patrol-team.dto";
 import { successResponse, ServiceResponse } from "../../common/types/service-response";
 import { generateRandomCode } from "../../common/utils/generator";
@@ -18,6 +19,8 @@ export class PatrolTeamService {
     private readonly teamRepo: Repository<PatrolTeam>,
     @InjectRepository(Patrol)
     private readonly patrolRepo: Repository<Patrol>,
+    @InjectRepository(Woreda)
+    private readonly woredaRepo: Repository<Woreda>,
   ) {}
 
   async create(dto: CreatePatrolTeamDto): Promise<ServiceResponse> {
@@ -62,6 +65,29 @@ export class PatrolTeamService {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+    });
+  }
+
+  async findMyTeam(patrolId: string): Promise<ServiceResponse> {
+    const patrol = await this.patrolRepo.findOne({ where: { id: patrolId } });
+    if (!patrol) throw new NotFoundException("Patrol officer not found");
+    if (!patrol.teamId) {
+      return successResponse("Patrol officer has no team assigned", null);
+    }
+
+    const team = await this.teamRepo.findOne({
+      where: { id: patrol.teamId },
+      relations: ["members", "leader"],
+    });
+    if (!team) throw new NotFoundException("Patrol team not found");
+
+    const woreda = team.woredaId
+      ? await this.woredaRepo.findOne({ where: { id: team.woredaId } })
+      : null;
+
+    return successResponse("Patrol team retrieved successfully", {
+      ...team,
+      woredaName: woreda?.name ?? null,
     });
   }
 

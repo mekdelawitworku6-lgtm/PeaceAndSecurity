@@ -54,6 +54,13 @@ export class PatrolTeamController {
     return result;
   }
 
+  @Get("my")
+  @Roles(UserRole.PATROL)
+  @ApiOperation({ summary: "Get my patrol team (Patrol only)" })
+  async getMyTeam(@Req() req: any) {
+    return this.teamService.findMyTeam(req.user?.id);
+  }
+
   @Get(":id")
   @ApiOperation({ summary: "Get patrol team by ID" })
   async findOne(@Param("id") id: string, @Req() req: any) {

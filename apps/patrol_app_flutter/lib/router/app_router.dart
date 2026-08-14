@@ -17,6 +17,7 @@ import '../features/reports/presentation/screens/nearby_reports_screen.dart';
 import '../features/reports/presentation/screens/report_detail_screen.dart';
 import '../features/settings/presentation/screens/change_pin_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/team/presentation/screens/team_screen.dart';
 import '../features/work_reports/presentation/screens/work_reports_screen.dart';
 
 class AppRouter {
@@ -79,6 +80,10 @@ class AppRouter {
       GoRoute(
         path: '/nearby',
         builder: (context, state) => const NearbyReportsScreen(),
+      ),
+      GoRoute(
+        path: '/team',
+        builder: (context, state) => const TeamScreen(),
       ),
       GoRoute(
         path: '/chat/:conversationId',

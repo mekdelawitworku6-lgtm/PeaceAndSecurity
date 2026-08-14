@@ -56,6 +56,15 @@ export class CreatePatrolDto {
   @IsString()
   assignedArea?: string;
 
+  @ApiProperty({
+    example: "f3f09ea5-661e-44e7-a0b2-b46dd54e061d",
+    description: "Police commander this patrol reports to",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  commanderId?: string;
+
   @ApiProperty({ example: "/uploads/profiles/patrol1.jpg", required: false })
   @IsOptional()
   @IsString()
