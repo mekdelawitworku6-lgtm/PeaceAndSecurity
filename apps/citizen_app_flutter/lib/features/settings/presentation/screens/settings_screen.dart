@@ -44,11 +44,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _confirmLogout() async {
     final t = context.l10n().t;
+    final isGuest = context.read<AuthBloc>().state.isGuest;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Log out'),
-        content: Text(t('logOutConfirm')),
+        title: Text(isGuest ? t('endSession') : 'Log out'),
+        content: Text(isGuest ? t('endSessionConfirm') : t('logOutConfirm')),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -57,7 +58,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: TextButton.styleFrom(foregroundColor: AppColors.danger),
-            child: const Text('Log out'),
+            child: Text(isGuest ? t('endSession') : 'Log out'),
           ),
         ],
       ),
@@ -99,8 +100,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildProfileHeader(BuildContext context, dynamic user) {
-    final name = user?.fullName ?? 'Tigist Haile';
+    final t = context.l10n().t;
+    final isGuest = context.watch<AuthBloc>().state.isGuest;
     final notifications = context.watch<NotificationsBloc>().state;
+    final name = isGuest
+        ? t('guest')
+        : (user?.fullName ?? t('guest'));
+    final subtitle = isGuest
+        ? t('guestSub')
+        : (user?.phoneNumber ?? '');
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: const BoxDecoration(
@@ -113,7 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             radius: 22,
             backgroundColor: AppColors.primarySoft,
             child: Icon(
-              Icons.person,
+              isGuest ? Icons.person_outline : Icons.person,
               color: AppColors.primary,
             ),
           ),
@@ -125,34 +133,51 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Text(name, style: AppTypography.h3),
                 const SizedBox(height: 2),
                 Text(
-                  '• Local Community • Bole Sub-City',
+                  subtitle,
                   style: AppTypography.caption,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: () => setState(() => _activeTab = _SettingsTab.notifications),
-                icon: const Icon(Icons.notifications_none, color: AppColors.text),
+          if (isGuest)
+            TextButton(
+              onPressed: () => context.push('/login'),
+              child: Text(
+                t('login'),
+                style: AppTypography.smallMedium.copyWith(
+                  color: AppColors.primary,
+                ),
               ),
-              if (notifications.unreadCount > 0)
-                Positioned(
-                  right: 4,
-                  top: 4,
-                  child: Container(
-                    width: 9,
-                    height: 9,
-                    decoration: const BoxDecoration(
-                      color: AppColors.danger,
-                      shape: BoxShape.circle,
-                    ),
+            )
+          else
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                IconButton(
+                  onPressed: () =>
+                      setState(() => _activeTab = _SettingsTab.notifications),
+                  icon: const Icon(
+                    Icons.notifications_none,
+                    color: AppColors.text,
                   ),
                 ),
-            ],
-          ),
+                if (notifications.unreadCount > 0)
+                  Positioned(
+                    right: 4,
+                    top: 4,
+                    child: Container(
+                      width: 9,
+                      height: 9,
+                      decoration: const BoxDecoration(
+                        color: AppColors.danger,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
         ],
       ),
     );
@@ -215,8 +240,21 @@ class _ReportsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.l10n().t;
     final state = context.watch<ReportsBloc>().state;
+    final isGuest = context.watch<AuthBloc>().state.isGuest;
     final reports = state.myReports;
+
+    if (isGuest) {
+      return EmptyState(
+        icon: '🔒',
+        title: t('signInForReports'),
+        subtitle: t('guestReportsSub'),
+        actionLabel: t('login'),
+        onAction: () => context.push('/login'),
+      );
+    }
+
     final active = reports
         .where((r) => const [
               'SUBMITTED',
@@ -536,7 +574,18 @@ class _NotificationsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.l10n().t;
     final state = context.watch<NotificationsBloc>().state;
+    final isGuest = context.watch<AuthBloc>().state.isGuest;
     final items = state.items;
+
+    if (isGuest) {
+      return EmptyState(
+        icon: '🔕',
+        title: t('signInForNotifications'),
+        subtitle: t('guestNotificationsSub'),
+        actionLabel: t('login'),
+        onAction: () => context.push('/login'),
+      );
+    }
 
     if (items.isEmpty) {
       return const EmptyState(
