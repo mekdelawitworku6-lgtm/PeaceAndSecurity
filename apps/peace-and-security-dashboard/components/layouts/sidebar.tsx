@@ -66,6 +66,12 @@ const navigationItems = [
     permission: PERMISSIONS.PATROL_TEAM_MANAGE,
   },
   {
+    label: "Work Reports",
+    href: "/dashboard/work-reports",
+    icon: ClipboardList,
+    permission: PERMISSIONS.REPORT_VIEW,
+  },
+  {
     label: "Chat",
     href: "/dashboard/chat",
     icon: MessageSquare,
