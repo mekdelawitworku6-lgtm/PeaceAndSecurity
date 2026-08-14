@@ -42,6 +42,7 @@ import {
   selectSubcities,
   selectWoredas,
 } from "@/lib/store/geoSlice";
+import { fetchUsers, selectUsers } from "@/lib/store/usersSlice";
 import { useAuth } from "@/app/context/auth-context";
 
 type Props = {
@@ -76,6 +77,7 @@ export function UserForm({
   const [officeLongitude, setOfficeLongitude] = useState("");
   const [assignedArea, setAssignedArea] = useState("");
   const [subCity, setSubCity] = useState("");
+  const [commanderId, setCommanderId] = useState("");
 
   const [cityId, setCityId] = useState("");
   const [subcityId, setSubcityId] = useState("");
@@ -85,7 +87,15 @@ export function UserForm({
   const cities = useAppSelector(selectCities);
   const subcities = useAppSelector(selectSubcities);
   const woredas = useAppSelector(selectWoredas);
+  const users = useAppSelector(selectUsers);
   const { user: currentUser } = useAuth();
+
+  const commanders = users.filter(
+    (u: any) =>
+      u.role === "POLICE_COMMANDER_CITY" ||
+      u.role === "POLICE_COMMANDER_SUBCITY" ||
+      u.role === "POLICE_COMMANDER_WOREDA",
+  );
 
   const creatableRoles = getCreatableRoles(currentUser?.role);
   const roleOptions = useMemo(() => {
@@ -101,6 +111,7 @@ export function UserForm({
     geoDispatch(fetchCities());
     geoDispatch(fetchSubcities());
     geoDispatch(fetchWoredas());
+    geoDispatch(fetchUsers());
   }, [geoDispatch]);
 
   const isPatrol = role === UserRole.PATROL;
@@ -142,6 +153,7 @@ export function UserForm({
       setOfficeLongitude(String((initialData as any).officeLongitude || ""));
       setAssignedArea((initialData as any).assignedArea || "");
       setSubCity((initialData as any).subCity || "");
+      setCommanderId((initialData as any).commanderId || "");
       setCityId((initialData as any).cityId || "");
       setSubcityId((initialData as any).subcityId || "");
       setWoredaId((initialData as any).woredaId || "");
@@ -243,6 +255,7 @@ export function UserForm({
       if (officeLongitude.trim()) formData.append("officeLongitude", officeLongitude.trim());
       if (assignedArea.trim()) formData.append("assignedArea", assignedArea.trim());
       if (subCity.trim()) formData.append("subCity", subCity.trim());
+      if (commanderId) formData.append("commanderId", commanderId);
     }
 
     if (!isPatrol && permissions.length > 0) {
@@ -500,6 +513,25 @@ export function UserForm({
                     <SelectContent>
                       {["Bole", "Arada", "Kirkos", "Yeka", "Addis Ketema", "Lideta", "Nifas Silk Lafto", "Kolfe Keranio", "Gulele", "Akaki Kality", "Lemi Kura"].map((sc) => (
                         <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5 text-slate-400" />
+                    Police Commander
+                  </Label>
+                  <Select value={commanderId} onValueChange={setCommanderId}>
+                    <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                      <SelectValue placeholder="Select commander" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {commanders.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.fullName || c.name} — {ROLE_LABELS[c.role] || c.role}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

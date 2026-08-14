@@ -96,14 +96,18 @@ export class UserController {
     UserRole.SYSTEM_ADMIN,
     UserRole.PEACE_SUPER_ADMIN,
     UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_CITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
     UserRole.SYSTEM_SUPER_ADMIN_VIEWER,
     UserRole.SYSTEM_ADMIN_VIEWER,
     UserRole.PEACE_SUPER_ADMIN_VIEWER,
     UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
     UserRole.POLICE_COMMANDER_CITY_VIEWER,
     UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
   )
   @ApiOperation({
     summary: "Get all users with filtering and pagination",
