@@ -13,6 +13,7 @@ import { ReportTypeSeederService } from "./report-type-seeder.service";
 import { ChatSeederService } from "./chat-seeder.service";
 import { AuditSeederService } from "./audit-seeder.service";
 import { DemoDataSeederService } from "./demo-data-seeder.service";
+import { GeoSeederService } from "./geo-seeder.service";
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { DemoDataSeederService } from "./demo-data-seeder.service";
     ChatSeederService,
     AuditSeederService,
     DemoDataSeederService,
+    GeoSeederService,
   ],
   exports: [
     AdminSeederService,
@@ -40,6 +42,7 @@ import { DemoDataSeederService } from "./demo-data-seeder.service";
     ChatSeederService,
     AuditSeederService,
     DemoDataSeederService,
+    GeoSeederService,
   ],
 })
 export class SeederModule {}

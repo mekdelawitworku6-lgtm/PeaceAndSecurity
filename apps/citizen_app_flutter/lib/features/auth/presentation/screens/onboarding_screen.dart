@@ -21,6 +21,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _continueAsGuest() {
     setState(() => _guestLoading = true);
     context.read<AuthBloc>().add(AuthGuestModeRequested());
+    context.go('/home');
   }
 
   @override

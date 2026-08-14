@@ -16,7 +16,7 @@ export class GeoSeederService implements OnApplicationBootstrap {
     }
 
     const cityRepo: Repository<City> = this.dataSource.getRepository(City);
-    const existing = await cityRepo.findOne({ where: { code: "AA" } });
+    const existing = await cityRepo.findOne({ where: { name: "Addis Ababa" } });
 
     if (existing) {
       console.log("• Addis Ababa city already exists — skipping");
