@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart' show DefaultCupertinoLocalizations;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 class AppLocalizationsScope extends InheritedWidget {
   final AppLocalizations l10n;
@@ -18,6 +19,9 @@ class AppLocalizationsScope extends InheritedWidget {
 class AppLocalizations {
   static const supportedLocales = [Locale('en'), Locale('am'), Locale('om')];
   static const localizationsDelegates = <LocalizationsDelegate<dynamic>>[
+    GlobalMaterialLocalizations.delegate,
+    GlobalWidgetsLocalizations.delegate,
+    GlobalCupertinoLocalizations.delegate,
     DefaultMaterialLocalizations.delegate,
     DefaultWidgetsLocalizations.delegate,
     DefaultCupertinoLocalizations.delegate,
