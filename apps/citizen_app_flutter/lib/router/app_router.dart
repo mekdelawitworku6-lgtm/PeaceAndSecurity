@@ -34,6 +34,7 @@ class AppRouter {
       final location = state.matchedLocation;
 
       if (!auth.isSignedIn &&
+          !auth.isGuest &&
           auth.status != AuthStatus.idle &&
           !_isAuthRoute(location)) {
         return '/splash';

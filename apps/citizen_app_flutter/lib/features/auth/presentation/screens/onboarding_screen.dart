@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -18,9 +20,20 @@ class OnboardingScreen extends StatefulWidget {
 class _OnboardingScreenState extends State<OnboardingScreen> {
   bool _guestLoading = false;
 
-  void _continueAsGuest() {
+  void _continueAsGuest() async {
     setState(() => _guestLoading = true);
-    context.read<AuthBloc>().add(AuthGuestModeRequested());
+    final bloc = context.read<AuthBloc>();
+    bloc.add(AuthGuestModeRequested());
+    final completer = Completer<void>();
+    final sub = bloc.stream.listen((s) {
+      if (s.isSignedIn && s.isGuest && !completer.isCompleted) {
+        completer.complete();
+      }
+    });
+    await completer.future.timeout(const Duration(seconds: 5), onTimeout: () {});
+    await sub.cancel();
+    if (!mounted) return;
+    setState(() => _guestLoading = false);
     context.go('/home');
   }
 
