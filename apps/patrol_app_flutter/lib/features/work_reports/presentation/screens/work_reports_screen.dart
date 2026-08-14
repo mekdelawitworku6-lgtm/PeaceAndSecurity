@@ -19,8 +19,17 @@ class WorkReportsScreen extends StatefulWidget {
 class _WorkReportsScreenState extends State<WorkReportsScreen> {
   final _repository = WorkReportsRepository();
   List<WorkReport> _reports = [];
+  List<WorkReport> _filtered = [];
   bool _loading = true;
   String? _error;
+  String _filter = 'All';
+
+  static const _filters = [
+    'All',
+    'SUBMITTED',
+    'APPROVED',
+    'REJECTED',
+  ];
 
   @override
   void initState() {
@@ -36,7 +45,10 @@ class _WorkReportsScreenState extends State<WorkReportsScreen> {
     try {
       final reports = await _repository.fetchMine();
       if (mounted) {
-        setState(() => _reports = reports);
+        setState(() {
+          _reports = reports;
+          _applyFilter();
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -45,6 +57,12 @@ class _WorkReportsScreenState extends State<WorkReportsScreen> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _applyFilter() {
+    _filtered = _filter == 'All'
+        ? List.of(_reports)
+        : _reports.where((r) => r.status == _filter).toList();
   }
 
   @override
@@ -69,87 +87,136 @@ class _WorkReportsScreenState extends State<WorkReportsScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Submit'),
       ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? EmptyState(
-                  iconData: Icons.cloud_off,
-                  title: _error!,
-                  actionLabel: 'Retry',
-                  onAction: _load,
-                )
-              : _reports.isEmpty
-                  ? EmptyState(
-                      iconData: Icons.assignment_outlined,
-                      title: 'No work reports yet',
-                      subtitle: 'Submit your daily work report',
-                    )
-                  : RefreshIndicator(
-                      onRefresh: _load,
-                      child: ListView.separated(
-                        padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
-                        itemCount: _reports.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 10),
-                        itemBuilder: (context, index) {
-                          final report = _reports[index];
-                          return AppCard(
-                            padding: const EdgeInsets.all(14),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        report.title,
-                                        style: AppTypography.smallMedium,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    StatusBadge(status: report.status),
-                                  ],
-                                ),
-                                const SizedBox(height: 6),
-                                if (report.description.isNotEmpty) ...[
-                                  Text(
-                                    report.description,
-                                    maxLines: 3,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: AppTypography.small,
-                                  ),
-                                  const SizedBox(height: 6),
-                                ],
-                                Row(
-                                  children: [
-                                    Icon(
-                                      Icons.calendar_today_outlined,
-                                      size: 13,
-                                      color: AppColors.textMuted,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      report.reportDate ??
-                                          Formatters.formatDate(
-                                            report.createdAt,
-                                          ),
-                                      style: AppTypography.caption,
-                                    ),
-                                    const Spacer(),
-                                    Text(
-                                      Formatters.formatDateTime(
-                                        report.createdAt,
-                                      ),
-                                      style: AppTypography.caption,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          );
-                        },
+body: Column(
+        children: [
+          SizedBox(
+            height: 44,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+              children: _filters.map((f) {
+                final selected = _filter == f;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(
+                      f == 'All' ? 'All' : Formatters.statusLabel(f),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: selected ? Colors.white : AppColors.textMuted,
                       ),
                     ),
+                    selected: selected,
+                    onSelected: (_) => setState(() {
+                      _filter = f;
+                      _applyFilter();
+                    }),
+                    selectedColor: AppColors.primary,
+                    backgroundColor: AppColors.card,
+                    showCheckmark: false,
+                    side: BorderSide(
+                      color: selected
+                          ? AppColors.primary
+                          : AppColors.divider,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                    ? EmptyState(
+                        iconData: Icons.cloud_off,
+                        title: _error!,
+                        actionLabel: 'Retry',
+                        onAction: _load,
+                      )
+                    : _filtered.isEmpty
+                        ? EmptyState(
+                            iconData: Icons.assignment_outlined,
+                            title: 'No work reports yet',
+                            subtitle: 'Submit your daily work report',
+                          )
+                        : RefreshIndicator(
+                            onRefresh: _load,
+                            child: ListView.separated(
+                              padding: const EdgeInsets.fromLTRB(20, 12, 20, 100),
+                              itemCount: _filtered.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final report = _filtered[index];
+                                return AppCard(
+                                  padding: const EdgeInsets.all(14),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              report.title,
+                                              style:
+                                                  AppTypography.smallMedium,
+                                              maxLines: 2,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          StatusBadge(status: report.status),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                      if (report.description.isNotEmpty) ...[
+                                        Text(
+                                          report.description,
+                                          maxLines: 3,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: AppTypography.small,
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today_outlined,
+                                            size: 13,
+                                            color: AppColors.textMuted,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            report.reportDate ??
+                                                Formatters.formatDate(
+                                                  report.createdAt,
+                                                ),
+                                            style: AppTypography.caption,
+                                          ),
+                                          const Spacer(),
+                                          Text(
+                                            Formatters.formatDateTime(
+                                              report.createdAt,
+                                            ),
+                                            style: AppTypography.caption,
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+          ),
+        ],
+      ),
     );
   }
 }
