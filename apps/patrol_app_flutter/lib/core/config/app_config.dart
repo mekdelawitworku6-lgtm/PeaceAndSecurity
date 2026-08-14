@@ -1,17 +1,37 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
 
 class AppConfig {
-  static const String apiUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'https://peaceandsecurityadmin.possibletechplc.com/api',
-  );
-  static const String socketUrl = String.fromEnvironment(
-    'SOCKET_URL',
-    defaultValue: 'https://peaceandsecurityadmin.possibletechplc.com',
-  );
+  static const String _prodApiUrl =
+      'https://peaceandsecurityadmin.possibletechplc.com/api';
+  static const String _prodSocketUrl =
+      'https://peaceandsecurityadmin.possibletechplc.com';
+
+  static String get apiUrl {
+    const fromEnv = String.fromEnvironment('API_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kDebugMode) {
+      if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:5001/api';
+      return 'http://localhost:5001/api';
+    }
+    return _prodApiUrl;
+  }
+
+  static String get socketUrl {
+    const fromEnv = String.fromEnvironment('SOCKET_URL');
+    if (fromEnv.isNotEmpty) return fromEnv;
+    if (kDebugMode) {
+      if (!kIsWeb && Platform.isAndroid) return 'http://10.0.2.2:5001';
+      return 'http://localhost:5001';
+    }
+    return _prodSocketUrl;
+  }
+
   static const String appVersion = '1.0.0';
   static const String appName = 'Peace \u0026 Security Patrol';
   static const String appTagline = 'Protect. Respond. Resolve.';
