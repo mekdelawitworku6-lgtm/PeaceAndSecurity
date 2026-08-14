@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/app_colors.dart';
+import '../core/i18n/context_ext.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
@@ -150,11 +151,12 @@ class _MainShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = context.l10n().t;
     return Scaffold(
       body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (i) {
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: selectedIndex,
+        onTap: (i) {
           final path = [
             '/home',
             '/assigned',
@@ -165,39 +167,43 @@ class _MainShell extends StatelessWidget {
           ][i];
           context.go(path);
         },
-        height: 64,
+        type: BottomNavigationBarType.fixed,
         backgroundColor: AppColors.card,
-        indicatorColor: AppColors.primaryLight,
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home),
-            label: 'Home',
+        selectedItemColor: AppColors.primary,
+        unselectedItemColor: AppColors.textMuted,
+        selectedFontSize: 11,
+        unselectedFontSize: 10,
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
+        items: [
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.home_outlined),
+            activeIcon: const Icon(Icons.home),
+            label: t('home'),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.assignment_outlined),
-            selectedIcon: Icon(Icons.assignment),
-            label: 'Assigned',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.assignment_outlined),
+            activeIcon: const Icon(Icons.assignment),
+            label: t('assigned'),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.fact_check_outlined),
-            selectedIcon: Icon(Icons.fact_check),
-            label: 'Work Reports',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.fact_check_outlined),
+            activeIcon: const Icon(Icons.fact_check),
+            label: t('workReports'),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label: 'Inbox',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.chat_bubble_outline),
+            activeIcon: const Icon(Icons.chat_bubble),
+            label: t('inbox'),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications),
-            label: 'Alerts',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.notifications_outlined),
+            activeIcon: const Icon(Icons.notifications),
+            label: t('alerts'),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profile',
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.person_outline),
+            activeIcon: const Icon(Icons.person),
+            label: t('profile'),
           ),
         ],
       ),
