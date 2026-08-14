@@ -123,12 +123,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 CircleAvatar(
                   radius: 26,
                   backgroundColor: AppColors.primarySoft,
-                  backgroundImage: (user?.profileImage?.isNotEmpty ?? false)
-                      ? NetworkImage(
-                          assetUrl(user!.profileImage!),
-                        )
-                      : null,
-                  onBackgroundImageError: (_, _) {},
+                  backgroundImage:
+                      (user?.profileImage?.isNotEmpty ?? false)
+                          ? NetworkImage(assetUrl(user!.profileImage!))
+                          : null,
+                  onBackgroundImageError:
+                      (user?.profileImage?.isNotEmpty ?? false)
+                          ? (_, _) {}
+                          : null,
                   child: (user?.profileImage?.isNotEmpty ?? false)
                       ? null
                       : Text(
