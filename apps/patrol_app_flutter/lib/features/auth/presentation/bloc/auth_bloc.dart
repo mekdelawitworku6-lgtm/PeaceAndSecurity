@@ -37,7 +37,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           user: fresh,
         );
       } catch (_) {}
-      _connectSockets(user);
+      _connectSockets(user!);
       emit(state.copyWith(
         status: AuthStatus.signedIn,
         user: user,
