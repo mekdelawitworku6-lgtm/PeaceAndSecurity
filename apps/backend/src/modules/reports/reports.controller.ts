@@ -178,8 +178,9 @@ export class ReportsController {
 
 
   @Get(":id")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiBearerAuth()
+  @ApiOperation({ summary: "Get a report by ID (public view for citizens/guests)" })
   async findOne(@Param("id") id: string, @Request() req: any) {
     const report = await this.reportsService.findOne(id);
     await this.auditService.logDataAccess({
@@ -201,7 +202,7 @@ export class ReportsController {
   }
 
   @Get(":id/history")
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(OptionalJwtAuthGuard)
   @ApiBearerAuth()
   async getHistory(@Param("id") id: string, @Request() req: any) {
     const history = await this.reportsService.getHistory(id);
