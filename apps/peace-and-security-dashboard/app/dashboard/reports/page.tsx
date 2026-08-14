@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import {
   Search,
   RotateCw,
   X,
+  Eye,
   ChevronLeft,
   ChevronRight,
   Loader2,
@@ -26,6 +28,17 @@ import {
   selectReportsLoading,
   assignPatrol,
 } from "@/lib/store/reportsSlice";
+import { patrolService } from "@/lib/services/patrol-service";
+
+const STATUS_DISPLAY: Record<string, string> = {
+  SUBMITTED: "Active",
+  ASSIGNED: "Active",
+  IN_PROGRESS: "Investigating",
+  UNDER_REVIEW: "Investigating",
+  CLOSED: "Resolved",
+  REJECTED: "Resolved",
+  ESCALATED: "Escalated",
+};
 
 // Static officers list for assignment modal (could come from API later)
 const OFFICERS_LIST = [
@@ -43,6 +56,7 @@ const OFFICERS_LIST = [
 type ReportTab = "all" | "active" | "investigating" | "resolved";
 
 export default function ReportsPage() {
+  const router = useRouter();
   const dispatch = useAppDispatch();
   const reports = useAppSelector(selectReports);
   const loading = useAppSelector(selectReportsLoading);
@@ -178,10 +192,14 @@ export default function ReportsPage() {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {paginatedReports.map((report: any) => (
-                  <tr key={report.id} className="hover:bg-slate-50/40 transition-colors">
+                  <tr
+                  key={report.id}
+                  className="hover:bg-slate-50/40 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/dashboard/reports/${report.id}`)}
+                >
                     <td className="px-6 py-4">
                       <div className="flex flex-col">
-                        <span className="font-semibold text-slate-800 text-sm">{report.type}</span>
+                        <span className="font-semibold text-slate-800 text-sm hover:text-[#0d2d82]">{report.type}</span>
                         <span className="text-[10px] font-medium text-slate-400 font-mono mt-0.5">{report.id}</span>
                       </div>
                     </td>
@@ -235,19 +253,28 @@ export default function ReportsPage() {
                     <td className="px-6 py-4 text-right">
                       {report.assignedTo === "Unassigned" ? (
                         <button
-                          onClick={() => handleOpenAssignModal(report)}
+                          onClick={(e) => { e.stopPropagation(); handleOpenAssignModal(report); }}
                           className="px-4 py-1.5 bg-[#0d2d82] hover:opacity-95 text-white font-bold text-xs rounded-full shadow-sm"
                         >
                           Assign
                         </button>
                       ) : (
-                        <button
-                          onClick={() => handleOpenAssignModal(report)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-full shadow-sm"
-                        >
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); router.push(`/dashboard/reports/${report.id}`); }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-full shadow-sm"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleOpenAssignModal(report); }}
+                            className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs rounded-full shadow-sm"
+                          >
                           <RotateCw className="w-3 h-3 text-slate-400" />
                           Reassign
                         </button>
+                        </div>
                       )}
                     </td>
                   </tr>
