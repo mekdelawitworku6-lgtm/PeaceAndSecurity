@@ -69,6 +69,17 @@ class _CitizenAppState extends State<CitizenApp> {
             theme: AppConfig.theme,
             locale: _l10n.locale,
             supportedLocales: AppLocalizations.supportedLocales,
+            localeListResolutionCallback: (locales, supported) {
+              if (locales == null || locales.isEmpty) return null;
+              final first = locales.first;
+              if (first.languageCode == 'om' || first.languageCode == 'ti') {
+                return const Locale('en');
+              }
+              return supported.firstWhere(
+                (l) => l.languageCode == first.languageCode,
+                orElse: () => const Locale('en'),
+              );
+            },
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             routerConfig: AppRouter.router,
           ),

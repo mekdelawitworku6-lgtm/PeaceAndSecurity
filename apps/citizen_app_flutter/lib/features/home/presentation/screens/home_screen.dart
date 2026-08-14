@@ -284,11 +284,12 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(l10n.t('selectLanguage'), style: AppTypography.h3),
                 const SizedBox(height: 16),
-                ...['en', 'am', 'om'].map((code) {
+                ...['en', 'am', 'om', 'ti'].map((code) {
                   final label = switch (code) {
                     'en' => 'English',
                     'am' => 'አማርኛ (Amharic)',
                     'om' => 'Afaan Oromoo (Oromo)',
+                    'ti' => 'ትግርኛ (Tigrinya)',
                     _ => code,
                   };
                   final active = langBloc.state.lang == code;

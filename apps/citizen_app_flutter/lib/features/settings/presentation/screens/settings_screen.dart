@@ -474,6 +474,11 @@ class _PreferencesTab extends StatelessWidget {
                 label: 'Afaan Oromoo (Oromo)',
                 active: langBloc.state.lang == 'om',
               ),
+              _LangRow(
+                code: 'ti',
+                label: 'ትግርኛ (Tigrinya)',
+                active: langBloc.state.lang == 'ti',
+              ),
             ],
           ),
         ),

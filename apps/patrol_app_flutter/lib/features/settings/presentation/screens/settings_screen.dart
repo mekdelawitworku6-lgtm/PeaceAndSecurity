@@ -92,6 +92,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 Navigator.pop(ctx);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.language),
+              title: const Text('ትግርኛ'),
+              trailing: current == 'ti' ? const Icon(Icons.check) : null,
+              onTap: () {
+                langBloc.setLanguage('ti');
+                Navigator.pop(ctx);
+              },
+            ),
             const SizedBox(height: 8),
           ],
         ),
