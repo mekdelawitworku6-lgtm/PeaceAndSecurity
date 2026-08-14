@@ -10,6 +10,7 @@ class AuthState extends Equatable {
   final String? registrationToken;
   final String? pendingPhone;
   final String? pendingPin;
+  final String? pendingDevOtp;
   final bool isGuest;
   final String? error;
   final String? message;
@@ -22,6 +23,7 @@ class AuthState extends Equatable {
     this.registrationToken,
     this.pendingPhone,
     this.pendingPin,
+    this.pendingDevOtp,
     this.isGuest = false,
     this.error,
     this.message,
@@ -37,6 +39,7 @@ class AuthState extends Equatable {
     String? registrationToken,
     String? pendingPhone,
     String? pendingPin,
+    String? pendingDevOtp,
     bool? isGuest,
     String? error,
     String? message,
@@ -49,6 +52,7 @@ class AuthState extends Equatable {
         registrationToken: registrationToken ?? this.registrationToken,
         pendingPhone: pendingPhone ?? this.pendingPhone,
         pendingPin: pendingPin ?? this.pendingPin,
+        pendingDevOtp: pendingDevOtp ?? this.pendingDevOtp,
         isGuest: isGuest ?? this.isGuest,
         error: error,
         message: message,
@@ -63,6 +67,7 @@ class AuthState extends Equatable {
         registrationToken,
         pendingPhone,
         pendingPin,
+        pendingDevOtp,
         isGuest,
         error,
         message,

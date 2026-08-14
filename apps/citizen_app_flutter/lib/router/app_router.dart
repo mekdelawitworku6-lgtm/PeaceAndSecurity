@@ -70,6 +70,7 @@ class AppRouter {
             registrationToken: params['registrationToken'] ?? '',
             phoneNumber: params['phoneNumber'] ?? '',
             pin: params['pin'] ?? '',
+            devOtp: params['devOtp'] ?? '',
           );
         },
       ),

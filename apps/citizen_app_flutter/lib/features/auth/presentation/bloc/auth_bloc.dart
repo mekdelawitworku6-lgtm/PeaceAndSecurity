@@ -86,6 +86,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         registrationToken: result.registrationToken,
         pendingPhone: event.phoneNumber,
         pendingPin: event.pin,
+        pendingDevOtp: result.devOtp,
         error: null,
       ));
     } catch (e) {

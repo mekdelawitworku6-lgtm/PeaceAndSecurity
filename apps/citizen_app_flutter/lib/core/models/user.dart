@@ -64,13 +64,20 @@ class RegisterData {
   final String? registrationToken;
   final int? expiresIn;
   final Map<String, dynamic>? citizen;
+  final String? devOtp;
 
-  const RegisterData({this.registrationToken, this.expiresIn, this.citizen});
+  const RegisterData({
+    this.registrationToken,
+    this.expiresIn,
+    this.citizen,
+    this.devOtp,
+  });
 
   factory RegisterData.fromJson(Map<String, dynamic> json) => RegisterData(
         registrationToken: json['registrationToken'] as String?,
         expiresIn: json['expiresIn'] as int?,
         citizen: json['citizen'] as Map<String, dynamic>?,
+        devOtp: json['devOtp'] as String?,
       );
 }
 

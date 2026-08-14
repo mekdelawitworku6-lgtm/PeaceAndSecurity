@@ -114,7 +114,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
           context.go(
             '/verify-otp?registrationToken=$token'
             '&phoneNumber=${Uri.encodeComponent(state.pendingPhone ?? '')}'
-            '&pin=${Uri.encodeComponent(state.pendingPin ?? '')}',
+            '&pin=${Uri.encodeComponent(state.pendingPin ?? '')}'
+            '&devOtp=${state.pendingDevOtp ?? ''}',
           );
         }
       },

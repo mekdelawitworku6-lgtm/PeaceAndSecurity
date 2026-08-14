@@ -15,12 +15,14 @@ class VerifyOtpScreen extends StatefulWidget {
   final String registrationToken;
   final String phoneNumber;
   final String pin;
+  final String devOtp;
 
   const VerifyOtpScreen({
     super.key,
     required this.registrationToken,
     required this.phoneNumber,
     required this.pin,
+    this.devOtp = '',
   });
 
   @override
@@ -29,6 +31,14 @@ class VerifyOtpScreen extends StatefulWidget {
 
 class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
   final _otp = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.devOtp.isNotEmpty) {
+      _otp.text = widget.devOtp;
+    }
+  }
 
   @override
   void dispose() {
@@ -125,7 +135,21 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
                         ),
                       ),
                       const SizedBox(height: 4),
-                      Text(t('devCodeHint'), style: AppTypography.caption),
+                      widget.devOtp.isEmpty
+                          ? Text(t('devCodeHint'), style: AppTypography.caption)
+                          : Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: AppColors.primarySoft,
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                'Dev code auto-filled: ${widget.devOtp}',
+                                style: AppTypography.smallMedium.copyWith(
+                                    color: AppColors.primary),
+                              ),
+                            ),
                       const SizedBox(height: 24),
                       AppInput(
                         label: t('verificationCode'),

@@ -142,6 +142,9 @@ export class AuthService {
           fullName: saved.fullName,
           phoneNumber: saved.phoneNumber,
         },
+        ...(process.env.NODE_ENV !== "production"
+          ? { devOtp: otp.otpCode }
+          : {}),
       });
     } catch (error) {
       return errorResponse(
@@ -815,7 +818,11 @@ export class AuthService {
         messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
-      return successResponse("OTP resent successfully");
+      return successResponse("OTP resent successfully", {
+        ...(process.env.NODE_ENV !== "production"
+          ? { devOtp: otp.otpCode }
+          : {}),
+      });
     } catch (error) {
       return errorResponse(error.message ?? "Failed to resend OTP", error);
     }
