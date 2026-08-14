@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
@@ -30,13 +31,21 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _submit() {
-    if (_phone.text.trim().isEmpty || _pin.text.trim().isEmpty) {
-      _showAlert('Missing info', 'Please enter your phone number and PIN.');
+    final digits = _phone.text.replaceAll(RegExp(r'\D'), '');
+    final pin = _pin.text.trim();
+
+    if (digits.length != 9) {
+      _showAlert('Invalid phone',
+          'Enter your 9-digit phone number after ${AppConfig.etPhoneCountryCode}.');
+      return;
+    }
+    if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
+      _showAlert('Invalid PIN', 'PIN must be 4-6 digits.');
       return;
     }
     context.read<AuthBloc>().add(AuthLoginRequested(
-          phoneNumber: _phone.text.trim(),
-          pin: _pin.text.trim(),
+          phoneNumber: '${AppConfig.etPhoneCountryCode}$digits',
+          pin: pin,
         ));
   }
 
@@ -101,11 +110,20 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 24),
                       AppInput(
                         label: t('phoneNumber'),
-                        hint: '+251911000031',
+                        hint: '9XXXXXXXX',
+                        prefixText: AppConfig.etPhoneCountryCode,
                         controller: _phone,
                         keyboardType: TextInputType.phone,
-                        onChanged: (_) =>
-                            context.read<AuthBloc>().add(AuthErrorCleared()),
+                        maxLength: 9,
+                        onChanged: (val) {
+                          if (val.contains(RegExp(r'[^\d]'))) {
+                            _phone.text = val.replaceAll(RegExp(r'[^\d]'), '');
+                            _phone.selection = TextSelection.collapsed(
+                              offset: _phone.text.length,
+                            );
+                          }
+                          context.read<AuthBloc>().add(AuthErrorCleared());
+                        },
                       ),
                       const SizedBox(height: 16),
                       AppInput(
@@ -123,21 +141,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         title: 'Login',
                         loading: state.status == AuthStatus.loading,
                         onPressed: _submit,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(t('newHere'), style: AppTypography.small),
-                          const SizedBox(width: 4),
-                          GestureDetector(
-                            onTap: () => context.go('/splash'),
-                            child: Text(
-                              'Create an account',
-                              style: AppTypography.smallMedium.copyWith(color: AppColors.primary),
-                            ),
-                          ),
-                        ],
                       ),
                     ],
                   ),

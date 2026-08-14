@@ -1,3 +1,4 @@
+import '../../../../core/config/app_config.dart';
 import '../../../../core/models/user.dart';
 import '../../../../core/network/api_client.dart';
 import '../../../../core/services/session_manager.dart';
@@ -41,6 +42,6 @@ class AuthRepository {
     if (digits.startsWith('0')) {
       digits = digits.substring(1);
     }
-    return '+251$digits';
+    return '${AppConfig.etPhoneCountryCode}$digits';
   }
 }

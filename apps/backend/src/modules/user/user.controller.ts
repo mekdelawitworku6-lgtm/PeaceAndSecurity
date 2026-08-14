@@ -75,12 +75,13 @@ export class UserController {
   async registerUser(
     @Body() dto: CreateUserDto,
     @UploadedFile() file?: MulterFile,
+    @Request() req?: any,
   ) {
     const profileUrl = await this.handleProfileImageUpload(file);
     if (profileUrl) {
       dto.profileImage = profileUrl;
     }
-    return this.userService.register(dto);
+    return this.userService.register(dto, req?.user);
   }
 
   constructor(

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { User, UserRole, ROLE_LABELS } from "@/lib/auth";
+import { useEffect, useMemo, useState } from "react";
+import { User, UserRole, ROLE_LABELS, getCreatableRoles } from "@/lib/auth";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ import {
   selectSubcities,
   selectWoredas,
 } from "@/lib/store/geoSlice";
+import { useAuth } from "@/app/context/auth-context";
 
 type Props = {
   onOpenChange: (open: boolean) => void;
@@ -84,6 +85,17 @@ export function UserForm({
   const cities = useAppSelector(selectCities);
   const subcities = useAppSelector(selectSubcities);
   const woredas = useAppSelector(selectWoredas);
+  const { user: currentUser } = useAuth();
+
+  const creatableRoles = getCreatableRoles(currentUser?.role);
+  const roleOptions = useMemo(() => {
+    const base =
+      creatableRoles.length > 0
+        ? creatableRoles
+        : ([UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN] as UserRole[]);
+    if (!base.includes(role)) return [role, ...base];
+    return base;
+  }, [creatableRoles, role]);
 
   useEffect(() => {
     geoDispatch(fetchCities());
@@ -377,22 +389,11 @@ export function UserForm({
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
-                    <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
-                    <SelectItem value="PEACE_SUPER_ADMIN">Peace Super Admin</SelectItem>
-                    <SelectItem value="PEACE_OFFICER_SUBCITY">Peace Officer Subcity</SelectItem>
-                    <SelectItem value="PEACE_OFFICER_WOREDA">Peace Officer Woreda</SelectItem>
-                    <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
-                    <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
-                    <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
-                    <SelectItem value="SYSTEM_SUPER_ADMIN_VIEWER">Super Admin Viewer</SelectItem>
-                    <SelectItem value="SYSTEM_ADMIN_VIEWER">Admin Viewer</SelectItem>
-                    <SelectItem value="PEACE_SUPER_ADMIN_VIEWER">Peace Super Admin Viewer</SelectItem>
-                    <SelectItem value="PEACE_OFFICER_SUBCITY_VIEWER">Peace Subcity Viewer</SelectItem>
-                    <SelectItem value="PEACE_OFFICER_WOREDA_VIEWER">Peace Woreda Viewer</SelectItem>
-                    <SelectItem value="POLICE_COMMANDER_CITY_VIEWER">Police City Viewer</SelectItem>
-                    <SelectItem value="POLICE_COMMANDER_SUBCITY_VIEWER">Police Subcity Viewer</SelectItem>
-                    <SelectItem value="POLICE_COMMANDER_WOREDA_VIEWER">Police Woreda Viewer</SelectItem>
+                    {roleOptions.map((r) => (
+                      <SelectItem key={r} value={r}>
+                        {ROLE_LABELS[r] || r}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>

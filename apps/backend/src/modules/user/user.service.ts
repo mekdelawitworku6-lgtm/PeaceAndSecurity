@@ -3,6 +3,7 @@ import {
   NotFoundException,
   ConflictException,
   BadRequestException,
+  ForbiddenException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -21,6 +22,52 @@ import {
 import { generateRandomCode } from "../../common/utils/generator";
 import { AuditService } from "../audit/audit.service";
 
+export const CREATE_ACCESS: Record<string, UserRole[]> = {
+  [UserRole.SYSTEM_SUPER_ADMIN]: Object.values(UserRole).filter(
+    (r) => r !== UserRole.PATROL && r !== UserRole.CITIZEN,
+  ),
+  [UserRole.SYSTEM_ADMIN]: [
+    UserRole.SYSTEM_ADMIN,
+    UserRole.SYSTEM_ADMIN_VIEWER,
+  ],
+  [UserRole.PEACE_SUPER_ADMIN]: [
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+  ],
+  [UserRole.PEACE_OFFICER_SUBCITY]: [
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+  ],
+  [UserRole.PEACE_OFFICER_WOREDA]: [
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+  ],
+  [UserRole.POLICE_COMMANDER_CITY]: [
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_CITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  ],
+  [UserRole.POLICE_COMMANDER_SUBCITY]: [
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  ],
+  [UserRole.POLICE_COMMANDER_WOREDA]: [
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  ],
+};
+
 @Injectable()
 export class UserService {
   constructor(
@@ -30,7 +77,10 @@ export class UserService {
   ) {}
 
   /* ---------------- REGISTER DASHBOARD USER ---------------- */
-  async register(dto: CreateUserDto): Promise<ServiceResponse> {
+  async register(
+    dto: CreateUserDto,
+    creator?: { id: string; role: string },
+  ): Promise<ServiceResponse> {
     const normalizedPhone = dto.phoneNumber
       ? normalizeEtPhone(dto.phoneNumber)
       : null;
@@ -63,6 +113,16 @@ export class UserService {
       throw new BadRequestException(
         "Use the /patrols or /citizens endpoints to register patrol officers or citizens.",
       );
+    }
+
+    // Scope enforcement: a role can only create roles within its access map
+    if (creator && creator.role !== UserRole.SYSTEM_SUPER_ADMIN) {
+      const allowed = CREATE_ACCESS[creator.role];
+      if (!allowed || !allowed.includes(userRole)) {
+        throw new ForbiddenException(
+          `Role ${creator.role} is not allowed to create ${userRole} users`,
+        );
+      }
     }
 
     const isStaff = true;

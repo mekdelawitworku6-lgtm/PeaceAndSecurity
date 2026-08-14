@@ -172,6 +172,16 @@ export const API_ENDPOINTS = {
         WS_GATEWAY: 'chat',
     },
 
+    // ── Work Reports ──────────────────────────────────────────────────
+    WORK_REPORTS: {
+        GET_ALL: 'work-reports',
+        GET_BY_ID: (id: string) => `work-reports/${id}`,
+        CREATE: 'work-reports',
+        UPDATE: (id: string) => `work-reports/${id}`,
+        REVIEW: (id: string) => `work-reports/${id}/review`,
+        DELETE: (id: string) => `work-reports/${id}`,
+    },
+
     // ── Audit Logs ────────────────────────────────────────────────────
     AUDIT_LOGS: {
         GET_ALL: 'audit-logs',

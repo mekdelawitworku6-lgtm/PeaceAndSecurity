@@ -612,7 +612,7 @@ export class AuthService {
       const decoded = verifyToken<any>(
         this.jwtService,
         token,
-        process.env.JWT_REGISTRATION_SECRET,
+        process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET,
       );
       if (decoded.type !== TokenType.REGISTRATION)
         throw new UnauthorizedException("Invalid token type");
@@ -690,7 +690,7 @@ export class AuthService {
     try {
       const secret =
         otpType === OTPType.REGISTRATION_OTP
-          ? process.env.JWT_REGISTRATION_SECRET
+          ? process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET
           : process.env.JWT_PASSWORD_RESET_SECRET;
 
       const expectedTokenType =
@@ -781,7 +781,7 @@ export class AuthService {
     try {
       const secret =
         otpType === OTPType.REGISTRATION_OTP
-          ? process.env.JWT_REGISTRATION_SECRET
+          ? process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET
           : process.env.JWT_PASSWORD_RESET_SECRET;
 
       const expectedTokenType =

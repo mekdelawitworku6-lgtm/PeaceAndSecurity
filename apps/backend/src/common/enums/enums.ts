@@ -218,3 +218,9 @@ export enum PreferredLanguage {
   SOMALI = "SOMALI",
   ENGLISH = "ENGLISH",
 }
+
+export enum WorkReportStatus {
+  SUBMITTED = "SUBMITTED",
+  APPROVED = "APPROVED",
+  REJECTED = "REJECTED",
+}

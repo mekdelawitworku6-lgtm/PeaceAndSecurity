@@ -256,17 +256,17 @@ function TeamRolesTab() {
                     <SelectContent>
                       <SelectItem value="SYSTEM_SUPER_ADMIN">System Super Admin</SelectItem>
                       <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
-                      <SelectItem value="PEACE_SUPER_ADMIN">Peace Super Admin</SelectItem>
-                      <SelectItem value="PEACE_OFFICER_SUBCITY">Peace Officer Subcity</SelectItem>
-                      <SelectItem value="PEACE_OFFICER_WOREDA">Peace Officer Woreda</SelectItem>
+                      <SelectItem value="PEACE_SUPER_ADMIN">Peace and Security Super Admin</SelectItem>
+                      <SelectItem value="PEACE_OFFICER_SUBCITY">Peace and Security Officer Subcity</SelectItem>
+                      <SelectItem value="PEACE_OFFICER_WOREDA">Peace and Security Officer Woreda</SelectItem>
                       <SelectItem value="POLICE_COMMANDER_CITY">Police Commander City</SelectItem>
                       <SelectItem value="POLICE_COMMANDER_SUBCITY">Police Commander Subcity</SelectItem>
                       <SelectItem value="POLICE_COMMANDER_WOREDA">Police Commander Woreda</SelectItem>
                       <SelectItem value="SYSTEM_SUPER_ADMIN_VIEWER">Super Admin Viewer</SelectItem>
                       <SelectItem value="SYSTEM_ADMIN_VIEWER">Admin Viewer</SelectItem>
-                      <SelectItem value="PEACE_SUPER_ADMIN_VIEWER">Peace Super Admin Viewer</SelectItem>
-                      <SelectItem value="PEACE_OFFICER_SUBCITY_VIEWER">Peace Subcity Viewer</SelectItem>
-                      <SelectItem value="PEACE_OFFICER_WOREDA_VIEWER">Peace Woreda Viewer</SelectItem>
+                      <SelectItem value="PEACE_SUPER_ADMIN_VIEWER">Peace and Security Super Admin Viewer</SelectItem>
+                      <SelectItem value="PEACE_OFFICER_SUBCITY_VIEWER">Peace and Security Subcity Viewer</SelectItem>
+                      <SelectItem value="PEACE_OFFICER_WOREDA_VIEWER">Peace and Security Woreda Viewer</SelectItem>
                       <SelectItem value="POLICE_COMMANDER_CITY_VIEWER">Police City Viewer</SelectItem>
                       <SelectItem value="POLICE_COMMANDER_SUBCITY_VIEWER">Police Subcity Viewer</SelectItem>
                       <SelectItem value="POLICE_COMMANDER_WOREDA_VIEWER">Police Woreda Viewer</SelectItem>

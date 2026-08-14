@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../core/config/app_config.dart';
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/models/report.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -39,6 +40,17 @@ class _HomeScreenState extends State<HomeScreen> {
     if (hour < 12) return 'Good Morning, {name}';
     if (hour < 17) return 'Good Afternoon, {name}';
     return 'Good Evening, {name}';
+  }
+
+  String _displayPhone(String? phone) {
+    if (phone == null || phone.isEmpty) return '';
+    var digits = phone.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('251')) digits = digits.substring(3);
+    if (digits.startsWith('0')) digits = digits.substring(1);
+    final grouped = digits.length == 9
+        ? '${digits.substring(0, 3)} ${digits.substring(3, 6)} ${digits.substring(6)}'
+        : digits;
+    return '${AppConfig.etPhoneCountryCode} $grouped';
   }
 
   @override
@@ -87,6 +99,16 @@ class _HomeScreenState extends State<HomeScreen> {
                           color: AppColors.textMuted,
                         ),
                       ),
+                      if (user?.phoneNumber != null &&
+                          user!.phoneNumber.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          _displayPhone(user.phoneNumber),
+                          style: AppTypography.caption.copyWith(
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -183,6 +205,29 @@ class _HomeScreenState extends State<HomeScreen> {
                     label: 'Inbox',
                     color: AppColors.info,
                     onTap: () => context.go('/conversations'),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _QuickAction(
+                    icon: Icons.fact_check_outlined,
+                    label: 'Work Reports',
+                    color: AppColors.success,
+                    onTap: () => context.go('/work-reports'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _QuickAction(
+                    icon: Icons.logout,
+                    label: 'Logout',
+                    color: AppColors.danger,
+                    onTap: () =>
+                        context.read<AuthBloc>().add(AuthLogoutRequested()),
                   ),
                 ),
               ],

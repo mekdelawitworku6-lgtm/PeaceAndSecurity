@@ -24,6 +24,7 @@ import { ChatModule } from "./modules/chat/chat.module";
 import { AuditModule } from "./modules/audit/audit.module";
 import { AuditSubscriber } from "./modules/audit/audit.subscriber";
 import { SettingsModule } from "./modules/settings/settings.module";
+import { WorkReportsModule } from "./modules/work-reports/work-reports.module";
 
 @Module({
   imports: [
@@ -78,6 +79,7 @@ import { SettingsModule } from "./modules/settings/settings.module";
     ChatModule,
     AuditModule,
     SettingsModule,
+    WorkReportsModule,
   ],
   providers: [],
   exports: [],

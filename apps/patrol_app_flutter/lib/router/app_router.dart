@@ -17,9 +17,17 @@ import '../features/reports/presentation/screens/nearby_reports_screen.dart';
 import '../features/reports/presentation/screens/report_detail_screen.dart';
 import '../features/settings/presentation/screens/change_pin_screen.dart';
 import '../features/settings/presentation/screens/settings_screen.dart';
+import '../features/work_reports/presentation/screens/work_reports_screen.dart';
 
 class AppRouter {
-  static const _tabs = ['/home', '/assigned', '/conversations', '/notifications', '/settings'];
+  static const _tabs = [
+    '/home',
+    '/assigned',
+    '/work-reports',
+    '/conversations',
+    '/notifications',
+    '/settings',
+  ];
 
   static final router = GoRouter(
     initialLocation: '/splash',
@@ -73,6 +81,10 @@ class AppRouter {
         builder: (context, state) => const NearbyReportsScreen(),
       ),
       GoRoute(
+        path: '/work-reports',
+        builder: (context, state) => const WorkReportsScreen(),
+      ),
+      GoRoute(
         path: '/chat/:conversationId',
         builder: (context, state) => ChatScreen(
           conversationId: state.pathParameters['conversationId']!,
@@ -92,6 +104,10 @@ class AppRouter {
           GoRoute(
             path: '/assigned',
             builder: (context, state) => const AssignedReportsScreen(),
+          ),
+          GoRoute(
+            path: '/work-reports',
+            builder: (context, state) => const WorkReportsScreen(),
           ),
           GoRoute(
             path: '/conversations',
@@ -141,6 +157,7 @@ class _MainShell extends StatelessWidget {
           final path = [
             '/home',
             '/assigned',
+            '/work-reports',
             '/conversations',
             '/notifications',
             '/settings',
@@ -160,6 +177,11 @@ class _MainShell extends StatelessWidget {
             icon: Icon(Icons.assignment_outlined),
             selectedIcon: Icon(Icons.assignment),
             label: 'Assigned',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fact_check_outlined),
+            selectedIcon: Icon(Icons.fact_check),
+            label: 'Work Reports',
           ),
           NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),

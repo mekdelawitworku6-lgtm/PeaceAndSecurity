@@ -427,7 +427,7 @@ export default function UserManagementPage() {
               className="h-11 rounded px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none"
             >
               <Plus className="h-4 w-4 mr-1.5" />
-              Add Peace Officer
+              Add Peace and Security Officer
             </Button>
           </div>
         </div>

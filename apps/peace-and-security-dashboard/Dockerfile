@@ -39,7 +39,7 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.mjs ./
 
-RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app
+RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next/cache
 
 USER nextjs
 

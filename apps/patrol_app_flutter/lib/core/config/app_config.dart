@@ -15,6 +15,7 @@ class AppConfig {
   static const String appVersion = '1.0.0';
   static const String appName = 'Peace \u0026 Security Patrol';
   static const String appTagline = 'Protect. Respond. Resolve.';
+  static const String etPhoneCountryCode = '+251';
 
   static bool get isDarkMode => false;
 

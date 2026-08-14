@@ -27,7 +27,7 @@ export const signRegistrationToken = (
   jwt.sign(
     { ...payload, type: TokenType.REGISTRATION },
     {
-      secret: process.env.JWT_REGISTRATION_SECRET,
+      secret: process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET,
       expiresIn: process.env.JWT_REGISTRATION_EXPIRES_IN || "10m",
     },
   );
