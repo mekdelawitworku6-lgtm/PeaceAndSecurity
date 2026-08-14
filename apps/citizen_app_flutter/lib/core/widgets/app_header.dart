@@ -31,7 +31,7 @@ class AppHeader extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 44,
+            width: showBack ? 44 : 8,
             height: 44,
             child: showBack
                 ? IconButton(
@@ -69,7 +69,12 @@ class AppHeader extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: 44, height: 44, child: right),
+          Flexible(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: right,
+            ),
+          ),
         ],
       ),
     );

@@ -31,7 +31,7 @@ class AppHeader extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 44,
+            width: showBack ? 44 : 8,
             height: 44,
             child: showBack
                 ? IconButton(
@@ -39,6 +39,8 @@ class AppHeader extends StatelessWidget {
                         () {
                           if (context.canPop()) {
                             context.pop();
+                          } else {
+                            context.go('/home');
                           }
                         },
                     icon: const Icon(Icons.arrow_back_ios_new, size: 18, color: AppColors.primary),
@@ -67,7 +69,12 @@ class AppHeader extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(width: 44, height: 44, child: right),
+          Flexible(
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: right,
+            ),
+          ),
         ],
       ),
     );
