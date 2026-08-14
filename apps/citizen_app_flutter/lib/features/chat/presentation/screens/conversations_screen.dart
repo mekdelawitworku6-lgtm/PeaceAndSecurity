@@ -62,7 +62,7 @@ class _ConversationsScreenState extends State<ConversationsScreen> {
                         final conv = conversations[i];
                         return _ConversationRow(
                           conv: conv,
-                          onTap: () => context.go(
+                          onTap: () => context.push(
                             '/chat/${conv.id}?title=${Uri.encodeComponent(conv.title)}',
                           ),
                         );
