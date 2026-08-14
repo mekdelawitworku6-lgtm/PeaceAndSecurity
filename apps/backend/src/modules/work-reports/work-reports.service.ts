@@ -13,7 +13,7 @@ import {
   ReviewWorkReportDto,
   WorkReportFilterDto,
 } from "./dto/work-report.dto";
-import { UserRole, WorkReportStatus, VIEWER_ROLE_SUFFIX } from "../../common/enums/enums";
+import { UserRole, WorkReportStatus } from "../../common/enums/enums";
 import { successResponse } from "../../common/types/service-response";
 import { User } from "../user/entities/user.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
@@ -39,6 +39,34 @@ const REVIEWER_ROLES = new Set<string>([
   UserRole.POLICE_COMMANDER_SUBCITY,
   UserRole.POLICE_COMMANDER_WOREDA,
 ]);
+
+// Hierarchy level per role: 0 = city/top, 1 = subcity, 2 = woreda.
+// Visibility is top-to-bottom + horizontal: a role sees reports from
+// the same level and below, never from above.
+const ROLE_LEVEL: Record<string, number> = {
+  [UserRole.SYSTEM_SUPER_ADMIN]: 0,
+  [UserRole.SYSTEM_ADMIN]: 0,
+  [UserRole.PEACE_SUPER_ADMIN]: 0,
+  [UserRole.POLICE_COMMANDER_CITY]: 0,
+  [UserRole.SYSTEM_SUPER_ADMIN_VIEWER]: 0,
+  [UserRole.SYSTEM_ADMIN_VIEWER]: 0,
+  [UserRole.PEACE_SUPER_ADMIN_VIEWER]: 0,
+  [UserRole.POLICE_COMMANDER_CITY_VIEWER]: 0,
+  [UserRole.PEACE_OFFICER_SUBCITY]: 1,
+  [UserRole.POLICE_COMMANDER_SUBCITY]: 1,
+  [UserRole.PEACE_OFFICER_SUBCITY_VIEWER]: 1,
+  [UserRole.POLICE_COMMANDER_SUBCITY_VIEWER]: 1,
+  [UserRole.PEACE_OFFICER_WOREDA]: 2,
+  [UserRole.POLICE_COMMANDER_WOREDA]: 2,
+  [UserRole.PEACE_OFFICER_WOREDA_VIEWER]: 2,
+  [UserRole.POLICE_COMMANDER_WOREDA_VIEWER]: 2,
+};
+
+function visibleReporterRoles(role: string): string[] {
+  const level = ROLE_LEVEL[role];
+  if (level === undefined) return [];
+  return Object.keys(ROLE_LEVEL).filter((r) => ROLE_LEVEL[r] >= level);
+}
 
 @Injectable()
 export class WorkReportsService {
@@ -100,9 +128,13 @@ export class WorkReportsService {
 
     if (user.role === UserRole.PATROL || user.role === UserRole.CITIZEN) {
       qb.andWhere("wr.reporterId = :reporterId", { reporterId: user.id });
-    } else if (user.role.endsWith(VIEWER_ROLE_SUFFIX)) {
-      qb.andWhere("1=1");
-    } else if (!STAFF_ROLES.has(user.role)) {
+    } else if (ROLE_LEVEL[user.role] !== undefined) {
+      const roles = visibleReporterRoles(user.role);
+      qb.andWhere(
+        "(wr.reporterRole IN (:...roles) OR wr.reporterId = :uid)",
+        { roles, uid: user.id },
+      );
+    } else {
       qb.andWhere("wr.reporterId = :reporterId", { reporterId: user.id });
     }
 
@@ -138,8 +170,9 @@ export class WorkReportsService {
     const isOwn = report.reporterId === user.id;
     const canView =
       isOwn ||
-      STAFF_ROLES.has(user.role) ||
-      user.role.endsWith(VIEWER_ROLE_SUFFIX);
+      (ROLE_LEVEL[user.role] !== undefined &&
+        ROLE_LEVEL[report.reporterRole] !== undefined &&
+        ROLE_LEVEL[report.reporterRole] >= ROLE_LEVEL[user.role]);
     if (!canView) throw new ForbiddenException("Not allowed to view this report");
 
     return successResponse("Work report retrieved successfully", report);
@@ -177,6 +210,12 @@ export class WorkReportsService {
 
     const report = await this.workReportRepository.findOne({ where: { id } });
     if (!report) throw new NotFoundException("Work report not found");
+
+    const reviewerLevel = ROLE_LEVEL[user.role];
+    const reportLevel = ROLE_LEVEL[report.reporterRole];
+    if (reportLevel === undefined || reviewerLevel === undefined || reportLevel < reviewerLevel) {
+      throw new ForbiddenException("Not allowed to review this report");
+    }
 
     report.status = dto.status;
     report.reviewNote = dto.reviewNote ?? report.reviewNote;

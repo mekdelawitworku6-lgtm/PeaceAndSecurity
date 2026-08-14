@@ -3,47 +3,67 @@
 > Work reports = daily shift/work submissions from patrol officers and staff.
 > API: `GET /api/work-reports` (list), `GET /api/work-reports/:id` (detail).
 
-## Visibility Matrix
+## Visibility Rule: TOP-TO-BOTTOM + HORIZONTAL
 
-| Role | Sees | Can Submit | Can Approve/Reject | Can Edit | Can Delete |
-|---|---|---|---|---|---|
-| SYSTEM_SUPER_ADMIN | **All reports (city-wide)** | ✓ | ✓ | own only | ✓ (only role that can delete) |
-| SYSTEM_ADMIN | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| SYSTEM_SUPER_ADMIN_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| SYSTEM_ADMIN_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| PEACE_SUPER_ADMIN | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| PEACE_SUPER_ADMIN_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| PEACE_OFFICER_SUBCITY | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| PEACE_OFFICER_SUBCITY_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| PEACE_OFFICER_WOREDA | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| PEACE_OFFICER_WOREDA_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| POLICE_COMMANDER_CITY | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| POLICE_COMMANDER_CITY_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| POLICE_COMMANDER_SUBCITY | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| POLICE_COMMANDER_SUBCITY_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| POLICE_COMMANDER_WOREDA | All reports (city-wide) | ✓ | ✓ | own only | ✗ |
-| POLICE_COMMANDER_WOREDA_VIEWER | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
-| PATROL | **Own reports only** | ✓ | ✗ | own while SUBMITTED | ✗ |
-| CITIZEN | Own reports only | ✗ | ✗ | ✗ | ✗ |
+A staff role sees work reports **from its own level and below** — never from above.
+
+```
+Level 0 (city/top)   SYSTEM_SUPER_ADMIN, SYSTEM_ADMIN, PEACE_SUPER_ADMIN, POLICE_COMMANDER_CITY
+Level 1 (subcity)    PEACE_OFFICER_SUBCITY, POLICE_COMMANDER_SUBCITY
+Level 2 (woreda)     PEACE_OFFICER_WOREDA, POLICE_COMMANDER_WOREDA
+```
+
+Every role has a matching `*_VIEWER` (read-only) at the same level, with the same visibility.
+
+| Reporter's level ↓ | Who can read it |
+|---|---|
+| Level 0 (city) report | Level 0 roles only (super admin, admin, peace super admin, police commander city + their viewers) |
+| Level 1 (subcity) report | Level 0 + Level 1 roles |
+| Level 2 (woreda) report | Level 0 + Level 1 + Level 2 roles (everyone) |
+| Patrol / citizen report | Reporter only |
+
+So: a woreda officer reads **woreda reports only** (all woredas, horizontal) and their own — they **cannot** read subcity or city-level reports. A subcity officer reads subcity + woreda. Top-level reads everything.
+
+## Full Matrix
+
+| Role | Level | Sees | Can Submit | Can Approve/Reject | Can Edit | Can Delete |
+|---|---|---|---|---|---|---|
+| SYSTEM_SUPER_ADMIN | 0 | **All reports** | ✓ | ✓ | own only | ✓ (only role that can delete) |
+| SYSTEM_ADMIN | 0 | All reports | ✓ | ✓ | own only | ✗ |
+| PEACE_SUPER_ADMIN | 0 | All reports | ✓ | ✓ | own only | ✗ |
+| POLICE_COMMANDER_CITY | 0 | All reports | ✓ | ✓ | own only | ✗ |
+| SYSTEM_SUPER_ADMIN_VIEWER | 0 | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
+| SYSTEM_ADMIN_VIEWER | 0 | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
+| PEACE_SUPER_ADMIN_VIEWER | 0 | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
+| POLICE_COMMANDER_CITY_VIEWER | 0 | All reports (read-only) | ✗ | ✗ | ✗ | ✗ |
+| PEACE_OFFICER_SUBCITY | 1 | Subcity + woreda reports | ✓ | same scope | own only | ✗ |
+| POLICE_COMMANDER_SUBCITY | 1 | Subcity + woreda reports | ✓ | same scope | own only | ✗ |
+| PEACE_OFFICER_SUBCITY_VIEWER | 1 | Subcity + woreda (read-only) | ✗ | ✗ | ✗ | ✗ |
+| POLICE_COMMANDER_SUBCITY_VIEWER | 1 | Subcity + woreda (read-only) | ✗ | ✗ | ✗ | ✗ |
+| PEACE_OFFICER_WOREDA | 2 | Woreda reports only | ✓ | woreda scope only | own only | ✗ |
+| POLICE_COMMANDER_WOREDA | 2 | Woreda reports only | ✓ | woreda scope only | own only | ✗ |
+| PEACE_OFFICER_WOREDA_VIEWER | 2 | Woreda (read-only) | ✗ | ✗ | ✗ | ✗ |
+| POLICE_COMMANDER_WOREDA_VIEWER | 2 | Woreda (read-only) | ✗ | ✗ | ✗ | ✗ |
+| PATROL | — | **Own reports only** | ✓ | ✗ | own while SUBMITTED | ✗ |
+| CITIZEN | — | Own reports only | ✗ | ✗ | ✗ | ✗ |
 
 ## Rules
 
-- **Every staff role** (peace + police + system) sees **every** work report in the city — there is no subcity/woreda filtering yet. Work reports do not carry a subcity/woreda field.
-- **Every `*_VIEWER` role** (all 8) also reads **all** reports, read-only — they cannot submit, approve, reject, edit, or delete. Implementation: any role ending in `_VIEWER` gets read-all access.
-- **Patrol officers** only see their own submissions (dashboard UI hides the submit button for them; patrol submits from the mobile app).
-- **Review flow**: a report starts `SUBMITTED` → any staff role approves (`APPROVED`) or rejects (`REJECTED`) with an optional note. A rejected report can be edited by its author only while still `SUBMITTED`.
+- **Review follows the same scope**: a woreda officer can approve/reject woreda-level reports only; subcity can review subcity + woreda; top-level can review everything.
+- **Woreda officer cannot read subcity/city reports** — no top-down leak.
+- **Own report is always visible to its author**, even if scope would exclude it.
 - **Delete**: only `SYSTEM_SUPER_ADMIN` (via API; the dashboard does not expose a delete button).
-- Dashboard page: `/dashboard/work-reports` — shown to every logged-in role, but only staff see the actions (viewers/patrol see read-only lists).
+- Dashboard page: `/dashboard/work-reports` — shown to every logged-in role; only staff see actions (viewers/patrol see read-only lists).
 - Citizen app: citizens do not use work reports at all.
 
 ## Who can SUBMIT a work report
 
 `POST /api/work-reports` is allowed for:
 - PATROL (mobile app)
-- All staff roles: SYSTEM_SUPER_ADMIN, SYSTEM_ADMIN, PEACE_SUPER_ADMIN, PEACE_OFFICER_SUBCITY, PEACE_OFFICER_WOREDA, POLICE_COMMANDER_CITY, POLICE_COMMANDER_SUBCITY, POLICE_COMMANDER_WOREDA
+- All staff roles at every level: SYSTEM_SUPER_ADMIN, SYSTEM_ADMIN, PEACE_SUPER_ADMIN, PEACE_OFFICER_SUBCITY, PEACE_OFFICER_WOREDA, POLICE_COMMANDER_CITY, POLICE_COMMANDER_SUBCITY, POLICE_COMMANDER_WOREDA
 
 Not allowed: all `*_VIEWER` roles and CITIZEN.
 
 ## Future option (not built)
 
-If you want woreda/subcity scoping (e.g., PEACE_OFFICER_WOREDA sees only its woreda's reports, POLICE_COMMANDER_CITY sees the whole city), the work report entity needs a `subcityId`/`woredaId` captured from the reporter's assignment at submit time, and the `findAll` query must filter by hierarchy. Say the word and I'll build it.
+True subcity/woreda filtering by geographic unit (e.g., only your own woreda's reports, not other woredas') needs a `subcityId`/`woredaId` on the work report, captured from the reporter's assignment at submit time. Current scope is by **role level only** — all woredas' reports are visible to any woreda officer (horizontal). Say the word and I'll build geographic scoping.
