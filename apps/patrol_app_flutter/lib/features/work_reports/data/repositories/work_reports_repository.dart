@@ -36,8 +36,8 @@ class WorkReport {
         reporterName: json['reporterName'] as String?,
         reporterRole: json['reporterRole'] as String?,
         reviewNote: json['reviewNote'] as String?,
-        latitude: (json['latitude'] as num?)?.toDouble(),
-        longitude: (json['longitude'] as num?)?.toDouble(),
+        latitude: num.tryParse('${json['latitude']}')?.toDouble(),
+        longitude: num.tryParse('${json['longitude']}')?.toDouble(),
         createdAt: json['createdAt'] as String?,
       );
 }
