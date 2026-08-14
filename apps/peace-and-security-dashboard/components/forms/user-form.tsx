@@ -192,6 +192,11 @@ export function UserForm({
       }
     }
 
+    if (isGeoRole && isNew) {
+      if (isWoredaRole && !woredaId) newErrors.woredaId = "Select a woreda";
+      else if (isSubcityRole && !subcityId) newErrors.subcityId = "Select a subcity";
+    }
+
     if (isPatrol) {
       if (officeLatitude && String(officeLatitude).trim()) {
         const lat = Number(officeLatitude);
@@ -260,14 +265,14 @@ export function UserForm({
           <div>
             <h2 className="text-lg font-bold text-slate-900">
               {isNew
-                ? (defaultRole ? ROLE_LABELS[defaultRole] || "Create User" : "Create System User")
+                ? (defaultRole ? ROLE_LABELS[role] || "Create User" : "Create System User")
                 : (isPatrol ? "Update Patrol Officer" : "Update User Account")}
             </h2>
             <p className="text-xs text-slate-400 mt-0.5">
               {isPatrol
                 ? "Register a new officer for field operations"
                 : defaultRole
-                  ? `Set up account for a new ${ROLE_LABELS[defaultRole] || "user"}`
+                  ? `Set up account for a new ${ROLE_LABELS[role] || "user"}`
                   : "Manage staff access and permissions for the dashboard"}
             </p>
           </div>
@@ -376,7 +381,7 @@ export function UserForm({
               )}
             </div>
 
-            {!defaultRole && (
+            {isNew && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">Role <span className="text-red-500">*</span></Label>
                 <Select value={role} onValueChange={(v) => {
@@ -447,7 +452,7 @@ export function UserForm({
                    <div className="space-y-1.5">
                      <Label className="text-[10px] font-bold text-slate-500">Subcity</Label>
                      <Select value={subcityId} onValueChange={setSubcityId}>
-                       <SelectTrigger className="h-10 rounded-lg border-slate-200">
+                       <SelectTrigger className={cn("h-10 rounded-lg border-slate-200", errors.subcityId && "border-red-500")}>
                          <SelectValue placeholder="Select subcity" />
                        </SelectTrigger>
                        <SelectContent>
@@ -460,12 +465,12 @@ export function UserForm({
                      </Select>
                    </div>
                    {showWoreda && (
-                     <div className="space-y-1.5">
-                       <Label className="text-[10px] font-bold text-slate-500">Woreda</Label>
-                       <Select value={woredaId} onValueChange={setWoredaId}>
-                         <SelectTrigger className="h-10 rounded-lg border-slate-200">
-                           <SelectValue placeholder="Select woreda" />
-                         </SelectTrigger>
+<div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold text-slate-500">Woreda</Label>
+                        <Select value={woredaId} onValueChange={setWoredaId}>
+                          <SelectTrigger className={cn("h-10 rounded-lg border-slate-200", errors.woredaId && "border-red-500")}>
+                            <SelectValue placeholder="Select woreda" />
+                          </SelectTrigger>
                          <SelectContent>
                            {woredas
                              .filter((w: any) => !subcityId || w.subcityId === subcityId)
