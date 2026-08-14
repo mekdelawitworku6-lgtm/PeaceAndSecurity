@@ -11,6 +11,7 @@ import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/empty_state.dart';
 import '../../../../core/widgets/status_badge.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/reports_bloc.dart';
 
 class MyReportsScreen extends StatefulWidget {
@@ -36,6 +37,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
     final t = context.l10n().t;
     final state = context.watch<ReportsBloc>().state;
     final reports = state.myReports;
+    final isGuest = context.watch<AuthBloc>().state.isGuest;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -82,13 +84,21 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
                   : reports.isEmpty
                       ? ListView(
                           physics: const AlwaysScrollableScrollPhysics(),
-                          children: const [
-                            SizedBox(height: 80),
-                            EmptyState(
-                              title: 'No reports submitted yet',
-                              subtitle:
-                                  'Use "Report Incident" to report security issues in your area.',
-                            ),
+                          children: [
+                            const SizedBox(height: 80),
+                            isGuest
+                                ? EmptyState(
+                                    icon: '🔐',
+                                    title: t('signInForReports'),
+                                    subtitle: t('guestReportsSub'),
+                                    actionLabel: t('login'),
+                                    onAction: () => context.go('/login'),
+                                  )
+                                : const EmptyState(
+                                    title: 'No reports submitted yet',
+                                    subtitle:
+                                        'Use "Report Incident" to report security issues in your area.',
+                                  ),
                           ],
                         )
                       : ListView.builder(
