@@ -30,7 +30,17 @@ class AuthRepository {
     form.fields.add(MapEntry('fullName', fullName));
     form.fields.add(MapEntry('phoneNumber', phoneNumber));
     if (pin != null) form.fields.add(MapEntry('pin', pin));
-    if (profileImage != null && profileImage.file != null) {
+    if (profileImage != null && profileImage.xfile != null) {
+      form.files.add(MapEntry(
+        'profileImage',
+        MultipartFile.fromBytes(
+          await profileImage.xfile!.readAsBytes(),
+          filename: profileImage.fileName,
+          contentType:
+              DioMediaType.parse(profileImage.mimeType ?? 'image/jpeg'),
+        ),
+      ));
+    } else if (profileImage != null && profileImage.file != null) {
       form.files.add(MapEntry(
         'profileImage',
         MultipartFile.fromFileSync(

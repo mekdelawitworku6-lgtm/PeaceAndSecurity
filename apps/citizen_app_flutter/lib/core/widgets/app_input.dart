@@ -8,6 +8,7 @@ class AppInput extends StatefulWidget {
   final String? label;
   final String? hint;
   final String? error;
+  final String? prefixText;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
   final bool secure;
@@ -22,6 +23,7 @@ class AppInput extends StatefulWidget {
     this.label,
     this.hint,
     this.error,
+    this.prefixText,
     this.controller,
     this.onChanged,
     this.secure = false,
@@ -79,6 +81,18 @@ class _AppInputState extends State<AppInput> {
             hintStyle: AppTypography.small.copyWith(color: AppColors.textMuted),
             errorText: hasError ? widget.error : null,
             counterText: '',
+            prefix: widget.prefixText == null
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(right: 4),
+                    child: Text(
+                      widget.prefixText!,
+                      style: AppTypography.body.copyWith(
+                        color: AppColors.textMuted,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppRadius.input),
               borderSide: BorderSide(

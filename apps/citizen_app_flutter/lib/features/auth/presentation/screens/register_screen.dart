@@ -185,8 +185,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       const SizedBox(height: 16),
                       AppInput(
                         label: t('phoneNumber'),
+                        hint: '9-digit number',
+                        prefixText: '+251',
                         controller: _phoneNumber,
                         keyboardType: TextInputType.phone,
+                        maxLength: 9,
+                        onChanged: (val) {
+                          if (val.contains(RegExp(r'[^\d]'))) {
+                            _phoneNumber.text =
+                                val.replaceAll(RegExp(r'[^\d]'), '');
+                            _phoneNumber.selection = TextSelection.collapsed(
+                                offset: _phoneNumber.text.length);
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
                       AppInput(

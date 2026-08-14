@@ -29,13 +29,22 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  String _normalizePhone(String input) {
+    var digits = input.replaceAll(RegExp(r'\D'), '');
+    if (digits.startsWith('251')) digits = digits.substring(3);
+    if (digits.startsWith('0')) digits = digits.substring(1);
+    return '+251$digits';
+  }
+
   void _submit() {
-    if (_phone.text.trim().isEmpty || _pin.text.trim().isEmpty) {
-      _showAlert('Missing info', 'Please enter your phone number and PIN.');
+    final phone = _normalizePhone(_phone.text.trim());
+    if (phone.length != 13 || _pin.text.trim().isEmpty) {
+      _showAlert('Missing info',
+          'Enter your 9-digit phone number after +251 and your PIN.');
       return;
     }
     context.read<AuthBloc>().add(AuthLoginRequested(
-          phoneNumber: _phone.text.trim(),
+          phoneNumber: phone,
           pin: _pin.text.trim(),
         ));
   }
@@ -101,9 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 24),
                       AppInput(
                         label: t('phoneNumber'),
-                        hint: '+251911000031',
+                        hint: '9-digit number',
+                        prefixText: '+251',
                         controller: _phone,
                         keyboardType: TextInputType.phone,
+                        maxLength: 9,
                         onChanged: (_) =>
                             context.read<AuthBloc>().add(AuthErrorCleared()),
                       ),
