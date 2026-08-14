@@ -11,6 +11,7 @@ class SessionManager {
   static final SessionManager instance = SessionManager._internal();
 
   static const _authKey = 'auth_state';
+  static const _deviceIdKey = 'cit_device_id';
   static const _langKey = '@citizen_app_lang';
 
   String? accessToken;
@@ -54,6 +55,12 @@ class SessionManager {
 
   Future<void> hydrate() async {
     final prefs = await SharedPreferences.getInstance();
+    var id = prefs.getString(_deviceIdKey);
+    if (id == null || id.isEmpty) {
+      id = 'cit-${const Uuid().v4()}';
+      await prefs.setString(_deviceIdKey, id);
+    }
+    _deviceId = id;
     final raw = prefs.getString(_authKey);
     if (raw != null) {
       try {

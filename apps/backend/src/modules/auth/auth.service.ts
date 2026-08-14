@@ -10,6 +10,7 @@ import { Repository } from "typeorm";
 import { User } from "../user/entities/user.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
 import { Citizen } from "../citizen/entities/citizen.entity";
+import { Report } from "../reports/entities/report.entity";
 import { OtpService } from "../otp/otp.service";
 import { JwtService } from "@nestjs/jwt";
 import {
@@ -55,10 +56,41 @@ export class AuthService {
     private readonly patrolRepository: Repository<Patrol>,
     @InjectRepository(Citizen)
     private readonly citizenRepository: Repository<Citizen>,
+    @InjectRepository(Report)
+    private readonly reportRepository: Repository<Report>,
     private readonly otpService: OtpService,
     private readonly jwtService: JwtService,
     private readonly auditService: AuditService,
   ) { }
+
+  /**
+   * Attach anonymous (guest) reports created from the same device to a citizen
+   * account after login/registration so they appear in "My Reports".
+   */
+  private async attachGuestReports(
+    userId: string,
+    deviceId?: string,
+  ): Promise<void> {
+    if (!deviceId) return;
+    try {
+      const result = await this.reportRepository.query(
+        `UPDATE reports SET "reporterId" = $1
+         WHERE "reporterId" IS NULL AND "deviceId" = $2`,
+        [userId, deviceId],
+      );
+      const affected = Array.isArray(result) ? result.length : 1;
+      if (affected && affected > 0) {
+        this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.OTP_VERIFIED,
+          actorId: userId,
+          success: true,
+          metadata: { action: "guest_reports_attached", count: affected },
+        }).catch(() => void 0);
+      }
+    } catch {
+      // Non-fatal: guest report attachment must never block login/register
+    }
+  }
 
   /** ===== Shared PIN Helpers ===== */
   private async hashPin(pin: string): Promise<string> {
@@ -79,6 +111,7 @@ export class AuthService {
     phoneNumber: string,
     file?: any,
     pin?: string,
+    deviceId?: string,
   ): Promise<ServiceResponse> {
     try {
       const normalizedPhone = normalizeEtPhone(phoneNumber);
@@ -110,9 +143,13 @@ export class AuthService {
         status: UserStatus.PENDING,
         pin: null,
         profileImage,
+        deviceId,
       });
 
       const saved = await this.citizenRepository.save(citizen);
+
+      // Attach anonymous reports submitted from this device before signup
+      await this.attachGuestReports(saved.id, deviceId);
 
       // Trigger OTP
       const otp = await this.otpService.createOtp({
@@ -160,6 +197,7 @@ export class AuthService {
   async citizenLogin(
     phoneNumber: string,
     pin: string,
+    deviceId?: string,
   ): Promise<ServiceResponse> {
     try {
       const normalizedPhone = normalizeEtPhone(phoneNumber);
@@ -204,6 +242,12 @@ export class AuthService {
       };
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
+
+      if (deviceId && citizen.deviceId !== deviceId) {
+        citizen.deviceId = deviceId;
+        await this.citizenRepository.save(citizen).catch(() => void 0);
+      }
+      await this.attachGuestReports(citizen.id, deviceId);
 
       await this.auditService.logSecurityEvent({
         eventType: SecurityEventType.LOGIN_SUCCESS,

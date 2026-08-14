@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString, Length, Matches } from "class-validator";
+import { IsString, IsOptional, Length, Matches } from "class-validator";
 
 export class CitizenLoginDto {
   @ApiProperty({
@@ -17,4 +17,9 @@ export class CitizenLoginDto {
   @Length(4, 6, { message: "PIN must be 4–6 digits" })
   @Matches(/^\d+$/, { message: "PIN must contain only digits" })
   pin: string;
+
+  @ApiProperty({ required: false, description: "Device identifier for linking guest reports" })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }

@@ -16,6 +16,7 @@ class AuthRepository {
     final res = await _api.post('/auth/citizen/login', data: {
       'phoneNumber': phoneNumber,
       'pin': pin,
+      'deviceId': SessionManager.instance.deviceId,
     });
     return LoginData.fromJson(res['data'] as Map<String, dynamic>);
   }
@@ -29,6 +30,8 @@ class AuthRepository {
     final form = FormData();
     form.fields.add(MapEntry('fullName', fullName));
     form.fields.add(MapEntry('phoneNumber', phoneNumber));
+    form.fields.add(
+        MapEntry('deviceId', SessionManager.instance.deviceId));
     if (pin != null) form.fields.add(MapEntry('pin', pin));
     if (profileImage != null && profileImage.xfile != null) {
       form.files.add(MapEntry(

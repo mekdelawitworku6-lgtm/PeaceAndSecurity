@@ -17,6 +17,11 @@ export class CitizenRegisterDto {
   @IsOptional()
   @IsString()
   pin?: string;
+
+  @ApiProperty({ required: false, description: "Device identifier for linking guest reports" })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }
 
 export class CitizenRegisterFormDto extends CitizenRegisterDto {

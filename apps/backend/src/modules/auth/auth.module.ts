@@ -8,13 +8,14 @@ import { LocalStrategy } from "./strategies/local.strategy";
 import { JwtStrategy } from "./strategies/jwt.strategy";
 import { User } from "../user/entities/user.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
+import { Report } from "../reports/entities/report.entity";
 import { Citizen } from "../citizen/entities/citizen.entity";
 import { OtpModule } from "../otp/otp.module";
 import { AuditModule } from "../audit/audit.module";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Patrol, Citizen]),
+    TypeOrmModule.forFeature([User, Patrol, Citizen, Report]),
     PassportModule,
     JwtModule.register({}),
     OtpModule,

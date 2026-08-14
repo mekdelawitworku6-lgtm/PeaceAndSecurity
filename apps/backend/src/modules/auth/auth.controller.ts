@@ -297,6 +297,7 @@ export class AuthController {
       dto.phoneNumber,
       file,
       dto.pin,
+      dto.deviceId,
     );
   }
 
@@ -307,7 +308,7 @@ export class AuthController {
   })
   @ApiResponse({ status: 200, description: "Citizen login successful" })
   async loginCitizen(@Body() dto: CitizenLoginDto) {
-    return this.authService.citizenLogin(dto.phoneNumber, dto.pin);
+    return this.authService.citizenLogin(dto.phoneNumber, dto.pin, dto.deviceId);
   }
 
   @Public()
