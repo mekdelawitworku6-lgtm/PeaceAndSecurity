@@ -22,7 +22,7 @@ interface MapPickerProps {
 
 export function MapPicker({ lat, lng, onChange, height = "300px" }: MapPickerProps) {
     const { isLoaded } = useJsApiLoader({
-        id: 'google-map-picker-script',
+        id: 'google-map-script',
         googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ""
     })
 

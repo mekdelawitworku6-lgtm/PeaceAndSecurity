@@ -191,8 +191,8 @@ onRefresh: () async {
         children: [
           CircleAvatar(
             radius: 21,
-            backgroundColor: Colors.white.withValues(alpha: 0.15),
-            child: const Icon(Icons.shield_outlined, color: AppColors.white, size: 22),
+            backgroundColor: Colors.white,
+            backgroundImage: const AssetImage('assets/images/logo.png'),
           ),
           const SizedBox(width: 12),
           Expanded(

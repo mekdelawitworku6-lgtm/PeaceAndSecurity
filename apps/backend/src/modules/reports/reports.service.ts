@@ -26,6 +26,7 @@ import { AuditService } from "../audit/audit.service";
 import { getDistance } from "../../common/utils/geo-util";
 import { processUploads } from "../../common/utils/file-upload.util";
 import { ReportType as ReportTypeEntity } from "../report-types/entities/report-type.entity";
+import { Citizen } from "../citizen/entities/citizen.entity";
 import { User } from "../user/entities/user.entity";
 
 @Injectable()
@@ -37,6 +38,8 @@ export class ReportsService {
     private readonly logRepo: Repository<ReportLog>,
     @InjectRepository(Patrol)
     private readonly patrolRepo: Repository<Patrol>,
+    @InjectRepository(Citizen)
+    private readonly citizenRepo: Repository<Citizen>,
     @InjectRepository(User)
     private readonly userRepo: Repository<User>,
     private readonly reportTypesService: ReportTypesService,
@@ -240,14 +243,15 @@ export class ReportsService {
         threshold = reportTypeEntity?.commercialDecibelThreshold ?? 55.0;
       }
 
-      const userLevel = Number(createReportDto.decibelLevel || 0);
-      if (userLevel < threshold) {
-        throw new BadRequestException(
-          `Decibel level (${userLevel} dB) is below the minimum required threshold (${threshold} dB) for a ${createReportDto.noiseAreaType || 'general'} area.`,
-        );
+      if (createReportDto.decibelLevel !== undefined && createReportDto.decibelLevel !== null && Number(createReportDto.decibelLevel) > 0) {
+        const userLevel = Number(createReportDto.decibelLevel);
+        if (userLevel < threshold) {
+          throw new BadRequestException(
+            `Decibel level (${userLevel} dB) is below the minimum required threshold (${threshold} dB) for a ${createReportDto.noiseAreaType || 'general'} area.`,
+          );
+        }
+        createReportDto.noisePollutionStatus = "Pollution";
       }
-
-      createReportDto.noisePollutionStatus = "Pollution";
     }
 
     // Media Requirement Validation (General)
@@ -290,6 +294,11 @@ export class ReportsService {
     } catch (e) {
       console.warn("Auto-assignment failed:", e.message);
     }
+    let reporterPhone = createReportDto.reporterPhoneNumber || null;
+    if (!reporterPhone && userId) {
+      const citizen = await this.citizenRepo.findOne({ where: { id: userId } });
+      if (citizen) reporterPhone = citizen.phoneNumber;
+    }
 
     const report = this.reportRepo.create({
       ...cleanDto,
@@ -298,7 +307,7 @@ export class ReportsService {
       violationType: vType,
       reportDescription: reportDescription || description,
       reporterId: isAnonymous ? null : (userId || null),
-      reporterPhoneNumber: isAnonymous ? null : (createReportDto.reporterPhoneNumber || null),
+      reporterPhoneNumber: isAnonymous ? null : reporterPhone,
       imageUrls: createReportDto.imageUrls || [],
       videoUrls: createReportDto.videoUrls || [],
       audioUrls: createReportDto.audioUrls || [],
@@ -327,12 +336,14 @@ export class ReportsService {
     await this.logStatus(
       savedReport.id,
       ReportStatus.SUBMITTED,
-      { citizenId: userId },
+      { citizenId: isAnonymous ? undefined : (userId || undefined) },
       `Report submitted in ${area}`,
-      {
-        latitude: createReportDto.latitude,
-        longitude: createReportDto.longitude,
-      },
+      createReportDto.latitude && createReportDto.longitude
+        ? {
+          latitude: createReportDto.latitude,
+          longitude: createReportDto.longitude,
+        }
+        : undefined,
     );
 
     // Notifications
@@ -378,9 +389,20 @@ export class ReportsService {
     return savedReport;
   }
 
-  async findByCitizen(userId: string) {
+  async findByCitizen(userId: string, deviceId?: string) {
+    const citizen = await this.citizenRepo.findOne({ where: { id: userId } });
+    const whereConditions: any[] = [{ reporterId: userId }];
+    if (citizen?.phoneNumber) {
+      whereConditions.push({ reporterPhoneNumber: citizen.phoneNumber, isAnonymous: false });
+    }
+    if (citizen?.deviceId) {
+      whereConditions.push({ deviceId: citizen.deviceId, isAnonymous: false });
+    }
+    if (deviceId && deviceId !== citizen?.deviceId) {
+      whereConditions.push({ deviceId, isAnonymous: false });
+    }
     return this.reportRepo.find({
-      where: { reporterId: userId },
+      where: whereConditions,
       relations: ["assignedPatrol", "reportType"],
       order: { createdAt: "DESC" },
     });

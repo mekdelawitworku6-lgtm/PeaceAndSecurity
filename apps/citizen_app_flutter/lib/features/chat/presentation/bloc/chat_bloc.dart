@@ -192,8 +192,19 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
     final current = [...state.messagesByConv[msg.conversationId] ?? <Message>[]];
     if (current.any((m) => m.id == msg.id)) return;
 
+    // If we have a pending message matching this content and sender, replace it
+    final pendingIdx = current.indexWhere((m) =>
+        m.id.startsWith('pending-') &&
+        m.content == msg.content &&
+        m.senderType == msg.senderType);
+
+    if (pendingIdx != -1) {
+      current[pendingIdx] = msg;
+    } else {
+      current.add(msg);
+    }
+
     final isActive = state.activeConversation == msg.conversationId;
-    current.add(msg);
     emit(state.copyWith(
       messagesByConv: {...state.messagesByConv, msg.conversationId: current},
       conversations: state.conversations.map((c) {

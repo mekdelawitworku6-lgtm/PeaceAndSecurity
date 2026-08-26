@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/models/report.dart';
@@ -28,6 +29,7 @@ class _MapScreenState extends State<MapScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ReportsBloc>().add(const ReportsFetchNearbyRequested());
+        context.read<ReportsBloc>().add(ReportsFetchMyRequested());
       }
     });
   }
@@ -62,12 +64,104 @@ class _MapScreenState extends State<MapScreen> {
     return AppColors.info;
   }
 
+  void _showIncidentsBottomSheet(BuildContext context, List<Report> reports) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.6,
+          ),
+          decoration: const BoxDecoration(
+            color: AppColors.card,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.border,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '${reports.length} Active Incidents',
+                    style: AppTypography.h3,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: reports.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (ctx, i) {
+                    final r = reports[i];
+                    return ListTile(
+                      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 0),
+                      leading: CircleAvatar(
+                        backgroundColor: r.isEmergency ? AppColors.danger.withValues(alpha: 0.15) : AppColors.primarySoft,
+                        child: Icon(
+                          r.isEmergency ? Icons.warning_amber_rounded : Icons.location_on_outlined,
+                          color: r.isEmergency ? AppColors.danger : AppColors.primary,
+                        ),
+                      ),
+                      title: Text(
+                        r.violationType ?? 'Incident Report',
+                        style: AppTypography.bodyMedium,
+                      ),
+                      subtitle: Text(
+                        r.area ?? r.address ?? 'Addis Ababa',
+                        style: AppTypography.caption,
+                      ),
+                      trailing: const Icon(Icons.chevron_right, color: AppColors.textMuted),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        setState(() => _selectedReport = r);
+                        context.push('/report-detail/${r.id}?caseId=${r.caseId ?? ''}');
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.l10n().t;
     final state = context.watch<ReportsBloc>().state;
-    final nearby = state.nearbyReports;
-    final items = _filtered(nearby);
+    final combined = <String, Report>{};
+    for (final r in state.nearbyReports) {
+      combined[r.id] = r;
+    }
+    for (final r in state.myReports) {
+      combined[r.id] = r;
+    }
+    final allReports = combined.values.toList();
+    final items = _filtered(allReports);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -167,41 +261,73 @@ class _MapScreenState extends State<MapScreen> {
                     markerColor: (m) => _pinColor(m),
                     onMarkerTap: (m) {
                       final id = '${m['id']}';
+                      final found = allReports
+                          .where((r) => r.id == id)
+                          .firstOrNull;
                       setState(() {
-                        _selectedReport = nearby
-                            .where((r) => r.id == id)
-                            .firstOrNull;
+                        _selectedReport = found;
                       });
+                      if (found != null) {
+                        context.push('/report-detail/${found.id}?caseId=${found.caseId ?? ''}');
+                      }
                     },
                     selectedId: _selectedReport?.id,
                   ),
                 ),
+                if (_selectedReport != null)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 76,
+                    child: _SelectedReportCard(
+                      report: _selectedReport!,
+                      onClose: () => setState(() => _selectedReport = null),
+                      onViewDetails: () {
+                        context.push('/report-detail/${_selectedReport!.id}?caseId=${_selectedReport!.caseId ?? ''}');
+                      },
+                    ),
+                  ),
                 Positioned(
                   left: 16,
                   right: 16,
                   bottom: 16,
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.card,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: AppShadows.card,
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          '${items.length}',
-                          style: AppTypography.h3.copyWith(color: AppColors.primary),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(t('activeIncidents'), style: AppTypography.smallMedium),
-                        const Spacer(),
-                        _LegendDot(color: AppColors.danger, label: 'Crime'),
-                        const SizedBox(width: 10),
-                        _LegendDot(color: AppColors.accent, label: 'Illegal'),
-                        const SizedBox(width: 10),
-                        _LegendDot(color: AppColors.info, label: 'Threat'),
-                      ],
+                  child: GestureDetector(
+                    onTap: () {
+                      if (items.isNotEmpty) {
+                        if (items.length == 1) {
+                          final first = items.first;
+                          setState(() => _selectedReport = first);
+                          context.push('/report-detail/${first.id}?caseId=${first.caseId ?? ''}');
+                        } else {
+                          _showIncidentsBottomSheet(context, items);
+                        }
+                      }
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.card,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: AppShadows.card,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            '${items.length}',
+                            style: AppTypography.h3.copyWith(color: AppColors.primary),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(t('activeIncidents'), style: AppTypography.smallMedium),
+                          const Spacer(),
+                          _LegendDot(color: AppColors.danger, label: 'Crime'),
+                          const SizedBox(width: 10),
+                          _LegendDot(color: AppColors.accent, label: 'Illegal'),
+                          const SizedBox(width: 10),
+                          _LegendDot(color: AppColors.info, label: 'Threat'),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -287,4 +413,116 @@ class _LegendDot extends StatelessWidget {
     );
   }
 }
+
+class _SelectedReportCard extends StatelessWidget {
+  final Report report;
+  final VoidCallback onClose;
+  final VoidCallback onViewDetails;
+
+  const _SelectedReportCard({
+    required this.report,
+    required this.onClose,
+    required this.onViewDetails,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.card,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: AppShadows.card,
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: report.isEmergency
+                      ? AppColors.danger.withValues(alpha: 0.15)
+                      : AppColors.primarySoft,
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  report.isEmergency ? 'EMERGENCY' : report.status,
+                  style: AppTypography.caption.copyWith(
+                    color: report.isEmergency ? AppColors.danger : AppColors.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: onClose,
+                child: const Icon(Icons.close, size: 18, color: AppColors.textMuted),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            report.violationType ?? 'Incident Report',
+            style: AppTypography.h3.copyWith(fontSize: 15),
+          ),
+          if (report.area != null && report.area!.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Row(
+              children: [
+                const Icon(Icons.location_on_outlined, size: 13, color: AppColors.textMuted),
+                const SizedBox(width: 3),
+                Expanded(
+                  child: Text(
+                    report.area!,
+                    style: AppTypography.caption.copyWith(color: AppColors.textMuted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (report.reportDescription != null && report.reportDescription!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              report.reportDescription!,
+              style: AppTypography.caption,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: onViewDetails,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 8),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('View Incident Details', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 12)),
+                  SizedBox(width: 6),
+                  Icon(Icons.arrow_forward, size: 14),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 

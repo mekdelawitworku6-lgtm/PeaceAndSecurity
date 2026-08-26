@@ -56,8 +56,10 @@ export class UserController {
     UserRole.SYSTEM_ADMIN,
     UserRole.PEACE_SUPER_ADMIN,
     UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_CITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
   )
   @ApiOperation({
     summary: "Register internal user (Admin/Peace/Police roles)",
@@ -168,14 +170,18 @@ export class UserController {
     UserRole.SYSTEM_ADMIN,
     UserRole.PEACE_SUPER_ADMIN,
     UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_CITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
     UserRole.SYSTEM_SUPER_ADMIN_VIEWER,
     UserRole.SYSTEM_ADMIN_VIEWER,
     UserRole.PEACE_SUPER_ADMIN_VIEWER,
     UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
     UserRole.POLICE_COMMANDER_CITY_VIEWER,
     UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
   )
   @ApiOperation({ summary: "Get user by ID" })
   @ApiResponse({ status: 200, description: "User retrieved successfully" })
@@ -192,7 +198,16 @@ export class UserController {
   }
 
   @Put(":id/toggle-status")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiOperation({ summary: "Toggle user active status" })
   @ApiResponse({ status: 200, description: "User status updated successfully" })
   async toggleUserStatus(@Param("id") id: string) {
@@ -213,8 +228,10 @@ export class UserController {
     UserRole.SYSTEM_ADMIN,
     UserRole.PEACE_SUPER_ADMIN,
     UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_CITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
   )
   @ApiOperation({ summary: "Update user profile" })
   @ApiResponse({
@@ -240,7 +257,16 @@ export class UserController {
   }
 
   @Post(":id/reset-password")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.PEACE_SUPER_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiOperation({ summary: "Reset user password" })
   @ApiResponse({ status: 200, description: "Password reset successfully" })
   async resetUserPassword(@Param("id") id: string, @Request() req: any) {

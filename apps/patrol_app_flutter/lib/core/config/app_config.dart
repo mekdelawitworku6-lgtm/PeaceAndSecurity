@@ -8,9 +8,9 @@ import '../theme/app_colors.dart';
 
 class AppConfig {
   static const String _prodApiUrl =
-      'https://peaceandsecurityadmin.possibletechplc.com/api';
+      'https://apipeaceandsecurity.possibletechplc.com/api';
   static const String _prodSocketUrl =
-      'https://peaceandsecurityadmin.possibletechplc.com';
+      'https://apipeaceandsecurity.possibletechplc.com';
 
   static String get apiUrl {
     const fromEnv = String.fromEnvironment('API_URL');

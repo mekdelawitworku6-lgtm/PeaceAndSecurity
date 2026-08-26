@@ -78,6 +78,12 @@ export class CreatePatrolDto {
   @IsOptional()
   @IsString()
   profileImage?: string;
+
+  @ApiProperty({ example: "1234", description: "4-6 digit PIN", required: false })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{4,6}$/, { message: "PIN must be 4 to 6 digits" })
+  pin?: string;
 }
 
 export class CreatePatrolFormDto extends CreatePatrolDto {

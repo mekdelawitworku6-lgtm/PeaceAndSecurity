@@ -81,9 +81,23 @@ export class AuditSubscriber implements EntitySubscriberInterface<any> {
     const newValues = this.sanitizeValues(entity);
 
     const auditLog = new AuditLog();
-    auditLog.actorId = ctx?.userId || "system";
-    auditLog.actorName = ctx?.userName || "System";
-    auditLog.actorRole = ctx?.userRole || UserRole.SYSTEM_ADMIN;
+    if (ctx?.userId) {
+      auditLog.actorId = ctx.userId;
+      auditLog.actorName = ctx.userName || "System";
+      auditLog.actorRole = ctx.userRole || UserRole.SYSTEM_ADMIN;
+    } else if (entityName === "Message") {
+      auditLog.actorId = entity.senderId || "system";
+      auditLog.actorName = entity.senderName || (entity.senderType === "citizen" ? "Citizen" : (entity.senderType === "patrol" ? "Patrol Officer" : "System"));
+      auditLog.actorRole = entity.senderType === "citizen" ? UserRole.CITIZEN : (entity.senderType === "patrol" ? UserRole.PATROL : UserRole.SYSTEM_ADMIN);
+    } else if (entityName === "Report") {
+      auditLog.actorId = entity.reporterId || "anonymous";
+      auditLog.actorName = entity.reporterPhoneNumber || (entity.isAnonymous ? "Anonymous Citizen" : "Citizen");
+      auditLog.actorRole = UserRole.CITIZEN;
+    } else {
+      auditLog.actorId = "system";
+      auditLog.actorName = "System";
+      auditLog.actorRole = UserRole.SYSTEM_ADMIN;
+    }
     auditLog.ipAddress = ctx?.ipAddress || "unknown";
     auditLog.entity = entityName;
     auditLog.entityId = entity.id;

@@ -65,10 +65,15 @@ export class PatrolService {
         throw new ConflictException("Email address already registered to another patrol officer");
     }
 
+    const rawPin = dto.pin?.trim() || "1234";
+    const hashedPin = await hashPassword(rawPin);
+
     const patrol = this.patrolRepository.create({
       fullName: dto.fullName,
       phoneNumber: normalizedPhone,
       email: normalizedEmail,
+      pin: hashedPin,
+      isPinSet: true,
       userCode: generateRandomCode(8),
       status: UserStatus.ACTIVE,
       officeAddress: dto.officeAddress,
@@ -92,7 +97,7 @@ export class PatrolService {
 
     sendSMS({
       recipient: normalizedPhone,
-      messageBody: `Welcome, ${dto.fullName}! Your patrol account has been created by the administrator. Please download the the Patrol app and set your login PIN using your phone number.`,
+      messageBody: `Welcome, ${dto.fullName}! Your patrol account has been created. Your login PIN is ${rawPin}. Please download the Patrol app to sign in.`,
     }).catch(() => void 0);
 
     const { pin, ...result } = saved as any;

@@ -98,7 +98,8 @@ export class ReportsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   async findMyReports(@Request() req: any) {
-    const reports = await this.reportsService.findByCitizen(req.user.id);
+    const deviceId = req.headers["x-device-id"] as string;
+    const reports = await this.reportsService.findByCitizen(req.user.id, deviceId);
     await this.auditService.logDataAccess({
       accessType: DataAccessType.VIEW_REPORT_LIST,
       targetEntity: "Report",

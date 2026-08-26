@@ -11,8 +11,10 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_header.dart';
 import '../../../../core/widgets/audio_player_widget.dart';
+import '../../../../core/widgets/incident_map.dart';
 import '../../../../core/widgets/media_thumb.dart';
 import '../../../../core/widgets/status_badge.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import '../../../chat/data/repositories/chat_repository.dart';
 import '../bloc/reports_bloc.dart';
 
@@ -226,6 +228,49 @@ class _ReportDetailScreenState extends State<ReportDetailScreen> {
                             ],
                           ),
                         ),
+                        if (report.latitude != 0 && report.longitude != 0) ...[
+                          const SizedBox(height: 12),
+                          AppCard(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _SectionTitle(t('incidentLocation')),
+                                const SizedBox(height: 10),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: SizedBox(
+                                    height: 160,
+                                    child: IncidentMap(
+                                      initialCenter: LatLng(report.latitude, report.longitude),
+                                      initialZoom: 15,
+                                      markers: [
+                                        {
+                                          'id': report.id,
+                                          'latitude': report.latitude,
+                                          'longitude': report.longitude,
+                                          'type': report.violationType ?? '',
+                                          'emergency': report.isEmergency,
+                                        }
+                                      ],
+                                      markerColor: (m) => report.isEmergency
+                                          ? AppColors.danger
+                                          : AppColors.primary,
+                                    ),
+                                  ),
+                                ),
+                                if (report.address != null && report.address!.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    report.address!,
+                                    style: AppTypography.caption.copyWith(
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 12),
                         if (report.reportDescription != null &&
                             report.reportDescription!.isNotEmpty) ...[

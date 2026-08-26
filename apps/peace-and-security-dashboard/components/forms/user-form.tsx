@@ -79,6 +79,7 @@ export function UserForm({
   const [assignedArea, setAssignedArea] = useState("");
   const [subCity, setSubCity] = useState("");
   const [commanderId, setCommanderId] = useState("");
+  const [pin, setPin] = useState("1234");
 
   const [cityId, setCityId] = useState("");
   const [subcityId, setSubcityId] = useState("");
@@ -218,6 +219,9 @@ export function UserForm({
     }
 
     if (isPatrol) {
+      if (isNew && pin.trim() && !/^\d{4,6}$/.test(pin.trim())) {
+        newErrors.pin = "PIN must be 4 to 6 digits";
+      }
       if (officeLatitude && String(officeLatitude).trim()) {
         const lat = Number(officeLatitude);
         if (isNaN(lat)) newErrors.officeLatitude = "Latitude must be a number";
@@ -258,6 +262,7 @@ export function UserForm({
     }
 
     if (isPatrol) {
+      if (isNew && pin.trim()) formData.append("pin", pin.trim());
       if (officeAddress.trim()) formData.append("officeAddress", officeAddress.trim());
       if (officeLatitude.trim()) formData.append("officeLatitude", officeLatitude.trim());
       if (officeLongitude.trim()) formData.append("officeLongitude", officeLongitude.trim());
@@ -547,6 +552,26 @@ export function UserForm({
                     onChange={(e) => setOfficeAddress(e.target.value)}
                   />
                 </div>
+
+                {isNew && (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                      <Lock className="h-3.5 w-3.5 text-slate-400" />
+                      Login PIN (4-6 digits) <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      className={cn("h-10 rounded-lg border-slate-200", errors.pin && "border-red-500")}
+                      placeholder="e.g. 1234"
+                      maxLength={6}
+                      value={pin}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, "");
+                        setPin(val);
+                      }}
+                    />
+                    <p className="text-[10px] text-slate-400">Initial PIN for mobile Patrol App login.</p>
+                  </div>
+                )}
 
                 <div className="sm:col-span-2 space-y-2 pt-2 border-t border-slate-100">
                   <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">

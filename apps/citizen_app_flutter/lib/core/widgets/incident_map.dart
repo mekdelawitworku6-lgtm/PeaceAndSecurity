@@ -1,11 +1,9 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../theme/app_colors.dart';
-import '../theme/app_typography.dart';
 
 typedef MapMarkerIcon = IconData Function(Map<String, dynamic> item);
 
@@ -141,61 +139,6 @@ class _IncidentMapState extends State<IncidentMap> {
 
   @override
   Widget build(BuildContext context) {
-    if (kIsWeb) {
-      final center = widget.initialCenter ??
-          (widget.draggablePin ?? _centerAddis);
-      return Container(
-        decoration: BoxDecoration(
-          color: AppColors.primarySoft,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    size: 44,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      '${center.latitude.toStringAsFixed(5)}, '
-                      '${center.longitude.toStringAsFixed(5)}',
-                      style: AppTypography.caption.copyWith(
-                        color: AppColors.textMuted,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Positioned(
-              left: 8,
-              bottom: 8,
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.card,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'Map preview',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
     return GoogleMap(
       mapType: MapType.normal,
       initialCameraPosition: CameraPosition(
@@ -210,7 +153,7 @@ class _IncidentMapState extends State<IncidentMap> {
       onTap: widget.onMapTap,
       myLocationEnabled: false,
       myLocationButtonEnabled: false,
-      zoomControlsEnabled: !kIsWeb,
+      zoomControlsEnabled: true,
       compassEnabled: false,
       mapToolbarEnabled: false,
       padding: const EdgeInsets.only(top: 8, bottom: 8),

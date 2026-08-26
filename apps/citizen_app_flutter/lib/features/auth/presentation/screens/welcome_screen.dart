@@ -23,14 +23,12 @@ class WelcomeScreen extends StatelessWidget {
               width: 132,
               height: 132,
               decoration: const BoxDecoration(
-                color: AppColors.primary,
                 shape: BoxShape.circle,
               ),
-              alignment: Alignment.center,
-              child: const Icon(
-                Icons.shield_outlined,
-                size: 72,
-                color: AppColors.white,
+              clipBehavior: Clip.antiAlias,
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.cover,
               ),
             ),
             const SizedBox(height: 20),

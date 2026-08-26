@@ -6,6 +6,11 @@ import { Message } from "./entities/message.entity";
 import { SendMessageDto } from "./dto/send-message.dto";
 import { successResponse, ServiceResponse } from "../../common/types/service-response";
 
+import { Patrol } from "../patrol/entities/patrol.entity";
+import { NotificationsGateway } from "../notifications/notifications.gateway";
+import { NotificationType } from "../../common/enums/enums";
+import { getDistance } from "../../common/utils/geo-util";
+
 @Injectable()
 export class ChatService {
   constructor(
@@ -13,6 +18,9 @@ export class ChatService {
     private readonly conversationRepo: Repository<Conversation>,
     @InjectRepository(Message)
     private readonly messageRepo: Repository<Message>,
+    @InjectRepository(Patrol)
+    private readonly patrolRepo: Repository<Patrol>,
+    private readonly notificationsGateway: NotificationsGateway,
   ) {}
 
   async getAllConversations(
@@ -91,6 +99,7 @@ export class ChatService {
   async sendMessage(dto: SendMessageDto): Promise<Message> {
     const conversation = await this.conversationRepo.findOne({
       where: { id: dto.conversationId },
+      relations: ["report"],
     });
     if (!conversation) throw new NotFoundException("Conversation not found");
 
@@ -102,7 +111,53 @@ export class ChatService {
       content: dto.content,
     });
 
-    return this.messageRepo.save(message);
+    const saved = await this.messageRepo.save(message);
+
+    // Notify all active patrols in 20km radius (and assigned patrol)
+    if (dto.senderType === "citizen" && conversation.report) {
+      const report = conversation.report;
+      const repLat = Number(report.latitude);
+      const repLon = Number(report.longitude);
+
+      const activePatrols = await this.patrolRepo.find({
+        where: { status: "ACTIVE" as any },
+      });
+
+      const notifiedPatrolIds = new Set<string>();
+      if (report.assignedPatrolId) {
+        notifiedPatrolIds.add(report.assignedPatrolId);
+      }
+
+      if (!isNaN(repLat) && !isNaN(repLon) && repLat !== 0 && repLon !== 0) {
+        for (const patrol of activePatrols) {
+          const pLat = Number(patrol.latitude ?? patrol.officeLatitude);
+          const pLon = Number(patrol.longitude ?? patrol.officeLongitude);
+          if (isNaN(pLat) || isNaN(pLon)) continue;
+
+          const distKm = getDistance(repLat, repLon, pLat, pLon) / 1000;
+          if (distKm <= 20) {
+            notifiedPatrolIds.add(patrol.id);
+          }
+        }
+      }
+
+      for (const patrolId of notifiedPatrolIds) {
+        const patrol = activePatrols.find((p) => p.id === patrolId);
+        this.notificationsGateway.notifyUser(patrolId, "PATROL", {
+          title: `New message on case ${report.caseId || "Report"}`,
+          message: `${dto.senderName || "Citizen"}: ${dto.content}`,
+          type: NotificationType.CHAT_MESSAGE,
+          data: {
+            conversationId: dto.conversationId,
+            reportId: report.id,
+            caseId: report.caseId,
+          },
+          fcmToken: patrol?.fcmToken,
+        });
+      }
+    }
+
+    return saved;
   }
 
   async markAsRead(conversationId: string, readerId?: string, readerName?: string): Promise<ServiceResponse> {
