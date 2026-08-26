@@ -7,6 +7,7 @@ import '../../../../core/models/report.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_typography.dart';
 import '../../../../core/utils/formatters.dart';
+import '../../../../core/utils/media_helpers.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/empty_state.dart';
@@ -120,10 +121,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
           CircleAvatar(
             radius: 22,
             backgroundColor: AppColors.primarySoft,
-            child: Icon(
-              isGuest ? Icons.person_outline : Icons.person,
-              color: AppColors.primary,
-            ),
+            backgroundImage: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
+                ? NetworkImage(assetUrl(user!.profileImage))
+                : null,
+            onBackgroundImageError: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
+                ? (_, _) {}
+                : null,
+            child: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
+                ? null
+                : Icon(
+                    isGuest ? Icons.person_outline : Icons.person,
+                    color: AppColors.primary,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(

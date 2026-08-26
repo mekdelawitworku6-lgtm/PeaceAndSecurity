@@ -136,12 +136,18 @@ export class AuthService {
         profileImage = asset?.url;
       }
 
+      let hashedPin: string | null = null;
+      if (pin) {
+        hashedPin = await this.hashPin(pin);
+      }
+
       const citizen = this.citizenRepository.create({
         fullName,
         userCode: generateRandomCode(8),
         phoneNumber: normalizedPhone,
-        status: UserStatus.PENDING,
-        pin: null,
+        status: UserStatus.ACTIVE,
+        pin: hashedPin,
+        isPinSet: !!hashedPin,
         profileImage,
         deviceId,
       });
@@ -151,37 +157,38 @@ export class AuthService {
       // Attach anonymous reports submitted from this device before signup
       await this.attachGuestReports(saved.id, deviceId);
 
-      // Trigger OTP
-      const otp = await this.otpService.createOtp({
-        phoneNumber: normalizedPhone,
-        userId: saved.id,
-        otpType: OTPType.REGISTRATION_OTP,
-      });
-
-      console.log(`[DEV OTP] Phone: ${normalizedPhone} | Code: ${otp.otpCode}`);
-
-      sendSMS({
-        recipient: normalizedPhone,
-        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
-      }).catch(() => void 0);
-
-      const registrationToken = signRegistrationToken(this.jwtService, {
+      const payload = {
         sub: saved.id,
         phoneNumber: saved.phoneNumber,
         role: UserRole.CITIZEN,
+      };
+
+      const accessToken = signAccessToken(this.jwtService, payload);
+      const refreshToken = signRefreshToken(this.jwtService, payload);
+
+      await this.auditService.logSecurityEvent({
+        eventType: SecurityEventType.LOGIN_SUCCESS,
+        actorId: saved.id,
+        actorName: saved.fullName,
+        targetUserId: saved.id,
+        targetUserName: saved.fullName,
+        success: true,
+        metadata: { loginType: "CITIZEN_REGISTRATION" },
       });
 
-      return successResponse("Registration initiated. Please verify your phone.", {
-        registrationToken,
-        expiresIn: 120, // 2 minutes
-        citizen: {
+      return successResponse("Citizen registered successfully", {
+        accessToken,
+        refreshToken,
+        user: {
           id: saved.id,
+          userCode: saved.userCode,
           fullName: saved.fullName,
           phoneNumber: saved.phoneNumber,
+          role: UserRole.CITIZEN,
+          profileImage: saved.profileImage,
+          status: saved.status,
+          createdAt: saved.createdAt,
         },
-        ...(process.env.NODE_ENV !== "production"
-          ? { devOtp: otp.otpCode }
-          : {}),
       });
     } catch (error) {
       return errorResponse(
@@ -938,6 +945,7 @@ export class AuthService {
           fullName: savedUser.fullName,
           phoneNumber: savedUser.phoneNumber,
           role,
+          profileImage: savedUser.profileImage,
           status: savedUser.status,
           createdAt: savedUser.createdAt,
         },

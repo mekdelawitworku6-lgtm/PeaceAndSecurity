@@ -30,7 +30,11 @@ export class PatrolService {
     private readonly auditService: AuditService,
   ) { }
 
-  async create(dto: CreatePatrolDto, file?: any): Promise<ServiceResponse> {
+  async create(
+    dto: CreatePatrolDto,
+    file?: any,
+    creator?: { id: string; role?: string; woredaId?: string },
+  ): Promise<ServiceResponse> {
     if (file) {
       const [asset] = await processUploads(
         file,
@@ -43,23 +47,36 @@ export class PatrolService {
     if (!normalizedPhone)
       throw new BadRequestException("Invalid Ethiopian phone number format");
 
-    const existing = await this.patrolRepository.findOne({
+    const normalizedEmail = dto.email?.trim()
+      ? dto.email.trim().toLowerCase()
+      : null;
+
+    const existingPhone = await this.patrolRepository.findOne({
       where: { phoneNumber: normalizedPhone },
     });
-    if (existing)
-      throw new ConflictException("Phone number already registered");
+    if (existingPhone)
+      throw new ConflictException("Phone number already registered to another patrol officer");
+
+    if (normalizedEmail) {
+      const existingEmail = await this.patrolRepository.findOne({
+        where: { email: normalizedEmail },
+      });
+      if (existingEmail)
+        throw new ConflictException("Email address already registered to another patrol officer");
+    }
 
     const patrol = this.patrolRepository.create({
       fullName: dto.fullName,
       phoneNumber: normalizedPhone,
-      email: dto.email,
+      email: normalizedEmail,
       userCode: generateRandomCode(8),
-      status: UserStatus.PENDING,
+      status: UserStatus.ACTIVE,
       officeAddress: dto.officeAddress,
       officeLatitude: dto.officeLatitude,
       officeLongitude: dto.officeLongitude,
       assignedArea: dto.assignedArea,
-      commanderId: dto.commanderId,
+      commanderId: dto.commanderId || creator?.id,
+      woredaId: dto.woredaId || (creator as any)?.woredaId,
       profileImage: dto.profileImage,
     });
 

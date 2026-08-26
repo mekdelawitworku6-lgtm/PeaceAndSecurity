@@ -8,6 +8,11 @@ import { Report } from "../../modules/reports/entities/report.entity";
 import { SecurityEvent } from "../../modules/audit/entities/security-event.entity";
 import { DataAccessEvent } from "../../modules/audit/entities/data-access-event.entity";
 import { AuditLog } from "../../modules/audit/entities/audit-log.entity";
+import { City } from "../../modules/geo/entities/city.entity";
+import { Subcity } from "../../modules/geo/entities/subcity.entity";
+import { Woreda } from "../../modules/geo/entities/woreda.entity";
+import { Patrol } from "../../modules/patrol/entities/patrol.entity";
+import { Citizen } from "../../modules/citizen/entities/citizen.entity";
 import { AdminSeederService } from "./admin-seeder.service";
 import { ReportTypeSeederService } from "./report-type-seeder.service";
 import { ChatSeederService } from "./chat-seeder.service";
@@ -19,6 +24,11 @@ import { GeoSeederService } from "./geo-seeder.service";
   imports: [
     TypeOrmModule.forFeature([
       User,
+      Patrol,
+      Citizen,
+      City,
+      Subcity,
+      Woreda,
       ReportType,
       Conversation,
       Message,

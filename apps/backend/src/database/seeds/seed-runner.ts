@@ -19,6 +19,7 @@ import { Woreda } from "../../modules/geo/entities/woreda.entity";
 import { AdminSeederService } from "./admin-seeder.service";
 import { ReportTypeSeederService } from "./report-type-seeder.service";
 import { DemoDataSeederService } from "./demo-data-seeder.service";
+import { GeoSeederService } from "./geo-seeder.service";
 
 dotenv.config();
 
@@ -55,22 +56,21 @@ async function runSeeds() {
         await dataSource.initialize();
         console.log("✔ Database connected for seeding");
 
-        const adminSeeder = new AdminSeederService(dataSource);
+        const geoSeeder = new GeoSeederService(dataSource);
         const reportTypeSeeder = new ReportTypeSeederService(dataSource);
+        const adminSeeder = new AdminSeederService(dataSource);
         const demoSeeder = new DemoDataSeederService(dataSource);
 
-        console.log("\n--- Seeding Admin ---");
-        await adminSeeder.seedAdmin();
+        console.log("\n--- Seeding Geo Hierarchy ---");
+        await geoSeeder.seedGeoHierarchy();
 
         console.log("\n--- Seeding Report Types ---");
         await reportTypeSeeder.seedReportTypes();
 
-        console.log("\n--- Seeding Demo Data ---");
-        await demoSeeder.seedCitizens();
-        await demoSeeder.seedReports();
-        await demoSeeder.seedConversations();
-        await demoSeeder.seedCameras();
-        await demoSeeder.seedNotifications();
+        console.log("\n--- Seeding Roles & Users ---");
+        await adminSeeder.seedAllRoles();
+
+        console.log("\n--- Seeding Settings ---");
         await demoSeeder.seedSettings();
 
         console.log("\n✔ All seeding operations complete");

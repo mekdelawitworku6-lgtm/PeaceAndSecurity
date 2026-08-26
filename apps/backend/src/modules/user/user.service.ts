@@ -23,49 +23,54 @@ import { generateRandomCode } from "../../common/utils/generator";
 import { AuditService } from "../audit/audit.service";
 
 export const CREATE_ACCESS: Record<string, UserRole[]> = {
-  [UserRole.SYSTEM_SUPER_ADMIN]: Object.values(UserRole).filter(
-    (r) => r !== UserRole.PATROL && r !== UserRole.CITIZEN,
-  ),
+  [UserRole.SYSTEM_SUPER_ADMIN]: [
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+  ],
   [UserRole.SYSTEM_ADMIN]: [
-    UserRole.SYSTEM_ADMIN,
-    UserRole.SYSTEM_ADMIN_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
   ],
   [UserRole.PEACE_SUPER_ADMIN]: [
-    UserRole.PEACE_SUPER_ADMIN,
-    UserRole.PEACE_SUPER_ADMIN_VIEWER,
     UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
     UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
-    UserRole.PEACE_OFFICER_WOREDA,
-    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
-  ],
-  [UserRole.PEACE_OFFICER_SUBCITY]: [
-    UserRole.PEACE_OFFICER_SUBCITY,
-    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
-    UserRole.PEACE_OFFICER_WOREDA,
-    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
-  ],
-  [UserRole.PEACE_OFFICER_WOREDA]: [
-    UserRole.PEACE_OFFICER_WOREDA,
-    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
   ],
   [UserRole.POLICE_COMMANDER_CITY]: [
-    UserRole.POLICE_COMMANDER_CITY,
-    UserRole.POLICE_COMMANDER_CITY_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
     UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+  ],
+  [UserRole.PEACE_OFFICER_SUBCITY]: [
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
     UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
   ],
   [UserRole.POLICE_COMMANDER_SUBCITY]: [
-    UserRole.POLICE_COMMANDER_SUBCITY,
-    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
     UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
   ],
-  [UserRole.POLICE_COMMANDER_WOREDA]: [
-    UserRole.POLICE_COMMANDER_WOREDA,
-    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
-  ],
+  [UserRole.PEACE_OFFICER_WOREDA]: [],
+  [UserRole.POLICE_COMMANDER_WOREDA]: [],
+  [UserRole.SYSTEM_SUPER_ADMIN_VIEWER]: [],
+  [UserRole.SYSTEM_ADMIN_VIEWER]: [],
+  [UserRole.PEACE_SUPER_ADMIN_VIEWER]: [],
+  [UserRole.PEACE_OFFICER_SUBCITY_VIEWER]: [],
+  [UserRole.PEACE_OFFICER_WOREDA_VIEWER]: [],
+  [UserRole.POLICE_COMMANDER_CITY_VIEWER]: [],
+  [UserRole.POLICE_COMMANDER_SUBCITY_VIEWER]: [],
+  [UserRole.POLICE_COMMANDER_WOREDA_VIEWER]: [],
+  [UserRole.PATROL]: [],
+  [UserRole.CITIZEN]: [],
 };
 
 @Injectable()
@@ -105,7 +110,7 @@ export class UserService {
       );
     }
 
-    const userRole = dto.role ?? UserRole.SYSTEM_ADMIN;
+    const userRole = dto.role ?? UserRole.PEACE_OFFICER_SUBCITY;
 
     // Allow dashboard + viewer roles; patrol/citizen have their own endpoints
     const mobileRoles = [UserRole.PATROL, UserRole.CITIZEN];
@@ -116,7 +121,7 @@ export class UserService {
     }
 
     // Scope enforcement: a role can only create roles within its access map
-    if (creator && creator.role !== UserRole.SYSTEM_SUPER_ADMIN) {
+    if (creator) {
       const allowed = CREATE_ACCESS[creator.role];
       if (!allowed || !allowed.includes(userRole)) {
         throw new ForbiddenException(

@@ -49,11 +49,9 @@ import { ChevronDown } from "lucide-react";
 
 const ROLE_BUTTON_LABELS: Partial<Record<UserRole, string>> = {
   [UserRole.PEACE_OFFICER_SUBCITY]: "Add Subcity Peace and Security Officer",
-  [UserRole.PEACE_OFFICER_WOREDA]: "Add Woreda Peace and Security Officer",
-  [UserRole.POLICE_COMMANDER_CITY]: "Add City Police Commander",
   [UserRole.POLICE_COMMANDER_SUBCITY]: "Add Subcity Police Commander",
+  [UserRole.PEACE_OFFICER_WOREDA]: "Add Woreda Peace and Security Officer",
   [UserRole.POLICE_COMMANDER_WOREDA]: "Add Woreda Police Commander",
-  [UserRole.PEACE_SUPER_ADMIN]: "Add Peace and Security Super Admin",
 };
 
 export default function UserManagementPage() {
@@ -425,32 +423,34 @@ export default function UserManagementPage() {
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 w-full xl:w-auto">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className="h-11 rounded px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none">
-                  <Plus className="h-4 w-4 mr-1.5" />
-                  Add Officer
-                  <ChevronDown className="h-4 w-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-72">
-                {(Object.keys(ROLE_BUTTON_LABELS) as UserRole[])
-                  .filter((r) => creatableRoles.includes(r))
-                  .map((r) => (
-                    <DropdownMenuItem
-                      key={r}
-                      onClick={() => {
-                        setEditingUser({ role: r, _isNew: true });
-                        setFormOpen(true);
-                      }}
-                    >
-                      {ROLE_BUTTON_LABELS[r]}
-                    </DropdownMenuItem>
-                  ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          {creatableRoles.filter((r) => ROLE_BUTTON_LABELS[r]).length > 0 && (
+            <div className="flex items-center gap-2 shrink-0 w-full xl:w-auto">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button className="h-11 rounded px-5 bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-sm shrink-0 flex-1 xl:flex-none">
+                    <Plus className="h-4 w-4 mr-1.5" />
+                    Add Officer
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-72">
+                  {creatableRoles
+                    .filter((r) => ROLE_BUTTON_LABELS[r])
+                    .map((r) => (
+                      <DropdownMenuItem
+                        key={r}
+                        onClick={() => {
+                          setEditingUser({ role: r, _isNew: true });
+                          setFormOpen(true);
+                        }}
+                      >
+                        {ROLE_BUTTON_LABELS[r]}
+                      </DropdownMenuItem>
+                    ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
       </PageHeader>
 

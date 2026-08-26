@@ -10,7 +10,7 @@ export class ChatSeederService implements OnApplicationBootstrap {
   constructor(private dataSource: DataSource) {}
 
   async onApplicationBootstrap() {
-    await this.seedConversations();
+    // Keep empty to allow testing with fresh chat data
   }
 
   async seedConversations() {

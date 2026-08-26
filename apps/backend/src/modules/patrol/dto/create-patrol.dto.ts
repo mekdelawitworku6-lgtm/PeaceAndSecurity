@@ -65,6 +65,15 @@ export class CreatePatrolDto {
   @IsString()
   commanderId?: string;
 
+  @ApiProperty({
+    example: "c0861654-4f31-4f57-8914-e3eee08b7c61",
+    description: "Woreda ID",
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  woredaId?: string;
+
   @ApiProperty({ example: "/uploads/profiles/patrol1.jpg", required: false })
   @IsOptional()
   @IsString()

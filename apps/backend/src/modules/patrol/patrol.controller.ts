@@ -50,8 +50,15 @@ export class PatrolController {
    */
   @Post()
   @NoBypass()
-  @Roles(UserRole.PEACE_OFFICER_WOREDA, UserRole.POLICE_COMMANDER_WOREDA)
-  @ApiOperation({ summary: "Register a new patrol officer (Woreda Officers only)" })
+  @Roles(
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+  )
+  @ApiOperation({ summary: "Register a new patrol officer (Woreda Commanders only)" })
   @ApiResponse({
     status: 201,
     description: "Patrol officer registered successfully.",
@@ -61,13 +68,31 @@ export class PatrolController {
   @UseInterceptors(FileInterceptor("profileImage", { storage: memoryStorage() }))
   async create(
     @Body() dto: CreatePatrolDto,
+    @Request() req: any,
     @UploadedFile() file?: any,
   ) {
-    return this.patrolService.create(dto, file);
+    return this.patrolService.create(dto, file, req.user);
   }
 
   @Get()
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN_VIEWER, UserRole.SYSTEM_ADMIN_VIEWER)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.SYSTEM_SUPER_ADMIN_VIEWER,
+    UserRole.SYSTEM_ADMIN_VIEWER,
+    UserRole.PEACE_SUPER_ADMIN_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+    UserRole.POLICE_COMMANDER_CITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  )
   @ApiOperation({ summary: "Get all patrol officers (paginated, filterable)" })
   @ApiResponse({
     status: 200,
@@ -94,7 +119,24 @@ export class PatrolController {
   }
 
   @Get("nearby")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN_VIEWER, UserRole.SYSTEM_ADMIN_VIEWER)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.SYSTEM_SUPER_ADMIN_VIEWER,
+    UserRole.SYSTEM_ADMIN_VIEWER,
+    UserRole.PEACE_SUPER_ADMIN_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+    UserRole.POLICE_COMMANDER_CITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  )
   @ApiOperation({ summary: "Get nearby patrol officers based on coordinates" })
   @ApiResponse({
     status: 200,
@@ -119,7 +161,24 @@ export class PatrolController {
   }
 
   @Get(":id")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN, UserRole.SYSTEM_SUPER_ADMIN_VIEWER, UserRole.SYSTEM_ADMIN_VIEWER)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.SYSTEM_SUPER_ADMIN_VIEWER,
+    UserRole.SYSTEM_ADMIN_VIEWER,
+    UserRole.PEACE_SUPER_ADMIN_VIEWER,
+    UserRole.PEACE_OFFICER_SUBCITY_VIEWER,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+    UserRole.POLICE_COMMANDER_CITY_VIEWER,
+    UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  )
   @ApiOperation({ summary: "Get a patrol officer by ID" })
   @ApiResponse({
     status: 200,
@@ -138,7 +197,14 @@ export class PatrolController {
   }
 
   @Patch(":id")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA,
+  )
   @ApiOperation({ summary: "Update a patrol officer's details" })
   @ApiResponse({
     status: 200,
@@ -156,7 +222,13 @@ export class PatrolController {
   }
 
   @Delete(":id")
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiOperation({ summary: "Delete a patrol officer" })
   @ApiResponse({
     status: 200,

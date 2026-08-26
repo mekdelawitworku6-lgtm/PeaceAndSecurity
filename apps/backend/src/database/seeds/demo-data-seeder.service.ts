@@ -31,11 +31,6 @@ export class DemoDataSeederService implements OnApplicationBootstrap {
   constructor(private dataSource: DataSource) {}
 
   async onApplicationBootstrap() {
-    await this.seedCitizens();
-    await this.seedReports();
-    await this.seedConversations();
-    await this.seedCameras();
-    await this.seedNotifications();
     await this.seedSettings();
   }
 

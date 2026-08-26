@@ -81,12 +81,17 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         pin: event.pin,
         profileImage: event.profileImage,
       );
+      await sessionManager.saveSession(
+        access: result.accessToken,
+        refresh: result.refreshToken,
+        user: result.user,
+      );
+      _connectSockets(result.user);
       emit(state.copyWith(
-        status: AuthStatus.signedOut,
-        registrationToken: result.registrationToken,
-        pendingPhone: event.phoneNumber,
-        pendingPin: event.pin,
-        pendingDevOtp: result.devOtp,
+        status: AuthStatus.signedIn,
+        user: result.user,
+        accessToken: result.accessToken,
+        refreshToken: result.refreshToken,
         error: null,
       ));
     } catch (e) {

@@ -79,11 +79,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
       pin: pin,
       profileImage: _profileImage,
     ));
-    final state = bloc.state;
-    final token = state.registrationToken;
-    if (token != null) {
-      context.go('/verify-otp?registrationToken=$token&phoneNumber=$phone&pin=$pin');
-    }
   }
 
   void _showAlert(String title, String message) {
@@ -107,17 +102,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final t = context.l10n().t;
     return BlocConsumer<AuthBloc, AuthState>(
       listenWhen: (prev, curr) =>
-          curr.registrationToken != null && prev.registrationToken == null,
+          curr.status == AuthStatus.signedIn && prev.status != AuthStatus.signedIn,
       listener: (context, state) {
-        final token = state.registrationToken;
-        if (token != null) {
-          context.go(
-            '/verify-otp?registrationToken=$token'
-            '&phoneNumber=${Uri.encodeComponent(state.pendingPhone ?? '')}'
-            '&pin=${Uri.encodeComponent(state.pendingPin ?? '')}'
-            '&devOtp=${state.pendingDevOtp ?? ''}',
-          );
-        }
+        context.go('/home');
       },
       builder: (context, state) {
         return Scaffold(
@@ -218,13 +205,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         keyboardType: TextInputType.number,
                         maxLength: 6,
                       ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'A verification code will be sent to your phone. '
-                        'For local dev it appears in the backend console.',
-                        style: AppTypography.caption,
-                      ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
                       AppButton(
                         title: 'Register',
                         loading: state.status == AuthStatus.loading,

@@ -44,6 +44,7 @@ import {
 } from "@/lib/store/geoSlice";
 import { fetchUsers, selectUsers } from "@/lib/store/usersSlice";
 import { useAuth } from "@/app/context/auth-context";
+import { MapPicker } from "@/components/maps/map-picker";
 
 type Props = {
   onOpenChange: (open: boolean) => void;
@@ -137,7 +138,12 @@ export function UserForm({
     UserRole.POLICE_COMMANDER_SUBCITY_VIEWER,
   ].includes(role);
 
-  const isWoredaRole = [UserRole.PEACE_OFFICER_WOREDA, UserRole.PEACE_OFFICER_WOREDA_VIEWER, UserRole.POLICE_COMMANDER_WOREDA_VIEWER].includes(role);
+  const isWoredaRole = [
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_WOREDA,
+    UserRole.PEACE_OFFICER_WOREDA_VIEWER,
+    UserRole.POLICE_COMMANDER_WOREDA_VIEWER,
+  ].includes(role);
 
   const showWoreda = isWoredaRole;
 
@@ -147,15 +153,15 @@ export function UserForm({
       setEmail(initialData.email || "");
       const rawPhone = initialData.phoneNumber || "";
       setPhoneNumber(rawPhone.startsWith("+251") ? rawPhone.slice(4) : rawPhone.replace(/^\+?\d{1,3}/, ""));
-      setRole((initialData.role as UserRole) || UserRole.SYSTEM_ADMIN);
+      setRole((initialData.role as UserRole) || (defaultRole as UserRole) || UserRole.SYSTEM_ADMIN);
       setOfficeAddress((initialData as any).officeAddress || "");
       setOfficeLatitude(String((initialData as any).officeLatitude || ""));
       setOfficeLongitude(String((initialData as any).officeLongitude || ""));
       setAssignedArea((initialData as any).assignedArea || "");
       setSubCity((initialData as any).subCity || "");
       setCommanderId((initialData as any).commanderId || "");
-      setCityId((initialData as any).cityId || "");
-      setSubcityId((initialData as any).subcityId || "");
+      setCityId((initialData as any).cityId || (currentUser as any)?.cityId || "");
+      setSubcityId((initialData as any).subcityId || (currentUser as any)?.subcityId || "");
       setWoredaId((initialData as any).woredaId || "");
       if (
         initialData.profileImage &&
@@ -167,9 +173,11 @@ export function UserForm({
         setPermissions(initialData.permissions);
       }
     } else {
+      if ((currentUser as any)?.cityId) setCityId((currentUser as any).cityId);
+      if ((currentUser as any)?.subcityId) setSubcityId((currentUser as any).subcityId);
       setPermissions(DEFAULT_PERMISSIONS_BY_ROLE[role] || []);
     }
-  }, [initialData]);
+  }, [initialData, defaultRole, currentUser]);
 
   useEffect(() => {
     if (!initialData && role) {
@@ -255,7 +263,10 @@ export function UserForm({
       if (officeLongitude.trim()) formData.append("officeLongitude", officeLongitude.trim());
       if (assignedArea.trim()) formData.append("assignedArea", assignedArea.trim());
       if (subCity.trim()) formData.append("subCity", subCity.trim());
-      if (commanderId) formData.append("commanderId", commanderId);
+      const effectiveCommanderId = commanderId || currentUser?.id;
+      if (effectiveCommanderId) formData.append("commanderId", effectiveCommanderId);
+      const effectiveWoredaId = woredaId || (currentUser as any)?.woredaId;
+      if (effectiveWoredaId) formData.append("woredaId", effectiveWoredaId);
     }
 
     if (!isPatrol && permissions.length > 0) {
@@ -394,7 +405,7 @@ export function UserForm({
               )}
             </div>
 
-            {isNew && (
+            {isNew && !isPatrol && (
               <div className="space-y-1.5">
                 <Label className="text-xs font-bold text-slate-600">Role <span className="text-red-500">*</span></Label>
                 <Select value={role} onValueChange={(v) => {
@@ -478,7 +489,7 @@ export function UserForm({
                      </Select>
                    </div>
                    {showWoreda && (
-<div className="space-y-1.5">
+                     <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold text-slate-500">Woreda</Label>
                         <Select value={woredaId} onValueChange={setWoredaId}>
                           <SelectTrigger className={cn("h-10 rounded-lg border-slate-200", errors.woredaId && "border-red-500")}>
@@ -511,28 +522,15 @@ export function UserForm({
                       <SelectValue placeholder="Select sub-city" />
                     </SelectTrigger>
                     <SelectContent>
-                      {["Bole", "Arada", "Kirkos", "Yeka", "Addis Ketema", "Lideta", "Nifas Silk Lafto", "Kolfe Keranio", "Gulele", "Akaki Kality", "Lemi Kura"].map((sc) => (
-                        <SelectItem key={sc} value={sc}>{sc}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
-                    <Shield className="h-3.5 w-3.5 text-slate-400" />
-                    Police Commander
-                  </Label>
-                  <Select value={commanderId} onValueChange={setCommanderId}>
-                    <SelectTrigger className="h-10 rounded-lg border-slate-200">
-                      <SelectValue placeholder="Select commander" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {commanders.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.fullName || c.name} — {ROLE_LABELS[c.role] || c.role}
-                        </SelectItem>
-                      ))}
+                      {subcities.length > 0 ? (
+                        subcities.map((sc: any) => (
+                          <SelectItem key={sc.id} value={sc.name}>{sc.name}</SelectItem>
+                        ))
+                      ) : (
+                        ["Bole", "Arada", "Kirkos", "Yeka", "Addis Ketema", "Lideta", "Nifas Silk Lafto", "Kolfe Keranio", "Gulele", "Akaki Kality", "Lemi Kura"].map((sc) => (
+                          <SelectItem key={sc} value={sc}>{sc}</SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
                 </div>
@@ -544,31 +542,26 @@ export function UserForm({
                   </Label>
                   <Input
                     className="h-10 rounded-lg border-slate-200"
-                    placeholder="e.g. Bole Sub-City Division"
+                    placeholder="e.g. Bole Sub-City Police Station"
                     value={officeAddress}
                     onChange={(e) => setOfficeAddress(e.target.value)}
                   />
                 </div>
 
-                <div className="space-y-1.5">
+                <div className="sm:col-span-2 space-y-2 pt-2 border-t border-slate-100">
                   <Label className="text-xs font-bold text-slate-600 flex items-center gap-1.5">
                     <Navigation className="h-3.5 w-3.5 text-slate-400" />
-                    Coordinates (Lat, Long)
+                    Station Location (Click on map to pin coordinates)
                   </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      className="h-10 rounded-lg border-slate-200 flex-1 text-xs"
-                      placeholder="Lat: 9.0"
-                      value={officeLatitude}
-                      onChange={(e) => setOfficeLatitude(e.target.value)}
-                    />
-                    <Input
-                      className="h-10 rounded-lg border-slate-200 flex-1 text-xs"
-                      placeholder="Long: 38.0"
-                      value={officeLongitude}
-                      onChange={(e) => setOfficeLongitude(e.target.value)}
-                    />
-                  </div>
+                  <MapPicker
+                    lat={officeLatitude ? Number(officeLatitude) : 9.02497}
+                    lng={officeLongitude ? Number(officeLongitude) : 38.74689}
+                    onChange={(lat, lng) => {
+                      setOfficeLatitude(lat ? lat.toString() : "");
+                      setOfficeLongitude(lng ? lng.toString() : "");
+                    }}
+                    height="200px"
+                  />
                 </div>
               </>
             )}

@@ -17,9 +17,7 @@ export class AuditSeederService implements OnApplicationBootstrap {
   constructor(private dataSource: DataSource) {}
 
   async onApplicationBootstrap() {
-    await this.seedSecurityEvents();
-    await this.seedDataAccessEvents();
-    await this.seedAuditLogs();
+    // Keep empty to allow testing with fresh audit logs
   }
 
   async seedSecurityEvents() {
