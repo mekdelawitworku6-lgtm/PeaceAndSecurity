@@ -17,6 +17,15 @@ class AuthRepository {
     return LoginData.fromJson(res['data'] as Map<String, dynamic>);
   }
 
+  Future<void> logout() async {
+    try {
+      final refresh = SessionManager.instance.refreshToken;
+      await _api.post('/auth/logout', data: {
+        'refreshToken': ?refresh,
+      });
+    } catch (_) {}
+  }
+
   Future<void> changePin({
     required String currentPin,
     required String newPin,

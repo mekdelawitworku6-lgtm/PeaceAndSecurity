@@ -337,7 +337,7 @@ export class ReportsService {
       savedReport.id,
       ReportStatus.SUBMITTED,
       { citizenId: isAnonymous ? undefined : (userId || undefined) },
-      `Report submitted in ${area}`,
+      `Report just created in ${area}`,
       createReportDto.latitude && createReportDto.longitude
         ? {
           latitude: createReportDto.latitude,

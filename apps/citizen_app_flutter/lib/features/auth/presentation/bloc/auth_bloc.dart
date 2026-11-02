@@ -75,23 +75,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       AuthRegisterRequested event, Emitter<AuthState> emit) async {
     emit(state.copyWith(status: AuthStatus.loading, error: null));
     try {
-      final result = await repository.register(
+      final res = await repository.register(
         fullName: event.fullName,
         phoneNumber: event.phoneNumber,
         pin: event.pin,
         profileImage: event.profileImage,
       );
-      await sessionManager.saveSession(
-        access: result.accessToken,
-        refresh: result.refreshToken,
-        user: result.user,
-      );
-      _connectSockets(result.user);
+      final regToken = res['registrationToken'] as String?;
+      final devOtp = res['devOtp'] as String?;
+      if (regToken == null) {
+        throw Exception('No registration token returned. Please try again.');
+      }
       emit(state.copyWith(
-        status: AuthStatus.signedIn,
-        user: result.user,
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken,
+        status: AuthStatus.idle,
+        registrationToken: regToken,
+        pendingPhone: event.phoneNumber,
+        pendingPin: event.pin,
+        pendingDevOtp: devOtp,
         error: null,
       ));
     } catch (e) {
@@ -175,6 +175,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogout(AuthLogoutRequested event, Emitter<AuthState> emit) async {
+    try {
+      await repository.logout();
+    } catch (_) {}
     SocketService.instance.disconnect();
     await sessionManager.clear();
     emit(state.copyWith(
@@ -182,6 +185,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       user: null,
       accessToken: null,
       refreshToken: null,
+      registrationToken: null,
+      pendingPhone: null,
+      pendingPin: null,
+      pendingDevOtp: null,
       isGuest: false,
       error: null,
     ));

@@ -48,4 +48,16 @@ export class WorkReport extends BaseEntity {
 
   @Column({ type: "text", nullable: true })
   reviewNote: string;
+
+  @Index()
+  @Column({ nullable: true })
+  cityId: string;
+
+  @Index()
+  @Column({ nullable: true })
+  subcityId: string;
+
+  @Index()
+  @Column({ nullable: true })
+  woredaId: string;
 }

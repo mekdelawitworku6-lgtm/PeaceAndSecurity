@@ -60,14 +60,14 @@ export class NotificationsGateway
     // Save to DB and handle push notification
     const notification = await this.notificationsService.create({
       ...payload,
-      userId: (role === "SYSTEM_ADMIN" || role === "SYSTEM_SUPER_ADMIN") ? userId : undefined,
+      userId: (role !== "PATROL" && role !== "CITIZEN") ? userId : undefined,
       patrolId: role === "PATROL" ? userId : undefined,
       citizenId: role === "CITIZEN" ? userId : undefined,
     });
 
     // Get updated unread count
     const count = await this.notificationsService.getUnreadCount(
-      (role === "SYSTEM_ADMIN" || role === "SYSTEM_SUPER_ADMIN") ? userId : undefined,
+      (role !== "PATROL" && role !== "CITIZEN") ? userId : undefined,
       role === "PATROL" ? userId : undefined,
       role === "CITIZEN" ? userId : undefined,
     );

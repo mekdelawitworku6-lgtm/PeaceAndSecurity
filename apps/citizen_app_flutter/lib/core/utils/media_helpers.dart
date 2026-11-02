@@ -52,9 +52,23 @@ class MediaHelpers {
     return result.map((x) => _fromXFile(x, 'image/jpeg')).toList();
   }
 
+  static Future<PickedMedia?> takePhoto() async {
+    final picker = ImagePicker();
+    final result = await picker.pickImage(source: ImageSource.camera, imageQuality: 80);
+    if (result == null) return null;
+    return _fromXFile(result, 'image/jpeg');
+  }
+
   static Future<PickedMedia?> pickVideo() async {
     final picker = ImagePicker();
     final result = await picker.pickVideo(source: ImageSource.gallery);
+    if (result == null) return null;
+    return _fromXFile(result, 'video/mp4');
+  }
+
+  static Future<PickedMedia?> takeVideo() async {
+    final picker = ImagePicker();
+    final result = await picker.pickVideo(source: ImageSource.camera);
     if (result == null) return null;
     return _fromXFile(result, 'video/mp4');
   }

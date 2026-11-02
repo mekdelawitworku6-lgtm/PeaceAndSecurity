@@ -82,7 +82,7 @@ onRefresh: () async {
                             icon: Icons.report_gmailerrorred,
                             title: t('reportIncident'),
                             sub: t('typesAvailable'),
-                            onTap: () => context.go('/create-report'),
+                            onTap: () => context.push('/create-report'),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -125,7 +125,7 @@ onRefresh: () async {
                           title: t('noReportsYet'),
                           subtitle: t('noReportsSub'),
                           actionLabel: t('reportIncident'),
-                          onAction: () => context.go('/create-report'),
+                          onAction: () => context.push('/create-report'),
                         ),
                       )
                     else
@@ -180,19 +180,20 @@ onRefresh: () async {
     String lang,
   ) {
     final t = context.l10n().t;
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+      padding: EdgeInsets.fromLTRB(16, topPadding + 10, 16, 18),
       decoration: const BoxDecoration(
         color: AppColors.primaryDark,
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(20)),
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 21,
+          const CircleAvatar(
+            radius: 20,
             backgroundColor: Colors.white,
-            backgroundImage: const AssetImage('assets/images/logo.png'),
+            backgroundImage: AssetImage('assets/images/logo.png'),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -218,32 +219,35 @@ onRefresh: () async {
               ],
             ),
           ),
+          const SizedBox(width: 8),
           GestureDetector(
             onTap: _showLanguageModal,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(999),
               ),
               child: Text(
                 lang.toUpperCase(),
-                style: AppTypography.smallMedium.copyWith(color: AppColors.white),
+                style: AppTypography.smallMedium.copyWith(color: AppColors.white, fontSize: 12),
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
           Stack(
             clipBehavior: Clip.none,
             children: [
               IconButton(
-                onPressed: () => context.go('/notifications'),
-                icon: const Icon(Icons.notifications_none, color: AppColors.white, size: 24),
+                onPressed: () => context.push('/notifications'),
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                padding: const EdgeInsets.all(8),
+                icon: const Icon(Icons.notifications_none, color: AppColors.white, size: 22),
               ),
               if (unreadCount > 0)
                 Positioned(
-                  right: 2,
-                  top: 2,
+                  right: 4,
+                  top: 4,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                     decoration: BoxDecoration(

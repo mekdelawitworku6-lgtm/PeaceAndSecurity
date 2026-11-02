@@ -23,12 +23,15 @@ class AppHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
         color: AppColors.card,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      child: Row(
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
         children: [
           SizedBox(
             width: showBack ? 44 : 8,
@@ -76,6 +79,8 @@ class AppHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }

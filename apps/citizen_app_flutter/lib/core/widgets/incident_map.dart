@@ -56,6 +56,10 @@ class _IncidentMapState extends State<IncidentMap> {
         oldWidget.selectedId != widget.selectedId) {
       _syncMarkers();
     }
+    if (widget.initialCenter != null &&
+        widget.initialCenter != oldWidget.initialCenter) {
+      moveTo(widget.initialCenter!, zoom: widget.initialZoom);
+    }
   }
 
   void _syncMarkers() {

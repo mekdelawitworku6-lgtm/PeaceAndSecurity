@@ -1,0 +1,5 @@
+# Copy this file to android/key.properties and replace with your production release keystore values
+storePassword=your_keystore_password
+keyPassword=your_key_password
+keyAlias=upload
+storeFile=/path/to/release.keystore

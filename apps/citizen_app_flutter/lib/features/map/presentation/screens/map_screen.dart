@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../../../../core/i18n/context_ext.dart';
 import '../../../../core/models/report.dart';
@@ -20,12 +21,42 @@ enum _Filter { all, crime, illegal, threat }
 
 class _MapScreenState extends State<MapScreen> {
   _Filter _activeFilter = _Filter.all;
+  String _selectedSubcity = 'All';
+  LatLng? _mapCenter;
   Report? _selectedReport;
   final _search = TextEditingController();
+
+  static const List<String> _subcities = [
+    'All',
+    'Bole',
+    'Kirkos',
+    'Arada',
+    'Yeka',
+    'Lideta',
+    'Nifas Silk',
+    'Kolfe Keranio',
+    'Gulele',
+    'Akaky Kaliti',
+    'Addis Ketema',
+  ];
+
+  static const Map<String, LatLng> _subcityCoords = {
+    'Bole': LatLng(8.9806, 38.7844),
+    'Kirkos': LatLng(9.0069, 38.7525),
+    'Arada': LatLng(9.0350, 38.7520),
+    'Yeka': LatLng(9.0322, 38.8050),
+    'Lideta': LatLng(9.0125, 38.7350),
+    'Nifas Silk': LatLng(8.9650, 38.7300),
+    'Kolfe Keranio': LatLng(9.0150, 38.7050),
+    'Gulele': LatLng(9.0650, 38.7400),
+    'Akaky Kaliti': LatLng(8.9200, 38.7700),
+    'Addis Ketema': LatLng(9.0300, 38.7300),
+  };
 
   @override
   void initState() {
     super.initState();
+    _search.addListener(() => setState(() {}));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<ReportsBloc>().add(const ReportsFetchNearbyRequested());
@@ -34,21 +65,73 @@ class _MapScreenState extends State<MapScreen> {
     });
   }
 
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  void _onSelectSubcity(String subcity) {
+    setState(() {
+      _selectedSubcity = subcity;
+      if (subcity != 'All' && _subcityCoords.containsKey(subcity)) {
+        _mapCenter = _subcityCoords[subcity];
+      }
+    });
+  }
+
   List<Report> _filtered(List<Report> reports) {
+    final query = _search.text.trim().toLowerCase();
+    final subcityFilter = _selectedSubcity.toLowerCase();
+
     return reports.where((r) {
       final type = (r.violationType ?? '').toUpperCase();
       switch (_activeFilter) {
         case _Filter.crime:
-          return type.contains('CRIME') ||
-              type.contains('ROBBERY') ||
-              r.isEmergency;
+          if (!type.contains('CRIME') &&
+              !type.contains('ROBBERY') &&
+              !r.isEmergency) {
+            return false;
+          }
+          break;
         case _Filter.illegal:
-          return type.contains('ILLEGAL') || type.contains('VANDALISM');
+          if (!type.contains('ILLEGAL') && !type.contains('VANDALISM')) {
+            return false;
+          }
+          break;
         case _Filter.threat:
-          return type.contains('THREAT') || type.contains('WEAPON');
+          if (!type.contains('THREAT') && !type.contains('WEAPON')) {
+            return false;
+          }
+          break;
         case _Filter.all:
-          return true;
+          break;
       }
+
+      if (_selectedSubcity != 'All') {
+        final address = (r.address ?? '').toLowerCase();
+        final area = (r.area ?? '').toLowerCase();
+        if (!address.contains(subcityFilter) && !area.contains(subcityFilter)) {
+          return false;
+        }
+      }
+
+      if (query.isNotEmpty) {
+        final address = (r.address ?? '').toLowerCase();
+        final area = (r.area ?? '').toLowerCase();
+        final vType = (r.violationType ?? '').toLowerCase();
+        final desc = (r.reportDescription ?? '').toLowerCase();
+        final caseId = (r.caseId ?? '').toLowerCase();
+        if (!address.contains(query) &&
+            !area.contains(query) &&
+            !vType.contains(query) &&
+            !desc.contains(query) &&
+            !caseId.contains(query)) {
+          return false;
+        }
+      }
+
+      return true;
     }).toList();
   }
 
@@ -149,6 +232,51 @@ class _MapScreenState extends State<MapScreen> {
     );
   }
 
+  void _showLocationFilterSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Filter by Location', style: AppTypography.h3),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _subcities.map((s) {
+                final isSelected = _selectedSubcity == s;
+                return ChoiceChip(
+                  label: Text(s == 'All' ? 'All Locations' : s),
+                  selected: isSelected,
+                  onSelected: (_) {
+                    _onSelectSubcity(s);
+                    Navigator.pop(ctx);
+                  },
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = context.l10n().t;
@@ -165,12 +293,14 @@ class _MapScreenState extends State<MapScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(t('viewIncidentMap'), style: AppTypography.h2),
-          ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Text(t('viewIncidentMap'), style: AppTypography.h2),
+            ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Row(
@@ -196,14 +326,23 @@ class _MapScreenState extends State<MapScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.card,
-                    borderRadius: BorderRadius.circular(12),
+                GestureDetector(
+                  onTap: _showLocationFilterSheet,
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _selectedSubcity != 'All' ? AppColors.primary : AppColors.card,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _selectedSubcity != 'All' ? AppColors.primary : AppColors.border,
+                      ),
+                    ),
+                    child: Icon(
+                      Icons.tune,
+                      color: _selectedSubcity != 'All' ? Colors.white : AppColors.textMuted,
+                    ),
                   ),
-                  child: const Icon(Icons.tune, color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -241,12 +380,47 @@ class _MapScreenState extends State<MapScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 32,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _subcities.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 6),
+              itemBuilder: (context, index) {
+                final subcity = _subcities[index];
+                final isSelected = _selectedSubcity == subcity;
+                return GestureDetector(
+                  onTap: () => _onSelectSubcity(subcity),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AppColors.primary : AppColors.card,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: isSelected ? AppColors.primary : AppColors.border,
+                      ),
+                    ),
+                    child: Text(
+                      subcity == 'All' ? 'All Areas' : subcity,
+                      style: AppTypography.caption.copyWith(
+                        color: isSelected ? Colors.white : AppColors.text,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
           const SizedBox(height: 12),
           Expanded(
             child: Stack(
               children: [
                 Positioned.fill(
                   child: IncidentMap(
+                    initialCenter: _mapCenter,
                     markers: items
                         .where((r) =>
                             r.latitude != 0 && r.longitude != 0)
@@ -317,14 +491,21 @@ class _MapScreenState extends State<MapScreen> {
                             style: AppTypography.h3.copyWith(color: AppColors.primary),
                           ),
                           const SizedBox(width: 6),
-                          Text(t('activeIncidents'), style: AppTypography.smallMedium),
-                          const Spacer(),
+                          Expanded(
+                            child: Text(
+                              t('activeIncidents'),
+                              style: AppTypography.smallMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           _LegendDot(color: AppColors.danger, label: 'Crime'),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           _LegendDot(color: AppColors.accent, label: 'Illegal'),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
                           _LegendDot(color: AppColors.info, label: 'Threat'),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 4),
                           const Icon(Icons.chevron_right, size: 18, color: AppColors.textMuted),
                         ],
                       ),
@@ -335,6 +516,7 @@ class _MapScreenState extends State<MapScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }

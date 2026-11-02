@@ -47,7 +47,7 @@ class _MyReportsScreenState extends State<MyReportsScreen> {
             title: t('reports'),
             showBack: false,
             right: GestureDetector(
-              onTap: () => context.go('/create-report'),
+              onTap: () => context.push('/create-report'),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(

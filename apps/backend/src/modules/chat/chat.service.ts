@@ -157,6 +157,26 @@ export class ChatService {
       }
     }
 
+    // Notify the citizen if a message is sent by patrol or admin
+    if (dto.senderType !== "citizen" && conversation.report?.reporterId) {
+      const citizen = (await this.conversationRepo.manager
+        .getRepository("Citizen")
+        .findOne({ where: { id: conversation.report.reporterId } })) as any;
+      if (citizen) {
+        this.notificationsGateway.notifyUser(citizen.id, "CITIZEN", {
+          title: `New message on case ${conversation.report.caseId || "Report"}`,
+          message: `${dto.senderName || "Officer"}: ${dto.content}`,
+          type: NotificationType.CHAT_MESSAGE,
+          data: {
+            conversationId: dto.conversationId,
+            reportId: conversation.report.id,
+            caseId: conversation.report.caseId,
+          },
+          fcmToken: citizen.fcmToken,
+        });
+      }
+    }
+
     return saved;
   }
 

@@ -41,6 +41,21 @@ export class UserFilterDto {
   @IsOptional()
   endDate?: string;
 
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  cityId?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  subcityId?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  woredaId?: string;
+
   @IsOptional()
   search?: string;
 

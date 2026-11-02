@@ -4,6 +4,8 @@ import {
   UnauthorizedException,
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -17,6 +19,14 @@ import {
   comparePassword,
   hashPassword,
 } from "../../common/utils/password.util";
+import {
+  blacklistToken,
+  isTokenBlacklisted,
+  redisDel,
+  redisGet,
+  redisSet,
+} from "../../common/utils/redis.service";
+import { validatePinComplexity } from "../../common/utils/pin-validator.util";
 import {
   signAccessToken,
   signRefreshToken,
@@ -92,13 +102,57 @@ export class AuthService {
     }
   }
 
-  /** ===== Shared PIN Helpers ===== */
+  /** ===== Shared PIN & Lockout Helpers ===== */
   private async hashPin(pin: string): Promise<string> {
+    validatePinComplexity(pin);
     return hashPassword(pin);
   }
 
   private async comparePin(plain: string, hashed: string): Promise<boolean> {
     return comparePassword(plain, hashed);
+  }
+
+  private async checkLoginLockout(phone: string): Promise<void> {
+    try {
+      const lockKey = `login:lockout:${phone}`;
+      const isLocked = await redisGet(lockKey);
+      if (isLocked) {
+        throw new HttpException(
+          "Too many failed login attempts. Account temporarily locked for 15 minutes.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+    }
+  }
+
+  private async recordFailedLogin(phone: string): Promise<void> {
+    try {
+      const failedKey = `login:failed:${phone}`;
+      const lockKey = `login:lockout:${phone}`;
+      const raw = await redisGet(failedKey);
+      const count = (Number(raw) || 0) + 1;
+      if (count >= 5) {
+        await redisSet(lockKey, "locked", 900);
+        await redisDel(failedKey);
+        throw new HttpException(
+          "Too many failed login attempts. Account temporarily locked for 15 minutes.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      } else {
+        await redisSet(failedKey, String(count), 900);
+      }
+    } catch (err) {
+      if (err instanceof HttpException) throw err;
+    }
+  }
+
+  private async clearLoginLockout(phone: string): Promise<void> {
+    try {
+      await redisDel(`login:failed:${phone}`);
+      await redisDel(`login:lockout:${phone}`);
+    } catch (_) {}
   }
 
   /** ===== Citizen Auth Flow ===== */
@@ -121,10 +175,11 @@ export class AuthService {
       const existing = await this.citizenRepository.findOne({
         where: { phoneNumber: normalizedPhone },
       });
-      if (existing)
+      if (existing && existing.isPinSet && existing.status === UserStatus.ACTIVE) {
         throw new ConflictException(
           "Phone number already registered. Please login instead.",
         );
+      }
 
       let profileImage: string | undefined;
       if (file) {
@@ -141,55 +196,73 @@ export class AuthService {
         hashedPin = await this.hashPin(pin);
       }
 
-      const citizen = this.citizenRepository.create({
-        fullName,
-        userCode: generateRandomCode(8),
-        phoneNumber: normalizedPhone,
-        status: UserStatus.ACTIVE,
-        pin: hashedPin,
-        isPinSet: !!hashedPin,
-        profileImage,
-        deviceId,
-      });
+      let citizen = existing;
+      if (!citizen) {
+        citizen = this.citizenRepository.create({
+          fullName,
+          userCode: generateRandomCode(8),
+          phoneNumber: normalizedPhone,
+          status: UserStatus.DISABLED,
+          pin: hashedPin,
+          isPinSet: false,
+          profileImage,
+          deviceId,
+        });
+      } else {
+        citizen.fullName = fullName;
+        if (profileImage) citizen.profileImage = profileImage;
+        if (deviceId) citizen.deviceId = deviceId;
+        if (hashedPin) citizen.pin = hashedPin;
+      }
 
       const saved = await this.citizenRepository.save(citizen);
 
       // Attach anonymous reports submitted from this device before signup
       await this.attachGuestReports(saved.id, deviceId);
 
-      const payload = {
+      // Issue registration OTP to verify phone number ownership (CWE-287)
+      await this.otpService.removeBulkOtps?.({
+        userId: saved.id,
+        otpType: OTPType.REGISTRATION_OTP,
+      });
+
+      const otp = await this.otpService.createOtp({
+        phoneNumber: normalizedPhone,
+        userId: saved.id,
+        otpType: OTPType.REGISTRATION_OTP,
+      });
+
+      sendSMS({
+        recipient: normalizedPhone,
+        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
+      }).catch(() => void 0);
+
+      const registrationToken = signRegistrationToken(this.jwtService, {
         sub: saved.id,
         phoneNumber: saved.phoneNumber,
         role: UserRole.CITIZEN,
-      };
-
-      const accessToken = signAccessToken(this.jwtService, payload);
-      const refreshToken = signRefreshToken(this.jwtService, payload);
+      });
 
       await this.auditService.logSecurityEvent({
-        eventType: SecurityEventType.LOGIN_SUCCESS,
+        eventType: SecurityEventType.OTP_REQUESTED,
         actorId: saved.id,
         actorName: saved.fullName,
         targetUserId: saved.id,
         targetUserName: saved.fullName,
         success: true,
-        metadata: { loginType: "CITIZEN_REGISTRATION" },
+        metadata: { loginType: "CITIZEN_REGISTRATION", registrationPending: true },
       });
 
-      return successResponse("Citizen registered successfully", {
-        accessToken,
-        refreshToken,
-        user: {
-          id: saved.id,
-          userCode: saved.userCode,
-          fullName: saved.fullName,
-          phoneNumber: saved.phoneNumber,
-          role: UserRole.CITIZEN,
-          profileImage: saved.profileImage,
-          status: saved.status,
-          createdAt: saved.createdAt,
+      return successResponse(
+        "Verification code sent to your phone. Please verify to complete registration.",
+        {
+          registrationToken,
+          isPinSet: false,
+          ...(process.env.NODE_ENV !== "production"
+            ? { devOtp: otp.otpCode }
+            : {}),
         },
-      });
+      );
     } catch (error) {
       return errorResponse(
         error.message ?? "Citizen registration failed",
@@ -211,13 +284,18 @@ export class AuthService {
       if (!normalizedPhone)
         throw new BadRequestException("Invalid phone number format");
 
+      await this.checkLoginLockout(normalizedPhone);
+
       const citizen = await this.citizenRepository
         .createQueryBuilder("citizen")
         .addSelect("citizen.pin")
         .where("citizen.phoneNumber = :phone", { phone: normalizedPhone })
         .getOne();
 
-      if (!citizen) throw new UnauthorizedException("Invalid credentials");
+      if (!citizen) {
+        await this.recordFailedLogin(normalizedPhone);
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
       if (citizen.status === UserStatus.DISABLED)
         return errorResponse(
@@ -229,6 +307,7 @@ export class AuthService {
 
       const pinOk = await this.comparePin(pin, citizen.pin);
       if (!pinOk) {
+        await this.recordFailedLogin(normalizedPhone);
         await this.auditService.logSecurityEvent({
           eventType: SecurityEventType.LOGIN_FAILURE,
           actorId: citizen.id,
@@ -241,6 +320,8 @@ export class AuthService {
         });
         throw new UnauthorizedException("Invalid credentials");
       }
+
+      await this.clearLoginLockout(normalizedPhone);
 
       const payload = {
         sub: citizen.id,
@@ -299,13 +380,18 @@ export class AuthService {
       if (!normalizedPhone)
         throw new BadRequestException("Invalid phone number format");
 
+      await this.checkLoginLockout(normalizedPhone);
+
       const patrol = await this.patrolRepository
         .createQueryBuilder("patrol")
         .addSelect("patrol.pin")
         .where("patrol.phoneNumber = :phone", { phone: normalizedPhone })
         .getOne();
 
-      if (!patrol) throw new UnauthorizedException("Invalid credentials");
+      if (!patrol) {
+        await this.recordFailedLogin(normalizedPhone);
+        throw new UnauthorizedException("Invalid credentials");
+      }
 
       if (patrol.status === UserStatus.DISABLED)
         return errorResponse(
@@ -319,6 +405,7 @@ export class AuthService {
 
       const pinOk = await this.comparePin(pin, patrol.pin);
       if (!pinOk) {
+        await this.recordFailedLogin(normalizedPhone);
         await this.auditService.logSecurityEvent({
           eventType: SecurityEventType.LOGIN_FAILURE,
           actorId: patrol.id,
@@ -331,6 +418,8 @@ export class AuthService {
         });
         throw new UnauthorizedException("Invalid credentials");
       }
+
+      await this.clearLoginLockout(normalizedPhone);
 
       const payload = {
         sub: patrol.id,
@@ -1289,7 +1378,7 @@ export class AuthService {
 
       if (!citizen) throw new NotFoundException("User not found. Please register first.");
 
-      if (citizen.status === UserStatus.DISABLED)
+      if (citizen.isPinSet && citizen.status === UserStatus.DISABLED)
         return errorResponse(
           "Your account is disabled. Please contact support.",
         );
@@ -1490,6 +1579,11 @@ export class AuthService {
       if (decoded.type !== TokenType.REFRESH)
         throw new UnauthorizedException("Invalid token type");
 
+      if (await isTokenBlacklisted(refreshToken))
+        throw new UnauthorizedException(
+          "Session has been terminated or token has been revoked",
+        );
+
       const { sub, role } = decoded;
 
       if (role === UserRole.PATROL) {
@@ -1564,4 +1658,55 @@ export class AuthService {
       return errorResponse(error.message ?? "Token refresh failed", error);
     }
   }
+
+  /**
+   * Revoke session token and blacklist it in Redis (CWE-613)
+   */
+  async logout(
+    accessToken?: string,
+    refreshToken?: string,
+    user?: any,
+  ): Promise<ServiceResponse> {
+    try {
+      if (accessToken) {
+        try {
+          const decoded = this.jwtService.decode(accessToken) as any;
+          if (decoded && decoded.exp) {
+            const now = Math.floor(Date.now() / 1000);
+            const remaining = decoded.exp - now;
+            if (remaining > 0) {
+              await blacklistToken(accessToken, remaining);
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (refreshToken) {
+        try {
+          const decoded = this.jwtService.decode(refreshToken) as any;
+          if (decoded && decoded.exp) {
+            const now = Math.floor(Date.now() / 1000);
+            const remaining = decoded.exp - now;
+            if (remaining > 0) {
+              await blacklistToken(refreshToken, remaining);
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (user?.id) {
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.LOGOUT,
+          actorId: user.id,
+          success: true,
+          metadata: { role: user.role },
+        });
+      }
+
+      return successResponse("Logged out successfully");
+    } catch (error) {
+      return errorResponse(error.message ?? "Logout failed", error);
+    }
+  }
 }
+

@@ -109,6 +109,10 @@ export class PatrolService {
     limit?: number;
     search?: string;
     status?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: "ASC" | "DESC";
   }) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);
@@ -127,8 +131,21 @@ export class PatrolService {
       qb.andWhere("patrol.status = :status", { status: query.status });
     }
 
+    if (query.startDate) {
+      qb.andWhere("patrol.createdAt >= :startDate", { startDate: query.startDate });
+    }
+    if (query.endDate) {
+      qb.andWhere("patrol.createdAt <= :endDate", { endDate: query.endDate });
+    }
+
+    const sortBy = query.sortBy || "createdAt";
+    const sortOrder = query.sortOrder === "ASC" ? "ASC" : "DESC";
+    const safeSortBy = ["createdAt", "fullName", "phoneNumber", "status", "assignedArea"].includes(sortBy)
+      ? sortBy
+      : "createdAt";
+
     const [data, total] = await qb
-      .orderBy("patrol.createdAt", "DESC")
+      .orderBy(`patrol.${safeSortBy}`, sortOrder)
       .skip(skip)
       .take(limit)
       .getManyAndCount();

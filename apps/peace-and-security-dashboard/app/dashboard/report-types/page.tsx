@@ -30,6 +30,14 @@ import { toast } from "sonner"
 import { Input } from "@/components/ui/input"
 import { DashboardPagination } from "@/components/tables/dashboard-pagination"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select"
+import { X } from "lucide-react"
 
 export default function ReportTypesPage() {
     const dispatch = useAppDispatch()
@@ -41,6 +49,7 @@ export default function ReportTypesPage() {
     const [isDetailOpen, setIsDetailOpen] = useState(false)
     const [selectedReportType, setSelectedReportType] = useState<any>(null)
     const [searchTerm, setSearchTerm] = useState("")
+    const [activeFilter, setActiveFilter] = useState("ALL")
     const [page, setPage] = useState(1)
     const [limit, setLimit] = useState(20)
 
@@ -49,8 +58,8 @@ export default function ReportTypesPage() {
     const [confirmLoading, setConfirmLoading] = useState(false)
 
     useEffect(() => {
-        dispatch(fetchReportTypes({ search: searchTerm || undefined, page, limit }))
-    }, [dispatch, searchTerm, page, limit])
+        dispatch(fetchReportTypes({ search: searchTerm || undefined, isActive: activeFilter === "ALL" ? undefined : activeFilter, page, limit }))
+    }, [dispatch, searchTerm, activeFilter, page, limit])
 
     const handleDelete = (type: any) => {
         setConfirmTarget(type)
@@ -89,6 +98,30 @@ export default function ReportTypesPage() {
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
                     </div>
+                    <Select value={activeFilter} onValueChange={setActiveFilter}>
+                        <SelectTrigger className="w-full sm:w-40 rounded-xl bg-white border-slate-200">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="ALL">All Statuses</SelectItem>
+                            <SelectItem value="true">Active</SelectItem>
+                            <SelectItem value="false">Hidden</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    {(searchTerm !== "" || activeFilter !== "ALL") && (
+                        <Button
+                            variant="outline"
+                            className="rounded-xl"
+                            onClick={() => {
+                                setSearchTerm("");
+                                setActiveFilter("ALL");
+                                setPage(1);
+                            }}
+                        >
+                            <X className="w-4 h-4 mr-1.5" />
+                            Clear
+                        </Button>
+                    )}
                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <DialogTrigger asChild>
                             <Button className="rounded-xl font-bold gap-2 px-6 shadow-lg shadow-primary/20 w-full sm:w-auto" onClick={() => {
@@ -110,7 +143,7 @@ export default function ReportTypesPage() {
                                 initialData={selectedReportType}
                                 onSuccess={() => {
                                     setIsDialogOpen(false)
-                                    dispatch(fetchReportTypes({ search: searchTerm || undefined, page, limit }))
+                                    dispatch(fetchReportTypes({ search: searchTerm || undefined, isActive: activeFilter === "ALL" ? undefined : activeFilter, page, limit }))
                                 }}
                                 onCancel={() => setIsDialogOpen(false)}
                             />

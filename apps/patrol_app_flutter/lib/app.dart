@@ -82,6 +82,67 @@ class _PatrolAppState extends State<PatrolApp> {
             },
             localizationsDelegates: AppLocalizations.localizationsDelegates,
             routerConfig: AppRouter.router,
+            builder: (context, child) {
+              return BlocListener<NotificationsBloc, NotificationsState>(
+                listenWhen: (prev, curr) => curr.items.length > prev.items.length,
+                listener: (context, state) {
+                  final latest = state.items.firstOrNull;
+                  if (latest != null) {
+                    if (latest.type == 'REPORT_ASSIGNED' ||
+                        latest.type.contains('ASSIGN')) {
+                      context
+                          .read<ReportsBloc>()
+                          .add(ReportsFetchAssignedRequested());
+                    }
+                    final messenger = ScaffoldMessenger.maybeOf(context);
+                    if (messenger != null) {
+                      messenger.showSnackBar(
+                        SnackBar(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                latest.title,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                latest.message,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(color: Colors.white70),
+                              ),
+                            ],
+                          ),
+                          backgroundColor: const Color(0xFF0F172A),
+                          duration: const Duration(seconds: 6),
+                          behavior: SnackBarBehavior.floating,
+                          action: latest.data?['reportId'] != null
+                              ? SnackBarAction(
+                                  label: 'VIEW',
+                                  textColor: const Color(0xFF38BDF8),
+                                  onPressed: () {
+                                    final reportId = latest.data!['reportId'];
+                                    final caseId =
+                                        latest.data?['caseId'] ?? '';
+                                    AppRouter.router.push(
+                                      '/report-detail/$reportId?caseId=$caseId',
+                                    );
+                                  },
+                                )
+                              : null,
+                        ),
+                      );
+                    }
+                  }
+                },
+                child: child ?? const SizedBox.shrink(),
+              );
+            },
           ),
         ),
       ),

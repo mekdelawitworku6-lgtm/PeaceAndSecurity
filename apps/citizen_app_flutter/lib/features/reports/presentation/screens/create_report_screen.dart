@@ -92,14 +92,79 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
   Future<void> _addPhotos() async {
     final remaining = 4 - _photos.length;
     if (remaining <= 0) return;
-    final picked = await MediaHelpers.pickImages(remaining);
-    if (mounted && picked.isNotEmpty) {
-      setState(() => _photos.addAll(picked));
+    final source = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: const Text('Take Photo with Camera'),
+                onTap: () => Navigator.pop(ctx, 1),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                title: const Text('Choose from Gallery'),
+                onTap: () => Navigator.pop(ctx, 2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null) return;
+    if (source == 1) {
+      final photo = await MediaHelpers.takePhoto();
+      if (mounted && photo != null) {
+        setState(() => _photos.add(photo));
+      }
+    } else if (source == 2) {
+      final picked = await MediaHelpers.pickImages(remaining);
+      if (mounted && picked.isNotEmpty) {
+        setState(() => _photos.addAll(picked));
+      }
     }
   }
 
   Future<void> _addVideo() async {
-    final picked = await MediaHelpers.pickVideo();
+    final source = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.videocam_outlined, color: AppColors.primary),
+                title: const Text('Record Video with Camera'),
+                onTap: () => Navigator.pop(ctx, 1),
+              ),
+              ListTile(
+                leading: const Icon(Icons.video_library_outlined, color: AppColors.primary),
+                title: const Text('Choose Video from Gallery'),
+                onTap: () => Navigator.pop(ctx, 2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null) return;
+    final picked = source == 1
+        ? await MediaHelpers.takeVideo()
+        : await MediaHelpers.pickVideo();
     if (mounted && picked != null) {
       setState(() => _video = picked);
     }
@@ -215,9 +280,19 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
       builder: (context, state) {
         final submitting = state.submitting;
         final error = state.error ?? _validationError;
-        return Scaffold(
-          backgroundColor: AppColors.background,
-          body: Column(
+        return PopScope(
+          canPop: false,
+          onPopInvokedWithResult: (didPop, result) {
+            if (didPop) return;
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/home');
+            }
+          },
+          child: Scaffold(
+            backgroundColor: AppColors.background,
+            body: Column(
             children: [
               AppHeader(
                 title: 'Report Security Incident',
@@ -555,9 +630,10 @@ class _CreateReportScreenState extends State<CreateReportScreen> {
               ),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 }
 

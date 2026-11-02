@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -166,32 +167,79 @@ class AppRouter {
   }
 }
 
-class _MainShell extends StatelessWidget {
+class _MainShell extends StatefulWidget {
   final Widget child;
   final int selectedIndex;
 
   const _MainShell({required this.child, required this.selectedIndex});
 
   @override
+  State<_MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<_MainShell> {
+  DateTime? _lastBackPressTime;
+
+  @override
   Widget build(BuildContext context) {
     final t = context.l10n().t;
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: selectedIndex,
-        onDestinationSelected: (i) {
-          final path = ['/home', '/map', '/reports', '/settings'][i];
-          context.go(path);
-        },
-        height: 64,
-        backgroundColor: AppColors.card,
-        indicatorColor: AppColors.primaryLight,
-        destinations: [
-          NavigationDestination(icon: const Icon(Icons.home_outlined), selectedIcon: const Icon(Icons.home), label: t('home')),
-          NavigationDestination(icon: const Icon(Icons.map_outlined), selectedIcon: const Icon(Icons.map), label: t('map')),
-          NavigationDestination(icon: const Icon(Icons.description_outlined), selectedIcon: const Icon(Icons.description), label: t('reports')),
-          NavigationDestination(icon: const Icon(Icons.person_outline), selectedIcon: const Icon(Icons.person), label: t('profile')),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (widget.selectedIndex != 0) {
+          context.go('/home');
+          return;
+        }
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
+        body: widget.child,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: widget.selectedIndex,
+          onDestinationSelected: (i) {
+            final path = ['/home', '/map', '/reports', '/settings'][i];
+            context.go(path);
+          },
+          height: 64,
+          backgroundColor: AppColors.card,
+          indicatorColor: AppColors.primaryLight,
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.home_outlined),
+              selectedIcon: const Icon(Icons.home),
+              label: t('home'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.map_outlined),
+              selectedIcon: const Icon(Icons.map),
+              label: t('map'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.description_outlined),
+              selectedIcon: const Icon(Icons.description),
+              label: t('reports'),
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.person_outline),
+              selectedIcon: const Icon(Icons.person),
+              label: t('profile'),
+            ),
+          ],
+        ),
       ),
     );
   }

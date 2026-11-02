@@ -63,8 +63,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _showAlert('Invalid phone', 'Enter a valid phone number, e.g. +251911000031.');
       return;
     }
-    if (!RegExp(r'^\d{4,6}$').hasMatch(pin)) {
-      _showAlert('Invalid PIN', 'PIN must be 4-6 digits.');
+    if (!RegExp(r'^\d{6}$').hasMatch(pin)) {
+      _showAlert('Invalid PIN', 'PIN must be exactly 6 digits.');
+      return;
+    }
+    if (pin == '123456' || pin == '654321' || RegExp(r'^(\d)\1{5}$').hasMatch(pin)) {
+      _showAlert('Weak PIN', 'PIN cannot be sequential or repeating numbers (e.g. 123456, 111111).');
       return;
     }
     if (pin != confirm) {
@@ -102,9 +106,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final t = context.l10n().t;
     return BlocConsumer<AuthBloc, AuthState>(
       listenWhen: (prev, curr) =>
-          curr.status == AuthStatus.signedIn && prev.status != AuthStatus.signedIn,
+          (curr.status == AuthStatus.signedIn && prev.status != AuthStatus.signedIn) ||
+          (curr.registrationToken != null && prev.registrationToken != curr.registrationToken),
       listener: (context, state) {
-        context.go('/home');
+        if (state.isSignedIn) {
+          context.go('/home');
+        } else if (state.registrationToken != null) {
+          final uri = Uri(path: '/verify-otp', queryParameters: {
+            'registrationToken': state.registrationToken ?? '',
+            'phoneNumber': state.pendingPhone ?? '',
+            'pin': state.pendingPin ?? '',
+            'devOtp': state.pendingDevOtp ?? '',
+          });
+          context.push(uri.toString());
+        }
       },
       builder: (context, state) {
         return Scaffold(
@@ -189,8 +204,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 16),
                       AppInput(
-                        label: 'PIN (4-6 digits)',
-                        hint: 'Enter a PIN',
+                        label: 'PIN (6 digits)',
+                        hint: 'Enter a 6-digit PIN',
                         secure: true,
                         controller: _pin,
                         keyboardType: TextInputType.number,

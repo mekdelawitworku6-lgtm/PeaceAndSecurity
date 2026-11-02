@@ -64,8 +64,8 @@ class _VerifyOtpScreenState extends State<VerifyOtpScreen> {
 
   void _verify() {
     final code = _otp.text.trim();
-    if (!RegExp(r'^\d{4,6}$').hasMatch(code)) {
-      _showAlert('Invalid code', 'Enter the 4-6 digit verification code.');
+    if (!RegExp(r'^\d{6}$').hasMatch(code)) {
+      _showAlert('Invalid code', 'Enter the 6-digit verification code.');
       return;
     }
     context.read<AuthBloc>().add(AuthVerifyRegistrationRequested(

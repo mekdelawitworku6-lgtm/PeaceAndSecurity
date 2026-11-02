@@ -47,80 +47,83 @@ class _AssignedReportsScreenState extends State<AssignedReportsScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
-            child: Text(
-              'Assigned Reports',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(20, 16, 20, 0),
+              child: Text(
+                'Assigned Reports',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              ),
             ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 34,
-            child: ListView.separated(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              scrollDirection: Axis.horizontal,
-              itemCount: _filters.length,
-              separatorBuilder: (_, _) => const SizedBox(width: 8),
-              itemBuilder: (context, i) {
-                final f = _filters[i];
-                final active = f == _filter;
-                return GestureDetector(
-                  onTap: () => setState(() => _filter = f),
-                  child: Container(
-                    alignment: Alignment.center,
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? AppColors.primary
-                          : AppColors.card,
-                      borderRadius: BorderRadius.circular(999),
-                    ),
-                    child: Text(
-                      f == 'All' ? 'All' : Formatters.statusLabel(f),
-                      style: AppTypography.smallMedium.copyWith(
-                        color: active ? Colors.white : AppColors.textBody,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: state.loading && state.assignedReports.isEmpty
-                ? const Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
-                  )
-                : state.assignedReports.isEmpty
-                    ? EmptyState(
-                        iconData: Icons.assignment_outlined,
-                        title: 'No assigned reports',
-                        subtitle: t('noReportsSub'),
-                        actionLabel: t('refresh'),
-                        onAction: () => context
-                            .read<ReportsBloc>()
-                            .add(ReportsFetchAssignedRequested()),
-                      )
-                    : RefreshIndicator(
-                        onRefresh: () async => context
-                            .read<ReportsBloc>()
-                            .add(ReportsFetchAssignedRequested()),
-                        child: ListView.builder(
-                          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-                          itemCount: _filtered(state.assignedReports).length,
-                          itemBuilder: (context, i) {
-                            final r = _filtered(state.assignedReports)[i];
-                            return _ReportListItem(report: r);
-                          },
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 34,
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                scrollDirection: Axis.horizontal,
+                itemCount: _filters.length,
+                separatorBuilder: (_, _) => const SizedBox(width: 8),
+                itemBuilder: (context, i) {
+                  final f = _filters[i];
+                  final active = f == _filter;
+                  return GestureDetector(
+                    onTap: () => setState(() => _filter = f),
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
+                      decoration: BoxDecoration(
+                        color: active ? AppColors.primary : AppColors.card,
+                        borderRadius: BorderRadius.circular(999),
+                        border: Border.all(
+                          color: active ? AppColors.primary : AppColors.border,
                         ),
                       ),
-          ),
-        ],
+                      child: Text(
+                        f == 'All' ? t('all') : f,
+                        style: AppTypography.caption.copyWith(
+                          color: active ? AppColors.white : AppColors.text,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: state.loading && state.assignedReports.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : _filtered(state.assignedReports).isEmpty
+                      ? EmptyState(
+                          iconData: Icons.assignment_outlined,
+                          title: t('noReportsYet'),
+                          subtitle: t('noReportsSub'),
+                          actionLabel: t('refresh'),
+                          onAction: () => context
+                              .read<ReportsBloc>()
+                              .add(ReportsFetchAssignedRequested()),
+                        )
+                      : RefreshIndicator(
+                          onRefresh: () async => context
+                              .read<ReportsBloc>()
+                              .add(ReportsFetchAssignedRequested()),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+                            itemCount: _filtered(state.assignedReports).length,
+                            itemBuilder: (context, i) {
+                              final r = _filtered(state.assignedReports)[i];
+                              return _ReportListItem(report: r);
+                            },
+                          ),
+                        ),
+            ),
+          ],
+        ),
       ),
     );
   }

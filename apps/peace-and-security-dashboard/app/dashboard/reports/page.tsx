@@ -21,6 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
 import {
   fetchReports,
@@ -31,7 +33,7 @@ import {
 import { patrolService } from "@/lib/services/patrol-service";
 
 const STATUS_DISPLAY: Record<string, string> = {
-  SUBMITTED: "Active",
+  SUBMITTED: "Report Just Created",
   ASSIGNED: "Active",
   IN_PROGRESS: "Investigating",
   UNDER_REVIEW: "Investigating",
@@ -53,7 +55,31 @@ const OFFICERS_LIST = [
   "Rapid Response Unit 2",
 ];
 
-type ReportTab = "all" | "active" | "investigating" | "resolved";
+type ReportTab = "all" | "created" | "active" | "investigating" | "resolved";
+
+function getReportDisplayStatus(status?: string): string {
+  if (!status) return "Report Just Created";
+  const upper = status.toUpperCase();
+  if (upper === "SUBMITTED" || upper === "REPORT_JUST_CREATED" || upper === "CREATED") {
+    return "Report Just Created";
+  }
+  if (upper === "ASSIGNED") return "Assigned";
+  if (upper === "IN_PROGRESS") return "Investigating";
+  if (upper === "UNDER_REVIEW") return "Under Review";
+  if (upper === "RESOLVED" || upper === "CLOSED") return "Resolved";
+  if (upper === "REJECTED") return "Rejected";
+  if (upper === "ESCALATED") return "Escalated";
+  return STATUS_DISPLAY[upper] || status;
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return value;
+  const date = d.toLocaleDateString();
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return `${date} · ${time}`;
+}
 
 export default function ReportsPage() {
   const router = useRouter();
@@ -63,6 +89,8 @@ export default function ReportsPage() {
 
   const [activeTab, setActiveTab] = useState<ReportTab>("all");
   const [searchQuery, setSearchQuery] = useState("");
+  const [priorityFilter, setPriorityFilter] = useState("ALL");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
@@ -78,22 +106,43 @@ export default function ReportsPage() {
   // Filters & Search
   const filteredReports = useMemo(() => {
     return reports.filter((report: any) => {
-      if (activeTab === "active" && report.status !== "Active") return false;
-      if (activeTab === "investigating" && report.status !== "Investigating") return false;
-      if (activeTab === "resolved" && report.status !== "Resolved") return false;
+      const displayStatus = getReportDisplayStatus(report.status);
+      if (activeTab === "created" && displayStatus !== "Report Just Created") return false;
+      if (activeTab === "active" && displayStatus !== "Assigned" && displayStatus !== "Active") return false;
+      if (activeTab === "investigating" && displayStatus !== "Investigating" && displayStatus !== "Under Review") return false;
+      if (activeTab === "resolved" && displayStatus !== "Resolved" && displayStatus !== "Rejected") return false;
+
+      if (priorityFilter !== "ALL") {
+        const priority = String(report.priority || report.severity || "Medium").toLowerCase();
+        if (priority !== priorityFilter.toLowerCase()) return false;
+      }
+
+      if (dateRange?.from || dateRange?.to) {
+        const date = report.date ? new Date(report.date) : report.createdAt ? new Date(report.createdAt) : null;
+        if (!date || isNaN(date.getTime())) return false;
+        if (dateRange?.from && date < new Date(dateRange.from)) return false;
+        if (dateRange?.to) {
+          const toEnd = new Date(dateRange.to);
+          toEnd.setHours(23, 59, 59, 999);
+          if (date > toEnd) return false;
+        }
+      }
 
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         return (
-          report.type.toLowerCase().includes(query) ||
-          report.location.toLowerCase().includes(query) ||
-          report.id.toLowerCase().includes(query)
+          report.type?.toLowerCase().includes(query) ||
+          report.violationType?.toLowerCase().includes(query) ||
+          report.location?.toLowerCase().includes(query) ||
+          report.address?.toLowerCase().includes(query) ||
+          report.id?.toLowerCase().includes(query) ||
+          report.caseId?.toLowerCase().includes(query)
         );
       }
 
       return true;
     });
-  }, [reports, activeTab, searchQuery]);
+  }, [reports, activeTab, searchQuery, priorityFilter, dateRange]);
 
   const totalPages = Math.ceil(filteredReports.length / itemsPerPage) || 1;
   const paginatedReports = useMemo(() => {
@@ -109,14 +158,21 @@ export default function ReportsPage() {
 
   const handleConfirmAssignment = () => {
     if (!assignee) {
-      toast.error("Please select an officer or unit");
+      toast.error("Please select an officer to assign");
       return;
     }
 
-    dispatch(assignPatrol({ reportId: selectedReport!.id, patrolId: assignee }))
+    if (!selectedReport) return;
+
+    dispatch(
+      assignPatrol({
+        reportId: selectedReport.id,
+        patrolId: assignee,
+      })
+    )
       .unwrap()
       .then(() => {
-        toast.success(`Successfully assigned report to ${assignee}`);
+        toast.success(`Assigned report ${selectedReport.id} to ${assignee}`);
         setSelectedReport(null);
       })
       .catch(() => {
@@ -134,7 +190,7 @@ export default function ReportsPage() {
         {/* Toolbar (Tabs and Search input side-by-side) */}
         <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row gap-4 items-center justify-between">
           <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-full border border-slate-100">
-            {(["all", "active", "investigating", "resolved"] as ReportTab[]).map((tab) => (
+            {(["all", "created", "active", "investigating", "resolved"] as ReportTab[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => {
@@ -148,7 +204,7 @@ export default function ReportsPage() {
                     : "text-slate-500 hover:text-slate-800"
                 )}
               >
-                {tab === "all" ? "All Reports" : tab}
+                {tab === "all" ? "All Reports" : tab === "created" ? "Report Just Created" : tab}
               </button>
             ))}
           </div>
@@ -164,6 +220,37 @@ export default function ReportsPage() {
                 setCurrentPage(1);
               }}
             />
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setCurrentPage(1); }}>
+              <SelectTrigger className="h-10 w-36 rounded-lg bg-white border-slate-200">
+                <SelectValue placeholder="Priority" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL">All Priorities</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="low">Low</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+
+            {(searchQuery !== "" || priorityFilter !== "ALL" || dateRange?.from) && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setPriorityFilter("ALL");
+                  setDateRange(undefined);
+                  setCurrentPage(1);
+                }}
+                className="inline-flex items-center gap-1 px-3 py-2 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs"
+              >
+                <X className="w-3.5 h-3.5" />
+                Clear
+              </button>
+            )}
           </div>
         </div>
 
@@ -248,7 +335,7 @@ export default function ReportsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[11px] font-semibold text-slate-400">{report.date}</span>
+                      <span className="text-[11px] font-semibold text-slate-400">{formatDateTime(report.date)}</span>
                     </td>
                     <td className="px-6 py-4 text-right">
                       {report.assignedTo === "Unassigned" ? (

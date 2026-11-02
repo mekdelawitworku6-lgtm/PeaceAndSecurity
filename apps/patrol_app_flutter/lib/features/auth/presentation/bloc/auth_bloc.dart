@@ -98,6 +98,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _onLogout(AuthLogoutRequested event, Emitter<AuthState> emit) async {
+    try {
+      await repository.logout();
+    } catch (_) {}
     SocketService.instance.disconnect();
     await sessionManager.clear();
     emit(state.copyWith(

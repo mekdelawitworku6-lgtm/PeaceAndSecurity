@@ -55,12 +55,15 @@ class SocketService {
           .setAuth({'token': token})
           .build(),
     );
-    _notificationSocket!.onConnect((_) {
-      _notificationSocket!.emit('authenticate', {
+    void auth() {
+      _notificationSocket?.emit('authenticate', {
         'userId': user.id,
         'role': user.role,
       });
-    });
+    }
+
+    _notificationSocket!.onConnect((_) => auth());
+    _notificationSocket!.onReconnect((_) => auth());
     _notificationSocket!.on('notification', (data) {
       if (data is Map) {
         _notificationController.add(

@@ -39,6 +39,21 @@ export class OtpService {
     }
 
     // Rate limiting & Lockout: Check for existing requested/expired OTP
+    if (phone) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const hourlyCount = await this.otpRepository
+        .createQueryBuilder("otp")
+        .where("otp.phoneNumber = :phone", { phone })
+        .andWhere("otp.createdAt >= :oneHourAgo", { oneHourAgo })
+        .getCount();
+
+      if (hourlyCount >= 5) {
+        throw new BadRequestException(
+          "Too many OTP requests for this phone number. Please wait an hour before requesting more codes.",
+        );
+      }
+    }
+
     const existing = await this.otpRepository.findOne({
       where: { userId, otpType },
       order: { createdAt: "DESC" },

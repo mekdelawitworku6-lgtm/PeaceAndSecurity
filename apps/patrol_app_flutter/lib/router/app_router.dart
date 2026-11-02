@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -143,69 +144,100 @@ class AppRouter {
   }
 }
 
-class _MainShell extends StatelessWidget {
+class _MainShell extends StatefulWidget {
   final Widget child;
   final int selectedIndex;
 
   const _MainShell({required this.child, required this.selectedIndex});
 
   @override
+  State<_MainShell> createState() => _MainShellState();
+}
+
+class _MainShellState extends State<_MainShell> {
+  DateTime? _lastBackPressTime;
+
+  @override
   Widget build(BuildContext context) {
     final t = context.l10n().t;
-    return Scaffold(
-      body: child,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: (i) {
-          final path = [
-            '/home',
-            '/assigned',
-            '/work-reports',
-            '/conversations',
-            '/notifications',
-            '/settings',
-          ][i];
-          context.go(path);
-        },
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: AppColors.card,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.textMuted,
-        selectedFontSize: 11,
-        unselectedFontSize: 10,
-        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home_outlined),
-            activeIcon: const Icon(Icons.home),
-            label: t('home'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.assignment_outlined),
-            activeIcon: const Icon(Icons.assignment),
-            label: t('assigned'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.fact_check_outlined),
-            activeIcon: const Icon(Icons.fact_check),
-            label: t('workReports'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.chat_bubble_outline),
-            activeIcon: const Icon(Icons.chat_bubble),
-            label: t('inbox'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.notifications_outlined),
-            activeIcon: const Icon(Icons.notifications),
-            label: t('alerts'),
-          ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person_outline),
-            activeIcon: const Icon(Icons.person),
-            label: t('profile'),
-          ),
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        if (widget.selectedIndex != 0) {
+          context.go('/home');
+          return;
+        }
+        final now = DateTime.now();
+        if (_lastBackPressTime == null ||
+            now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+          _lastBackPressTime = now;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Press back again to exit'),
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+          return;
+        }
+        SystemNavigator.pop();
+      },
+      child: Scaffold(
+        body: widget.child,
+        bottomNavigationBar: BottomNavigationBar(
+          currentIndex: widget.selectedIndex,
+          onTap: (i) {
+            final path = [
+              '/home',
+              '/assigned',
+              '/work-reports',
+              '/conversations',
+              '/notifications',
+              '/settings',
+            ][i];
+            context.go(path);
+          },
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: AppColors.card,
+          selectedItemColor: AppColors.primary,
+          unselectedItemColor: AppColors.textMuted,
+          selectedFontSize: 11,
+          unselectedFontSize: 10,
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w700),
+          items: [
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.home_outlined),
+              activeIcon: const Icon(Icons.home),
+              label: t('home'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.assignment_outlined),
+              activeIcon: const Icon(Icons.assignment),
+              label: t('assigned'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.fact_check_outlined),
+              activeIcon: const Icon(Icons.fact_check),
+              label: t('workReports'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.chat_bubble_outline),
+              activeIcon: const Icon(Icons.chat_bubble),
+              label: t('inbox'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.notifications_outlined),
+              activeIcon: const Icon(Icons.notifications),
+              label: t('alerts'),
+            ),
+            BottomNavigationBarItem(
+              icon: const Icon(Icons.person_outline),
+              activeIcon: const Icon(Icons.person),
+              label: t('profile'),
+            ),
+          ],
+        ),
       ),
     );
   }

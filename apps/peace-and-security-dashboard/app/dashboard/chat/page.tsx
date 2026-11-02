@@ -85,7 +85,8 @@ export default function ChatPage() {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
 
-    const wsUrl = getApiBaseUrl().replace("/api/", "");
+    const baseUrl = getApiBaseUrl().replace(/\/api\/?$/, "");
+    const wsUrl = `${baseUrl}/chat`;
     const s = io(wsUrl, {
       auth: { token },
       transports: ["websocket"],

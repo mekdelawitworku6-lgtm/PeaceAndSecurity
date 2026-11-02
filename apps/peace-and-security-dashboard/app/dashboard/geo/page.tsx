@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/app/context/auth-context";
 import { UserRole } from "@/lib/auth";
 import { useAppDispatch, useAppSelector } from "@/lib/store/hooks";
@@ -49,6 +49,8 @@ import {
   FileText,
   Pencil,
   Globe,
+  Search,
+  X,
 } from "lucide-react";
 import { MapPicker } from "@/components/maps/map-picker";
 import { ReusableTable, Column } from "@/components/tables";
@@ -109,6 +111,9 @@ export default function GeoPage() {
   const [isActive, setIsActive] = useState(true);
   const [selectedCityId, setSelectedCityId] = useState("");
   const [selectedSubcityId, setSelectedSubcityId] = useState("");
+
+  const [geoSearch, setGeoSearch] = useState("");
+  const [geoStatus, setGeoStatus] = useState("ALL");
 
   useEffect(() => {
     dispatch(fetchCities());
@@ -240,7 +245,27 @@ export default function GeoPage() {
     return `Add ${getTabLabel(activeTab).slice(0, -1)}`;
   };
 
-  const currentItems = activeTab === "cities" ? cities : activeTab === "subcities" ? subcities : woredas;
+  const currentItems = (activeTab === "cities" ? cities : activeTab === "subcities" ? subcities : woredas);
+
+  const filteredItems = useMemo(() => {
+    return currentItems.filter((row: any) => {
+      if (geoStatus !== "ALL") {
+        const active = String(row.isActive).toLowerCase() === "true";
+        if (geoStatus === "ACTIVE" && !active) return false;
+        if (geoStatus === "INACTIVE" && active) return false;
+      }
+      if (geoSearch.trim()) {
+        const q = geoSearch.trim().toLowerCase();
+        const haystack = [row.name, row.code]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+        const parentName = row.city?.name || row.subcity?.name || "";
+        return haystack.includes(q) || parentName.toLowerCase().includes(q);
+      }
+      return true;
+    });
+  }, [currentItems, geoSearch, geoStatus]);
 
   const nameColumn: Column<any> = {
     key: "name",
@@ -381,9 +406,44 @@ export default function GeoPage() {
         ))}
       </div>
 
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full sm:w-64">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search name or code..."
+            className="pl-10 h-10 rounded border-slate-200 bg-white"
+            value={geoSearch}
+            onChange={(e) => setGeoSearch(e.target.value)}
+          />
+        </div>
+        <Select value={geoStatus} onValueChange={setGeoStatus}>
+          <SelectTrigger className="w-40 h-10 rounded border-slate-200 bg-white">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="ALL">All Status</SelectItem>
+            <SelectItem value="ACTIVE">Active</SelectItem>
+            <SelectItem value="INACTIVE">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+        {(geoSearch !== "" || geoStatus !== "ALL") && (
+          <Button
+            variant="outline"
+            className="h-10 rounded border-slate-200"
+            onClick={() => {
+              setGeoSearch("");
+              setGeoStatus("ALL");
+            }}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Clear
+          </Button>
+        )}
+      </div>
+
       <div className="bg-white rounded border border-slate-100 shadow-sm overflow-hidden">
         <ReusableTable
-          data={currentItems}
+          data={filteredItems}
           columns={tabColumns[activeTab]}
           getRowKey={(row: any) => row.id}
           isLoading={loading}

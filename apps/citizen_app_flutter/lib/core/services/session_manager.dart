@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
@@ -13,6 +14,10 @@ class SessionManager {
   static const _authKey = 'auth_state';
   static const _deviceIdKey = 'cit_device_id';
   static const _langKey = '@citizen_app_lang';
+
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
 
   String? accessToken;
   String? refreshToken;
@@ -42,15 +47,16 @@ class SessionManager {
     refreshToken = refresh;
     this.user = user;
     isGuest = false;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _authKey,
-      jsonEncode({
+    await _secureStorage.write(
+      key: _authKey,
+      value: jsonEncode({
         'user': user.toJson(),
         'accessToken': access,
         'refreshToken': refresh,
       }),
     );
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_authKey);
   }
 
   Future<void> hydrate() async {
@@ -61,7 +67,16 @@ class SessionManager {
       await prefs.setString(_deviceIdKey, id);
     }
     _deviceId = id;
-    final raw = prefs.getString(_authKey);
+
+    String? raw = await _secureStorage.read(key: _authKey);
+    if (raw == null) {
+      raw = prefs.getString(_authKey);
+      if (raw != null) {
+        await _secureStorage.write(key: _authKey, value: raw);
+        await prefs.remove(_authKey);
+      }
+    }
+
     if (raw != null) {
       try {
         final map = jsonDecode(raw) as Map<String, dynamic>;
@@ -85,6 +100,7 @@ class SessionManager {
     refreshToken = null;
     user = null;
     isGuest = false;
+    await _secureStorage.delete(key: _authKey);
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_authKey);
   }

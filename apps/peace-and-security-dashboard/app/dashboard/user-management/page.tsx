@@ -37,6 +37,9 @@ import {
   Building,
   MapPin,
 } from "lucide-react";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 import { getImageUrl, cn } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -77,7 +80,10 @@ export default function UserManagementPage() {
 
   const [roleFilter, setRoleFilter] = useState<string>("ALL");
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
+  const [cityFilter, setCityFilter] = useState<string>("ALL");
   const [subcityFilter, setSubcityFilter] = useState<string>("ALL");
+  const [woredaFilter, setWoredaFilter] = useState<string>("ALL");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmTarget, setConfirmTarget] = useState<any>(null);
@@ -101,7 +107,7 @@ export default function UserManagementPage() {
 
   useEffect(() => {
     loadUsers();
-  }, [page, limit, searchTerm, roleFilter, statusFilter, subcityFilter]);
+  }, [page, limit, searchTerm, roleFilter, statusFilter, cityFilter, subcityFilter, woredaFilter, dateRange]);
 
   const loadUsers = async () => {
     try {
@@ -112,7 +118,11 @@ export default function UserManagementPage() {
         search: searchTerm || undefined,
         role: roleFilter === "ALL" ? undefined : roleFilter,
         status: statusFilter === "ALL" ? undefined : statusFilter,
+        cityId: cityFilter === "ALL" ? undefined : cityFilter,
         subcityId: subcityFilter === "ALL" ? undefined : subcityFilter,
+        woredaId: woredaFilter === "ALL" ? undefined : woredaFilter,
+        startDate: dateRange?.from ? format(dateRange.from, "yyyy-MM-dd") : undefined,
+        endDate: dateRange?.to ? format(dateRange.to, "yyyy-MM-dd") : undefined,
       });
       const userList = res.data || [];
       setUsers(
@@ -219,7 +229,10 @@ export default function UserManagementPage() {
     setSearchTerm("");
     setRoleFilter("ALL");
     setStatusFilter("ALL");
+    setCityFilter("ALL");
     setSubcityFilter("ALL");
+    setWoredaFilter("ALL");
+    setDateRange(undefined);
     setPage(1);
   };
 
@@ -365,6 +378,22 @@ export default function UserManagementPage() {
             </select>
 
             <select
+              value={cityFilter}
+              onChange={(e) => {
+                setCityFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 w-full sm:w-auto"
+            >
+              <option value="ALL">All Cities</option>
+              {cities.map((c: any) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
+
+            <select
               value={subcityFilter}
               onChange={(e) => {
                 setSubcityFilter(e.target.value);
@@ -376,6 +405,22 @@ export default function UserManagementPage() {
               {subcities.map((s: any) => (
                 <option key={s.id} value={s.id}>
                   {s.name}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={woredaFilter}
+              onChange={(e) => {
+                setWoredaFilter(e.target.value);
+                setPage(1);
+              }}
+              className="h-11 rounded border border-slate-200 bg-white px-3 text-sm font-medium text-slate-700 w-full sm:w-auto"
+            >
+              <option value="ALL">All Woredas</option>
+              {woredas.map((w: any) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
                 </option>
               ))}
             </select>
@@ -394,10 +439,17 @@ export default function UserManagementPage() {
               <option value="DISABLED">Disabled</option>
             </select>
 
+            <div className="w-full sm:w-auto">
+              <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+            </div>
+
             {(searchTerm !== "" ||
               roleFilter !== "ALL" ||
               statusFilter !== "ALL" ||
-              subcityFilter !== "ALL") && (
+              cityFilter !== "ALL" ||
+              subcityFilter !== "ALL" ||
+              woredaFilter !== "ALL" ||
+              dateRange?.from) && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -411,7 +463,10 @@ export default function UserManagementPage() {
             {(searchTerm !== "" ||
               roleFilter !== "ALL" ||
               statusFilter !== "ALL" ||
-              subcityFilter !== "ALL") && (
+              cityFilter !== "ALL" ||
+              subcityFilter !== "ALL" ||
+              woredaFilter !== "ALL" ||
+              dateRange?.from) && (
               <Button
                 variant="outline"
                 onClick={clearFilters}

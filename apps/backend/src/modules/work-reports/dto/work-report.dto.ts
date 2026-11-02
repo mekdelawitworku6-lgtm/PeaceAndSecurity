@@ -100,6 +100,11 @@ export class WorkReportFilterDto {
   @IsDateString()
   to?: string;
 
+  @ApiPropertyOptional({ description: "Search title or reporter name" })
+  @IsOptional()
+  @IsString()
+  search?: string;
+
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
   @Type(() => Number)

@@ -67,8 +67,45 @@ class _FollowUpScreenState extends State<FollowUpScreen> {
   Future<void> _pickPhotos() async {
     final remaining = 5 - _photos.length;
     if (remaining <= 0) return;
-    final picked = await MediaHelpers.pickImages(remaining);
-    setState(() => _photos.addAll(picked.take(remaining)));
+    final source = await showModalBottomSheet<int>(
+      context: context,
+      backgroundColor: AppColors.card,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt_outlined, color: AppColors.primary),
+                title: const Text('Take Photo with Camera'),
+                onTap: () => Navigator.pop(ctx, 1),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_outlined, color: AppColors.primary),
+                title: const Text('Choose from Gallery'),
+                onTap: () => Navigator.pop(ctx, 2),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (source == null) return;
+    if (source == 1) {
+      final photo = await MediaHelpers.takePhoto();
+      if (mounted && photo != null) {
+        setState(() => _photos.add(photo));
+      }
+    } else if (source == 2) {
+      final picked = await MediaHelpers.pickImages(remaining);
+      if (mounted && picked.isNotEmpty) {
+        setState(() => _photos.addAll(picked.take(remaining)));
+      }
+    }
   }
 
   Future<void> _toggleRecording() async {

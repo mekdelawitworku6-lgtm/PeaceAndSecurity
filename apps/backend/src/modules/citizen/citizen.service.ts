@@ -69,6 +69,10 @@ export class CitizenService {
     limit?: number;
     search?: string;
     status?: string;
+    startDate?: string;
+    endDate?: string;
+    sortBy?: string;
+    sortOrder?: "ASC" | "DESC";
   }) {
     const page = Number(query.page ?? 1);
     const limit = Number(query.limit ?? 20);
@@ -87,8 +91,21 @@ export class CitizenService {
       qb.andWhere("citizen.status = :status", { status: query.status });
     }
 
+    if (query.startDate) {
+      qb.andWhere("citizen.createdAt >= :startDate", { startDate: query.startDate });
+    }
+    if (query.endDate) {
+      qb.andWhere("citizen.createdAt <= :endDate", { endDate: query.endDate });
+    }
+
+    const sortBy = query.sortBy || "createdAt";
+    const sortOrder = query.sortOrder === "ASC" ? "ASC" : "DESC";
+    const safeSortBy = ["createdAt", "fullName", "phoneNumber", "status"].includes(sortBy)
+      ? sortBy
+      : "createdAt";
+
     const [data, total] = await qb
-      .orderBy("citizen.createdAt", "DESC")
+      .orderBy(`citizen.${safeSortBy}`, sortOrder)
       .skip(skip)
       .take(limit)
       .getManyAndCount();

@@ -227,6 +227,9 @@ export class UserService {
       isStaffUser,
       startDate,
       endDate,
+      cityId,
+      subcityId,
+      woredaId,
       page = 1,
       limit = 10,
       sortBy = "createdAt",
@@ -263,6 +266,9 @@ export class UserService {
 
     if (role) query.andWhere("user.role = :role", { role });
     if (status) query.andWhere("user.status = :status", { status });
+    if (cityId) query.andWhere("user.cityId = :cityId", { cityId });
+    if (subcityId) query.andWhere("user.subcityId = :subcityId", { subcityId });
+    if (woredaId) query.andWhere("user.woredaId = :woredaId", { woredaId });
 
     if (isStaffUser !== undefined) {
       query.andWhere("user.isStaffUser = :isStaffUser", { isStaffUser });

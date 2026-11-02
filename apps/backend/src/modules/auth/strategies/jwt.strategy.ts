@@ -7,6 +7,7 @@ import { User } from "../../user/entities/user.entity";
 import { Patrol } from "../../patrol/entities/patrol.entity";
 import { Citizen } from "../../citizen/entities/citizen.entity";
 import { UserRole, UserStatus } from "../../../common/enums/enums";
+import { isTokenBlacklisted } from "../../../common/utils/redis.service";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -21,10 +22,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
       secretOrKey: process.env.JWT_ACCESS_SECRET,
+      passReqToCallback: true,
     });
   }
 
-  async validate(payload: any) {
+  async validate(req: any, payload: any) {
+    const token = ExtractJwt.fromAuthHeaderAsBearerToken()(req);
+    if (token && (await isTokenBlacklisted(token))) {
+      throw new UnauthorizedException(
+        "Session has been terminated or token has been revoked",
+      );
+    }
+
     const { sub, role } = payload;
 
     if (role === UserRole.PATROL) {

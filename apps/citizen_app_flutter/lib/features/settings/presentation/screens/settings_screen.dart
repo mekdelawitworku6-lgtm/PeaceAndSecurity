@@ -111,83 +111,88 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ? t('guestSub')
         : (user?.phoneNumber ?? '');
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
       decoration: const BoxDecoration(
         color: AppColors.card,
         border: Border(bottom: BorderSide(color: AppColors.divider)),
       ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: AppColors.primarySoft,
-            backgroundImage: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
-                ? NetworkImage(assetUrl(user!.profileImage))
-                : null,
-            onBackgroundImageError: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
-                ? (_, _) {}
-                : null,
-            child: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
-                ? null
-                : Icon(
-                    isGuest ? Icons.person_outline : Icons.person,
-                    color: AppColors.primary,
-                  ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: AppTypography.h3),
-                const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: AppTypography.caption,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          if (isGuest)
-            TextButton(
-              onPressed: () => context.push('/login'),
-              child: Text(
-                t('login'),
-                style: AppTypography.smallMedium.copyWith(
-                  color: AppColors.primary,
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: AppColors.primarySoft,
+                backgroundImage: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
+                    ? NetworkImage(assetUrl(user!.profileImage))
+                    : null,
+                onBackgroundImageError: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
+                    ? (_, _) {}
+                    : null,
+                child: (!isGuest && (user?.profileImage?.isNotEmpty ?? false))
+                    ? null
+                    : Icon(
+                        isGuest ? Icons.person_outline : Icons.person,
+                        color: AppColors.primary,
+                      ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(name, style: AppTypography.h3),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: AppTypography.caption,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-            )
-          else
-            Stack(
-              clipBehavior: Clip.none,
-              children: [
-                IconButton(
-                  onPressed: () =>
-                      setState(() => _activeTab = _SettingsTab.notifications),
-                  icon: const Icon(
-                    Icons.notifications_none,
-                    color: AppColors.text,
-                  ),
-                ),
-                if (notifications.unreadCount > 0)
-                  Positioned(
-                    right: 4,
-                    top: 4,
-                    child: Container(
-                      width: 9,
-                      height: 9,
-                      decoration: const BoxDecoration(
-                        color: AppColors.danger,
-                        shape: BoxShape.circle,
-                      ),
+              if (isGuest)
+                TextButton(
+                  onPressed: () => context.push('/login'),
+                  child: Text(
+                    t('login'),
+                    style: AppTypography.smallMedium.copyWith(
+                      color: AppColors.primary,
                     ),
                   ),
-              ],
-            ),
-        ],
+                )
+              else
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      onPressed: () =>
+                          setState(() => _activeTab = _SettingsTab.notifications),
+                      icon: const Icon(
+                        Icons.notifications_none,
+                        color: AppColors.text,
+                      ),
+                    ),
+                    if (notifications.unreadCount > 0)
+                      Positioned(
+                        right: 4,
+                        top: 4,
+                        child: Container(
+                          width: 9,
+                          height: 9,
+                          decoration: const BoxDecoration(
+                            color: AppColors.danger,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

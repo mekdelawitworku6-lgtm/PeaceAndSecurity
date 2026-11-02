@@ -230,6 +230,9 @@ export class ReportsController {
   @Roles(
     UserRole.SYSTEM_SUPER_ADMIN,
     UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
     UserRole.POLICE_COMMANDER_CITY,
     UserRole.POLICE_COMMANDER_SUBCITY,
     UserRole.POLICE_COMMANDER_WOREDA,
@@ -242,9 +245,18 @@ export class ReportsController {
 
   @Get(":id/nearby-patrols")
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(UserRole.SYSTEM_SUPER_ADMIN, UserRole.SYSTEM_ADMIN)
+  @Roles(
+    UserRole.SYSTEM_SUPER_ADMIN,
+    UserRole.SYSTEM_ADMIN,
+    UserRole.PEACE_SUPER_ADMIN,
+    UserRole.PEACE_OFFICER_SUBCITY,
+    UserRole.PEACE_OFFICER_WOREDA,
+    UserRole.POLICE_COMMANDER_CITY,
+    UserRole.POLICE_COMMANDER_SUBCITY,
+    UserRole.POLICE_COMMANDER_WOREDA,
+  )
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Get nearby patrols for a specific report (Admin only)" })
+  @ApiOperation({ summary: "Get nearby patrols for a specific report" })
   async findNearbyPatrols(@Param("id") id: string, @Query("radiusKm") radiusKm?: number, @Request() req?: any) {
     const patrols = await this.reportsService.findNearbyPatrolsForReport(id, radiusKm);
     await this.auditService.logDataAccess({

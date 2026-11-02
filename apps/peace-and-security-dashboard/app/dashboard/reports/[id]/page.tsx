@@ -219,6 +219,7 @@ export default function ReportDetailPage() {
     const getStatusBadge = (status: string) => {
         const colors: any = {
             'SUBMITTED': 'bg-blue-100 text-blue-700 border-blue-200',
+            'REPORT_JUST_CREATED': 'bg-blue-100 text-blue-700 border-blue-200',
             'UNDER_REVIEW': 'bg-amber-100 text-amber-700 border-amber-200',
             'ASSIGNED': 'bg-purple-100 text-purple-700 border-purple-200',
             'IN_PROGRESS': 'bg-indigo-100 text-indigo-700 border-indigo-200',
@@ -227,9 +228,10 @@ export default function ReportDetailPage() {
             'REJECTED': 'bg-rose-100 text-rose-700 border-rose-200',
             'ESCALATED': 'bg-orange-100 text-orange-700 border-orange-200',
         }
+        const isCreated = status?.toUpperCase() === 'SUBMITTED' || status?.toUpperCase() === 'REPORT_JUST_CREATED';
         return (
             <Badge variant="outline" className={cn("uppercase font-bold px-3 py-1", colors[status?.toUpperCase()] || "bg-slate-100 text-slate-700")}>
-                {status || 'UNKNOWN'}
+                {isCreated ? 'Report Just Created' : (status || 'UNKNOWN')}
             </Badge>
         )
     }
@@ -593,7 +595,9 @@ export default function ReportDetailPage() {
                                                 <div className="space-y-0.5">
                                                     <div className="flex items-center gap-2">
                                                         <p className="text-[10px] font-mono text-slate-400">{new Date(log.createdAt).toLocaleDateString()}</p>
-                                                        <p className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">{log.status}</p>
+                                                        <p className="text-[10px] font-black text-slate-800 uppercase tracking-tighter">
+                                                            {log.status?.toUpperCase() === 'SUBMITTED' ? 'Report Just Created' : log.status}
+                                                        </p>
                                                     </div>
                                                     <p className="text-[11px] text-slate-500 leading-tight">{log.notes || "No additional status notes provided"}</p>
                                                 </div>

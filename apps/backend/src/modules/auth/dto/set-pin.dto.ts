@@ -2,9 +2,9 @@ import { ApiProperty } from "@nestjs/swagger";
 import { IsString, Length, Matches } from "class-validator";
 
 export class SetPinDto {
-  @ApiProperty({ example: "1234", description: "4-6 digit PIN" })
+  @ApiProperty({ example: "482915", description: "6-digit PIN" })
   @IsString()
-  @Length(4, 6, { message: "PIN must be 4–6 digits" })
-  @Matches(/^\d+$/, { message: "PIN must contain only digits" })
+  @Length(6, 6, { message: "PIN must be exactly 6 digits" })
+  @Matches(/^\d{6}$/, { message: "PIN must contain exactly 6 digits" })
   pin: string;
 }

@@ -43,14 +43,14 @@ import { IsString, Length, Matches, IsEnum } from "class-validator";
 import { ApiProperty } from "@nestjs/swagger";
 
 class ChangePinDto {
-  @ApiProperty({ example: "1234", description: "Your current PIN" })
+  @ApiProperty({ example: "123456", description: "Your current PIN" })
   @IsString()
   currentPin: string;
 
-  @ApiProperty({ example: "5678", description: "New 4-6 digit PIN" })
+  @ApiProperty({ example: "839201", description: "New 6-digit PIN" })
   @IsString()
-  @Length(4, 6, { message: "PIN must be 4–6 digits" })
-  @Matches(/^\d+$/, { message: "PIN must contain only digits" })
+  @Length(6, 6, { message: "PIN must be exactly 6 digits" })
+  @Matches(/^\d{6}$/, { message: "PIN must contain only digits" })
   newPin: string;
 }
 
@@ -416,5 +416,20 @@ export class AuthController {
       dto.newPin,
       req.user.role,
     );
+  }
+
+  @Post("logout")
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: "Revoke session JWT token and log out (CWE-613)",
+  })
+  @ApiResponse({ status: 200, description: "Logged out successfully" })
+  async logout(
+    @Headers("authorization") authHeader: string,
+    @Body() body: { refreshToken?: string },
+    @Request() req: any,
+  ) {
+    const token = extractBearer(authHeader);
+    return this.authService.logout(token, body?.refreshToken, req?.user);
   }
 }

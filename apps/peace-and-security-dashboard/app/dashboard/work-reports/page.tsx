@@ -23,8 +23,11 @@ import {
 } from "@/components/ui/dialog";
 import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Loader2, FileText, Plus } from "lucide-react";
+import { CheckCircle2, XCircle, Loader2, FileText, Plus, Search, X } from "lucide-react";
 import { workReportService, WorkReport } from "@/lib/services/work-report-service";
+import { DatePickerWithRange } from "@/components/ui/date-range-picker";
+import { DateRange } from "react-day-picker";
+import { format } from "date-fns";
 
 const STATUS_STYLES: Record<string, string> = {
   SUBMITTED: "bg-amber-100 text-amber-800 border-amber-200",
@@ -32,15 +35,34 @@ const STATUS_STYLES: Record<string, string> = {
   REJECTED: "bg-red-100 text-red-800 border-red-200",
 };
 
+function formatDate(value?: string) {
+  if (!value) return "—";
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toLocaleDateString();
+}
+
+function formatDateTime(value?: string | Date) {
+  if (!value) return "";
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? "" : d.toLocaleString();
+}
+
+function formatTime(value?: string | Date) {
+  if (!value) return "";
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? "" : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
 export default function WorkReportsPage() {
   const { user } = useAuth();
   const [reports, setReports] = useState<WorkReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
-  const [statusFilter, setStatusFilter] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [roleFilter, setRoleFilter] = useState("ALL");
   const [search, setSearch] = useState("");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [submitOpen, setSubmitOpen] = useState(false);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [reviewNote, setReviewNote] = useState("");
@@ -53,9 +75,11 @@ export default function WorkReportsPage() {
       const res = await workReportService.getAll({
         page,
         limit: 10,
-        ...(statusFilter ? { status: statusFilter } : {}),
-        ...(roleFilter ? { reporterRole: roleFilter } : {}),
+        ...(statusFilter !== "ALL" ? { status: statusFilter } : {}),
+        ...(roleFilter !== "ALL" ? { reporterRole: roleFilter } : {}),
         ...(search ? { search } : {}),
+        ...(dateRange?.from ? { from: format(dateRange.from, "yyyy-MM-dd") } : {}),
+        ...(dateRange?.to ? { to: format(dateRange.to, "yyyy-MM-dd") } : {}),
       });
       const data = res.data as any;
       setReports(
@@ -63,7 +87,7 @@ export default function WorkReportsPage() {
           ? data
           : (data?.data as WorkReport[]) ?? [],
       );
-      setTotal(data?.total ?? 0);
+      setTotal((res as any)?.total ?? data?.total ?? (Array.isArray(data) ? data.length : 0));
     } catch {
       toast.error("Failed to load work reports");
     } finally {
@@ -74,7 +98,7 @@ export default function WorkReportsPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page, statusFilter, roleFilter]);
+  }, [page, statusFilter, roleFilter, search, dateRange]);
 
   const handleReview = async (id: string, status: "APPROVED" | "REJECTED") => {
     setReviewingId(id);
@@ -108,30 +132,35 @@ export default function WorkReportsPage() {
       </div>
 
       <div className="flex flex-wrap gap-3">
-        <Input
-          placeholder="Search title or reporter..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && load()}
-          className="max-w-xs"
-        />
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
+        <div className="relative max-w-xs w-full">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search title or reporter..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+            className="pl-10"
+          />
+        </div>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
           <SelectTrigger className="w-44">
-            <SelectValue placeholder="All statuses" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all">All statuses</SelectItem>
+            <SelectItem value="ALL">All statuses</SelectItem>
             <SelectItem value="SUBMITTED">Submitted</SelectItem>
             <SelectItem value="APPROVED">Approved</SelectItem>
             <SelectItem value="REJECTED">Rejected</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
+        <Select value={roleFilter} onValueChange={(v) => { setRoleFilter(v); setPage(1); }}>
           <SelectTrigger className="w-52">
-            <SelectValue placeholder="All roles" />
+            <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all">All roles</SelectItem>
+            <SelectItem value="ALL">All roles</SelectItem>
             <SelectItem value="PATROL">Patrol Officer</SelectItem>
             <SelectItem value="PEACE_OFFICER_SUBCITY">Peace &amp; Security Subcity</SelectItem>
             <SelectItem value="PEACE_OFFICER_WOREDA">Peace &amp; Security Woreda</SelectItem>
@@ -142,6 +171,25 @@ export default function WorkReportsPage() {
             <SelectItem value="SYSTEM_ADMIN">System Admin</SelectItem>
           </SelectContent>
         </Select>
+        <DatePickerWithRange date={dateRange} setDate={setDateRange} />
+        {(search !== "" ||
+          statusFilter !== "ALL" ||
+          roleFilter !== "ALL" ||
+          dateRange?.from) && (
+          <Button
+            variant="outline"
+            onClick={() => {
+              setSearch("");
+              setStatusFilter("ALL");
+              setRoleFilter("ALL");
+              setDateRange(undefined);
+              setPage(1);
+            }}
+          >
+            <X className="h-4 w-4 mr-2" />
+            Clear
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -190,7 +238,10 @@ export default function WorkReportsPage() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-slate-600">
-                      {r.reportDate || new Date(r.createdAt).toLocaleDateString()}
+                      <span className="flex flex-col leading-tight">
+                        <span>{r.reportDate ? formatDate(r.reportDate) : formatDateTime(r.createdAt)}</span>
+                        <span className="text-[11px] text-slate-400">{r.createdAt ? formatTime(r.createdAt) : ""}</span>
+                      </span>
                     </td>
                     <td className="px-4 py-3">
                       <Badge

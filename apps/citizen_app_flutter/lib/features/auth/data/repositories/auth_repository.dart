@@ -21,7 +21,7 @@ class AuthRepository {
     return LoginData.fromJson(res['data'] as Map<String, dynamic>);
   }
 
-  Future<LoginData> register({
+  Future<Map<String, dynamic>> register({
     required String fullName,
     required String phoneNumber,
     String? pin,
@@ -54,7 +54,16 @@ class AuthRepository {
       ));
     }
     final res = await _api.post('/auth/citizen/register', data: form);
-    return LoginData.fromJson(res['data'] as Map<String, dynamic>);
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> logout() async {
+    try {
+      final refresh = SessionManager.instance.refreshToken;
+      await _api.post('/auth/logout', data: {
+        'refreshToken': ?refresh,
+      });
+    } catch (_) {}
   }
 
   Future<Map<String, dynamic>> preLogin(String phoneNumber) async {

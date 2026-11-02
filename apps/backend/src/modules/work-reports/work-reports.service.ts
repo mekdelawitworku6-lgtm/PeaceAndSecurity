@@ -17,6 +17,7 @@ import { UserRole, WorkReportStatus } from "../../common/enums/enums";
 import { successResponse } from "../../common/types/service-response";
 import { User } from "../user/entities/user.entity";
 import { Patrol } from "../patrol/entities/patrol.entity";
+import { Woreda } from "../geo/entities/woreda.entity";
 
 const STAFF_ROLES = new Set<string>([
   UserRole.SYSTEM_SUPER_ADMIN,
@@ -60,6 +61,7 @@ const ROLE_LEVEL: Record<string, number> = {
   [UserRole.POLICE_COMMANDER_WOREDA]: 2,
   [UserRole.PEACE_OFFICER_WOREDA_VIEWER]: 2,
   [UserRole.POLICE_COMMANDER_WOREDA_VIEWER]: 2,
+  [UserRole.PATROL]: 3,
 };
 
 function visibleReporterRoles(role: string): string[] {
@@ -77,6 +79,8 @@ export class WorkReportsService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Patrol)
     private readonly patrolRepository: Repository<Patrol>,
+    @InjectRepository(Woreda)
+    private readonly woredaRepository: Repository<Woreda>,
   ) {}
 
   async create(user: { id: string; role: string }, dto: CreateWorkReportDto) {
@@ -85,16 +89,32 @@ export class WorkReportsService {
     }
 
     let reporterName: string | null = null;
+    let cityId: string | null = null;
+    let subcityId: string | null = null;
+    let woredaId: string | null = null;
+
     if (user.role === UserRole.PATROL) {
       const patrol = await this.patrolRepository.findOne({
         where: { id: user.id },
       });
       reporterName = patrol?.fullName ?? null;
+      woredaId = patrol?.woredaId ?? null;
+      if (woredaId) {
+        const woreda = await this.woredaRepository.findOne({
+          where: { id: woredaId },
+          relations: ["subcity"],
+        });
+        subcityId = woreda?.subcityId ?? null;
+        cityId = woreda?.subcity?.cityId ?? null;
+      }
     } else if (STAFF_ROLES.has(user.role)) {
       const staff = await this.userRepository.findOne({
         where: { id: user.id },
       });
       reporterName = staff?.fullName ?? null;
+      cityId = staff?.cityId ?? null;
+      subcityId = staff?.subcityId ?? null;
+      woredaId = staff?.woredaId ?? null;
     }
 
     const report = this.workReportRepository.create({
@@ -107,6 +127,9 @@ export class WorkReportsService {
       latitude: dto.latitude,
       longitude: dto.longitude,
       status: WorkReportStatus.SUBMITTED,
+      cityId: cityId ?? undefined,
+      subcityId: subcityId ?? undefined,
+      woredaId: woredaId ?? undefined,
     });
 
     const saved = await this.workReportRepository.save(report);
@@ -120,6 +143,7 @@ export class WorkReportsService {
       reporterId,
       from,
       to,
+      search,
       page = 1,
       limit = 10,
     } = filter;
@@ -134,6 +158,24 @@ export class WorkReportsService {
         "(wr.reporterRole IN (:...roles) OR wr.reporterId = :uid)",
         { roles, uid: user.id },
       );
+
+      const staff = await this.userRepository.findOne({ where: { id: user.id } });
+      if (staff?.woredaId) {
+        qb.andWhere(
+          "(wr.woredaId = :woredaId OR wr.reporterId = :uid)",
+          { woredaId: staff.woredaId, uid: user.id },
+        );
+      } else if (staff?.subcityId) {
+        qb.andWhere(
+          "(wr.subcityId = :subcityId OR wr.reporterId = :uid)",
+          { subcityId: staff.subcityId, uid: user.id },
+        );
+      } else if (staff?.cityId) {
+        qb.andWhere(
+          "(wr.cityId = :cityId OR wr.cityId IS NULL OR wr.reporterId = :uid)",
+          { cityId: staff.cityId, uid: user.id },
+        );
+      }
     } else {
       qb.andWhere("wr.reporterId = :reporterId", { reporterId: user.id });
     }
@@ -143,6 +185,13 @@ export class WorkReportsService {
     if (reporterId) qb.andWhere("wr.reporterId = :reporterId", { reporterId });
     if (from) qb.andWhere("wr.reportDate >= :from", { from });
     if (to) qb.andWhere("wr.reportDate <= :to", { to });
+
+    if (search && search.trim()) {
+      qb.andWhere(
+        "(wr.title ILIKE :search OR wr.reporterName ILIKE :search)",
+        { search: `%${search.trim()}%` },
+      );
+    }
 
     qb.orderBy("wr.createdAt", "DESC")
       .skip((page - 1) * limit)

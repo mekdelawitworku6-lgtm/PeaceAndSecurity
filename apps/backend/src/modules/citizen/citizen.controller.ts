@@ -71,6 +71,10 @@ export class CitizenController {
       limit?: number;
       search?: string;
       status?: string;
+      startDate?: string;
+      endDate?: string;
+      sortBy?: string;
+      sortOrder?: "ASC" | "DESC";
     },
     @Request() req: any,
   ) {

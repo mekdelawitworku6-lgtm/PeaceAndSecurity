@@ -73,13 +73,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          context.read<ReportsBloc>().add(ReportsFetchAssignedRequested());
-          context.read<NotificationsBloc>().add(NotificationsFetchUnreadRequested());
-        },
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+      body: SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            context.read<ReportsBloc>().add(ReportsFetchAssignedRequested());
+            context.read<NotificationsBloc>().add(NotificationsFetchUnreadRequested());
+          },
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
           children: [
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,6 +256,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
+      ),
       ),
     );
   }

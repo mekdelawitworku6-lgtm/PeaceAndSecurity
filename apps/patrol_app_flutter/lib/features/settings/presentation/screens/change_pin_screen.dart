@@ -32,14 +32,19 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
 
   void _submit() {
     if (!RegExp(r'^\d{4,6}$').hasMatch(_current.text.trim())) {
-      _showAlert('Invalid PIN', 'Enter your current 4-6 digit PIN.');
+      _showAlert('Invalid PIN', 'Enter your current PIN.');
       return;
     }
-    if (!RegExp(r'^\d{4,6}$').hasMatch(_newPin.text.trim())) {
-      _showAlert('Invalid PIN', 'New PIN must be 4-6 digits.');
+    final newPin = _newPin.text.trim();
+    if (!RegExp(r'^\d{6}$').hasMatch(newPin)) {
+      _showAlert('Invalid PIN', 'New PIN must be exactly 6 digits.');
       return;
     }
-    if (_newPin.text.trim() != _confirm.text.trim()) {
+    if (newPin == '123456' || newPin == '654321' || RegExp(r'^(\d)\1{5}$').hasMatch(newPin)) {
+      _showAlert('Weak PIN', 'PIN cannot be sequential or repeating numbers (e.g. 123456, 111111).');
+      return;
+    }
+    if (newPin != _confirm.text.trim()) {
       _showAlert('PIN mismatch', 'The new PINs do not match.');
       return;
     }
@@ -124,7 +129,7 @@ class _ChangePinScreenState extends State<ChangePinScreen> {
                       const SizedBox(height: 16),
                       AppInput(
                         label: 'New PIN',
-                        hint: '4-6 digits',
+                        hint: '6 digits',
                         secure: true,
                         controller: _newPin,
                         keyboardType: TextInputType.number,

@@ -69,3 +69,28 @@ export async function redisGetJSON<T = unknown>(
   const raw = await redisGet(key);
   return raw ? (JSON.parse(raw) as T) : null;
 }
+
+/** Token Blacklist Helpers for Revocation on Logout */
+import { createHash } from "crypto";
+
+export function hashToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+export async function blacklistToken(token: string, ttlSeconds: number): Promise<void> {
+  if (!token || ttlSeconds <= 0) return;
+  const hash = hashToken(token);
+  await redisSet(`bl:token:${hash}`, "revoked", ttlSeconds);
+}
+
+export async function isTokenBlacklisted(token: string): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const hash = hashToken(token);
+    const val = await redisGet(`bl:token:${hash}`);
+    return val !== null;
+  } catch (err) {
+    console.error("Redis token blacklist lookup failed:", err);
+    return false;
+  }
+}

@@ -128,7 +128,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       const SizedBox(height: 16),
                       AppInput(
                         label: t('pin'),
-                        hint: '4-6 digit PIN',
+                        hint: '6-digit PIN',
                         secure: true,
                         controller: _pin,
                         keyboardType: TextInputType.number,
