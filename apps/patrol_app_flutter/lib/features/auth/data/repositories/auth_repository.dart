@@ -26,6 +26,29 @@ class AuthRepository {
     } catch (_) {}
   }
 
+  Future<Map<String, dynamic>> pinResetRequest({
+    required String phoneNumber,
+    String type = 'RESET',
+  }) async {
+    final res = await _api.post('/auth/patrol/pin-reset/request', data: {
+      'phoneNumber': phoneNumber,
+      'type': type,
+    });
+    return res['data'] as Map<String, dynamic>;
+  }
+
+  Future<void> pinResetConfirm({
+    required String resetToken,
+    required String otpCode,
+    required String newPin,
+  }) async {
+    await _api.post(
+      '/auth/patrol/pin-reset/confirm',
+      data: {'otpCode': otpCode, 'newPin': newPin},
+      headers: {'Authorization': 'Bearer $resetToken'},
+    );
+  }
+
   Future<void> changePin({
     required String currentPin,
     required String newPin,

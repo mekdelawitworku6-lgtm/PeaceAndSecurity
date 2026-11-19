@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme/app_colors.dart';
 import '../core/i18n/context_ext.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
+import '../features/auth/presentation/screens/forgot_pin_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/splash_screen.dart';
 import '../features/chat/presentation/screens/chat_screen.dart';
@@ -53,6 +54,22 @@ class AppRouter {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-pin',
+        builder: (context, state) => ForgotPinScreen(
+          initialPhone: state.uri.queryParameters['phone'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/reset-pin',
+        builder: (context, state) {
+          final params = state.uri.queryParameters;
+          return ResetPinScreen(
+            resetToken: params['resetToken'] ?? '',
+            phoneNumber: params['phoneNumber'] ?? '',
+          );
+        },
       ),
       GoRoute(
         path: '/change-pin',
@@ -138,6 +155,8 @@ class AppRouter {
     const authRoutes = [
       '/splash',
       '/login',
+      '/forgot-pin',
+      '/reset-pin',
       '/change-pin',
     ];
     return authRoutes.any(location.startsWith);

@@ -7,6 +7,9 @@ class AuthState extends Equatable {
   final PatrolUser? user;
   final String? accessToken;
   final String? refreshToken;
+  final String? pinResetToken;
+  final String? pinResetPhone;
+  final bool pinResetDone;
   final String? error;
   final String? message;
 
@@ -15,6 +18,9 @@ class AuthState extends Equatable {
     this.user,
     this.accessToken,
     this.refreshToken,
+    this.pinResetToken,
+    this.pinResetPhone,
+    this.pinResetDone = false,
     this.error,
     this.message,
   });
@@ -26,6 +32,9 @@ class AuthState extends Equatable {
     PatrolUser? user,
     String? accessToken,
     String? refreshToken,
+    String? pinResetToken,
+    String? pinResetPhone,
+    bool? pinResetDone,
     String? error,
     String? message,
   }) =>
@@ -34,6 +43,9 @@ class AuthState extends Equatable {
         user: user ?? this.user,
         accessToken: accessToken ?? this.accessToken,
         refreshToken: refreshToken ?? this.refreshToken,
+        pinResetToken: pinResetToken ?? this.pinResetToken,
+        pinResetPhone: pinResetPhone ?? this.pinResetPhone,
+        pinResetDone: pinResetDone ?? this.pinResetDone,
         error: error,
         message: message,
       );
@@ -44,6 +56,9 @@ class AuthState extends Equatable {
         user,
         accessToken,
         refreshToken,
+        pinResetToken,
+        pinResetPhone,
+        pinResetDone,
         error,
         message,
       ];

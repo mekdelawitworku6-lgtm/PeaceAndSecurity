@@ -12,6 +12,9 @@ class AuthState extends Equatable {
   final String? pendingPin;
   final String? pendingDevOtp;
   final bool isGuest;
+  final String? pinResetToken;
+  final String? pinResetPhone;
+  final bool pinResetDone;
   final String? error;
   final String? message;
 
@@ -25,6 +28,9 @@ class AuthState extends Equatable {
     this.pendingPin,
     this.pendingDevOtp,
     this.isGuest = false,
+    this.pinResetToken,
+    this.pinResetPhone,
+    this.pinResetDone = false,
     this.error,
     this.message,
   });
@@ -41,6 +47,9 @@ class AuthState extends Equatable {
     String? pendingPin,
     String? pendingDevOtp,
     bool? isGuest,
+    String? pinResetToken,
+    String? pinResetPhone,
+    bool? pinResetDone,
     String? error,
     String? message,
   }) =>
@@ -54,6 +63,9 @@ class AuthState extends Equatable {
         pendingPin: pendingPin ?? this.pendingPin,
         pendingDevOtp: pendingDevOtp ?? this.pendingDevOtp,
         isGuest: isGuest ?? this.isGuest,
+        pinResetToken: pinResetToken ?? this.pinResetToken,
+        pinResetPhone: pinResetPhone ?? this.pinResetPhone,
+        pinResetDone: pinResetDone ?? this.pinResetDone,
         error: error,
         message: message,
       );
@@ -69,6 +81,9 @@ class AuthState extends Equatable {
         pendingPin,
         pendingDevOtp,
         isGuest,
+        pinResetToken,
+        pinResetPhone,
+        pinResetDone,
         error,
         message,
       ];

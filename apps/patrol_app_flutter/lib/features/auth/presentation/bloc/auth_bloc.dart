@@ -17,6 +17,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       : super(const AuthState()) {
     on<AuthHydrateRequested>(_onHydrate);
     on<AuthLoginRequested>(_onLogin);
+    on<AuthPinResetRequested>(_onPinResetRequested);
+    on<AuthPinResetConfirmRequested>(_onPinResetConfirm);
     on<AuthChangePinRequested>(_onChangePin);
     on<AuthLogoutRequested>(_onLogout);
     on<AuthErrorCleared>(_onClearError);
@@ -77,6 +79,62 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  Future<void> _onPinResetRequested(
+      AuthPinResetRequested event, Emitter<AuthState> emit) async {
+    emit(state.copyWith(
+      status: AuthStatus.loading,
+      error: null,
+      message: null,
+      pinResetDone: false,
+    ));
+    try {
+      final res = await repository.pinResetRequest(phoneNumber: event.phoneNumber);
+      final token = res['resetToken'] as String?;
+      if (token == null || token.isEmpty) {
+        throw Exception('No reset token returned. Please try again.');
+      }
+      emit(state.copyWith(
+        status: AuthStatus.signedOut,
+        pinResetToken: token,
+        pinResetPhone: event.phoneNumber,
+        error: null,
+        message: null,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: AuthStatus.signedOut,
+        error: _message(e, 'Failed to send reset code'),
+        message: null,
+      ));
+    }
+  }
+
+  Future<void> _onPinResetConfirm(
+      AuthPinResetConfirmRequested event, Emitter<AuthState> emit) async {
+    emit(state.copyWith(status: AuthStatus.loading, error: null, message: null));
+    try {
+      await repository.pinResetConfirm(
+        resetToken: event.resetToken,
+        otpCode: event.otpCode,
+        newPin: event.newPin,
+      );
+      emit(state.copyWith(
+        status: AuthStatus.signedOut,
+        pinResetToken: null,
+        pinResetPhone: null,
+        pinResetDone: true,
+        error: null,
+        message: null,
+      ));
+    } catch (e) {
+      emit(state.copyWith(
+        status: AuthStatus.signedOut,
+        error: _message(e, 'Failed to reset PIN'),
+        message: null,
+      ));
+    }
+  }
+
   Future<void> _onChangePin(
       AuthChangePinRequested event, Emitter<AuthState> emit) async {
     emit(state.copyWith(status: AuthStatus.loading, error: null));
@@ -108,12 +166,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       user: null,
       accessToken: null,
       refreshToken: null,
+      pinResetToken: null,
+      pinResetPhone: null,
+      pinResetDone: false,
       error: null,
     ));
   }
 
   void _onClearError(AuthErrorCleared event, Emitter<AuthState> emit) {
-    emit(state.copyWith(error: null, message: null));
+    emit(state.copyWith(
+      error: null,
+      message: null,
+      pinResetToken: null,
+      pinResetPhone: null,
+      pinResetDone: false,
+    ));
   }
 
   void _connectSockets(PatrolUser user) {

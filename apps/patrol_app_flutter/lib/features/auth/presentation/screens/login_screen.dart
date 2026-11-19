@@ -136,7 +136,22 @@ class _LoginScreenState extends State<LoginScreen> {
                         onChanged: (_) =>
                             context.read<AuthBloc>().add(AuthErrorCleared()),
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: GestureDetector(
+                          onTap: () => context.go(Uri(
+                            path: '/forgot-pin',
+                            queryParameters: {'phone': _phone.text.trim()},
+                          ).toString()),
+                          child: Text(
+                            t('forgotPin'),
+                            style: AppTypography.smallMedium
+                                .copyWith(color: AppColors.primary),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       AppButton(
                         title: 'Login',
                         loading: state.status == AuthStatus.loading,

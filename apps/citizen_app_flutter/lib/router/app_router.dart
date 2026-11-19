@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../core/i18n/context_ext.dart';
 import '../core/theme/app_colors.dart';
 import '../features/auth/presentation/bloc/auth_bloc.dart';
+import '../features/auth/presentation/screens/forgot_pin_screen.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/onboarding_screen.dart';
 import '../features/auth/presentation/screens/register_screen.dart';
@@ -58,6 +59,22 @@ class AppRouter {
       GoRoute(
         path: '/login',
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: '/forgot-pin',
+        builder: (context, state) => ForgotPinScreen(
+          initialPhone: state.uri.queryParameters['phone'] ?? '',
+        ),
+      ),
+      GoRoute(
+        path: '/reset-pin',
+        builder: (context, state) {
+          final params = state.uri.queryParameters;
+          return ResetPinScreen(
+            resetToken: params['resetToken'] ?? '',
+            phoneNumber: params['phoneNumber'] ?? '',
+          );
+        },
       ),
       GoRoute(
         path: '/register',
@@ -159,6 +176,8 @@ class AppRouter {
       '/onboarding',
       '/welcome',
       '/login',
+      '/forgot-pin',
+      '/reset-pin',
       '/register',
       '/verify-otp',
       '/track-case',
