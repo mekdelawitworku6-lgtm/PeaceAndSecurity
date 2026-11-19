@@ -221,11 +221,6 @@ export class AuthService {
       await this.attachGuestReports(saved.id, deviceId);
 
       // Issue registration OTP to verify phone number ownership (CWE-287)
-      await this.otpService.removeBulkOtps?.({
-        userId: saved.id,
-        otpType: OTPType.REGISTRATION_OTP,
-      });
-
       const otp = await this.otpService.createOtp({
         phoneNumber: normalizedPhone,
         userId: saved.id,
@@ -635,11 +630,6 @@ export class AuthService {
           ? OTPType.REGISTRATION_OTP
           : OTPType.FORGOT_PIN_OTP;
 
-      await this.otpService.removeBulkOtps({
-        userId: id,
-        otpType,
-      });
-
       const otp = await this.otpService.createOtp({
         userId: id,
         phoneNumber: normalizedPhone,
@@ -669,6 +659,7 @@ export class AuthService {
         sub: id,
         phoneNumber: normalizedPhone,
         role: role === "patrol" ? UserRole.PATROL : UserRole.CITIZEN,
+        pinType,
       });
 
       return successResponse(
@@ -694,24 +685,32 @@ export class AuthService {
     newPin: string,
   ): Promise<ServiceResponse> {
     try {
-      const decoded = verifyToken<any>(
-        this.jwtService,
-        resetToken,
-        process.env.JWT_PASSWORD_RESET_SECRET,
-      );
-      if (decoded.type !== TokenType.PIN_RESET)
+      const hint = this.jwtService.decode(resetToken) as any;
+      const pinType: PINType = hint?.pinType ?? PINType.RESET;
+      const isSetup = pinType === PINType.SETUP;
+      const secret = isSetup
+        ? process.env.JWT_REG_SECRET
+        : process.env.JWT_PASSWORD_RESET_SECRET;
+      const expectedTokenType = isSetup
+        ? TokenType.REGISTRATION
+        : TokenType.PIN_RESET;
+
+      const decoded = verifyToken<any>(this.jwtService, resetToken, secret!);
+      if (decoded.type !== expectedTokenType)
         throw new UnauthorizedException("Invalid token type");
 
-      const { sub: userId, role } = decoded;
+      const { sub: userId, role, phoneNumber } = decoded;
+      const otpType = isSetup
+        ? OTPType.REGISTRATION_OTP
+        : OTPType.FORGOT_PIN_OTP;
 
-      // Verify OTP
-      await this.otpService.verifyOtp(userId, OTPType.FORGOT_PIN_OTP, otpCode);
+      await this.otpService.verifyOtp(userId, otpType, otpCode);
 
       const hashedPin = await this.hashPin(newPin);
 
       if (role === UserRole.PATROL) {
         const patrol = await this.patrolRepository.findOne({
-          where: { id: userId },
+          where: { id: userId, phoneNumber },
         });
         if (!patrol) throw new NotFoundException("Patrol officer not found");
         patrol.pin = hashedPin;
@@ -720,7 +719,7 @@ export class AuthService {
         await this.patrolRepository.save(patrol);
       } else if (role === UserRole.CITIZEN) {
         const citizen = await this.citizenRepository.findOne({
-          where: { id: userId },
+          where: { id: userId, phoneNumber },
         });
         if (!citizen) throw new NotFoundException("Citizen not found");
         citizen.pin = hashedPin;
@@ -735,7 +734,7 @@ export class AuthService {
         eventType: SecurityEventType.PIN_RESET_COMPLETED,
         actorId: userId,
         success: true,
-        metadata: { role },
+        metadata: { role, pinType },
       });
 
       return successResponse("PIN reset successfully.");
@@ -1121,10 +1120,6 @@ export class AuthService {
       if (user.status === UserStatus.DISABLED)
         throw new UnauthorizedException("Account is disabled.");
 
-      await this.otpService.removeBulkOtps({
-        userId: user.id,
-        otpType: OTPType.FORGOT_PASSWORD_OTP,
-      });
       const otp = await this.otpService.createOtp({
         userId: user.id,
         phoneNumber: normalizedPhone,
@@ -1323,10 +1318,6 @@ export class AuthService {
         });
 
       // No PIN set, send OTP to verify phone
-      await this.otpService.removeBulkOtps?.({
-        userId: patrol.id,
-        otpType: OTPType.REGISTRATION_OTP,
-      });
       const otp = await this.otpService.createOtp({
         phoneNumber: normalizedPhone,
         userId: patrol.id,
@@ -1378,10 +1369,6 @@ export class AuthService {
         });
 
       // No PIN set, send OTP to verify phone
-      await this.otpService.removeBulkOtps?.({
-        userId: citizen.id,
-        otpType: OTPType.REGISTRATION_OTP,
-      });
       const otp = await this.otpService.createOtp({
         phoneNumber: normalizedPhone,
         userId: citizen.id,
@@ -1460,10 +1447,6 @@ export class AuthService {
       }
 
       if (!user.isEmailVerified && !user.isPhoneVerified) {
-        await this.otpService.removeBulkOtps?.({
-          userId: user.id,
-          otpType: OTPType.REGISTRATION_OTP,
-        });
         const otp = await this.otpService.createOtp({
           phoneNumber: user.phoneNumber,
           userId: user.id,
