@@ -35,6 +35,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     const { sub, role } = payload;
+    const tokenVersion = payload.tokenVersion ?? 0;
 
     if (role === UserRole.PATROL) {
       const patrol = await this.patrolRepository.findOne({
@@ -42,6 +43,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
       if (!patrol)
         throw new UnauthorizedException("Patrol officer not found or inactive");
+      if ((patrol.tokenVersion ?? 0) !== tokenVersion)
+        throw new UnauthorizedException("Session has been terminated");
       return { id: patrol.id, role: UserRole.PATROL };
     }
 
@@ -51,6 +54,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       });
       if (!citizen)
         throw new UnauthorizedException("Citizen not found or inactive");
+      if ((citizen.tokenVersion ?? 0) !== tokenVersion)
+        throw new UnauthorizedException("Session has been terminated");
       return { id: citizen.id, role: UserRole.CITIZEN };
     }
 
@@ -59,6 +64,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       where: { id: sub, status: UserStatus.ACTIVE },
     });
     if (!user) throw new UnauthorizedException("User not found or inactive");
+    if ((user.tokenVersion ?? 0) !== tokenVersion)
+      throw new UnauthorizedException("Session has been terminated");
     return { id: user.id, role: user.role };
   }
 }

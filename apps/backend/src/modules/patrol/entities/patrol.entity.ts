@@ -36,6 +36,9 @@ export class Patrol extends BaseEntity {
   })
   status: UserStatus;
 
+  @Column({ default: 0 })
+  tokenVersion: number;
+
   /** Sub-city or district this officer covers */
   @Column({ nullable: true })
   assignedArea: string;

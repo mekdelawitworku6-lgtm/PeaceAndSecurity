@@ -418,6 +418,7 @@ export class AuthController {
     );
   }
 
+  @Public()
   @Post("logout")
   @ApiBearerAuth()
   @ApiOperation({

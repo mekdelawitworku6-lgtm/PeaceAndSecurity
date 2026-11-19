@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsString } from "class-validator";
+import { IsEnum, IsString } from "class-validator";
 import { OTPType } from "common/enums/enums";
 
 export class VerifyOTPDto {
@@ -7,7 +7,7 @@ export class VerifyOTPDto {
   @IsString()
   otpCode: string;
 
-  @ApiProperty({ example: OTPType.REGISTRATION_OTP })
-  @IsString()
+  @ApiProperty({ enum: OTPType, example: OTPType.REGISTRATION_OTP })
+  @IsEnum(OTPType)
   otpType: OTPType;
 }

@@ -44,10 +44,28 @@ class ApiClient {
           }
           handler.next(options);
         },
-        onError: (error, handler) {
+        onError: (error, handler) async {
           if (error.response?.statusCode == 401 &&
               !(error.requestOptions.path.contains('/auth/'))) {
-            SessionManager.instance.onUnauthorized();
+            final alreadyRetried =
+                error.requestOptions.headers['x-token-refreshed'] == true;
+            if (alreadyRetried || !(await _refreshSession())) {
+              SessionManager.instance.onUnauthorized();
+              handler.next(error);
+              return;
+            }
+
+            final options = error.requestOptions;
+            options.headers['Authorization'] =
+                'Bearer ${SessionManager.instance.accessToken}';
+            options.headers['x-token-refreshed'] = true;
+            try {
+              handler.resolve(await _dio.fetch(options));
+              return;
+            } on DioException catch (retryError) {
+              handler.next(retryError);
+              return;
+            }
           }
           handler.next(error);
         },
@@ -57,6 +75,48 @@ class ApiClient {
 
   static final ApiClient instance = ApiClient._internal();
   late final Dio _dio;
+  bool _refreshing = false;
+
+  Future<bool> _refreshSession() async {
+    if (_refreshing) return false;
+    final refreshToken = SessionManager.instance.refreshToken;
+    if (refreshToken == null || refreshToken.isEmpty) return false;
+
+    _refreshing = true;
+    try {
+      final response = await Dio(
+        BaseOptions(
+          baseUrl: AppConfig.apiUrl,
+          connectTimeout: const Duration(seconds: 20),
+          receiveTimeout: const Duration(seconds: 20),
+        ),
+      ).post('/auth/refresh', data: {'refreshToken': refreshToken});
+
+      final body = response.data;
+      final data = body is Map ? body['data'] : null;
+      final access = data?['accessToken'];
+      final nextRefresh = data?['refreshToken'] ?? refreshToken;
+      if (access is! String || access.isEmpty) return false;
+
+      final user = SessionManager.instance.user;
+      if (user != null) {
+        await SessionManager.instance.saveSession(
+          access: access,
+          refresh: nextRefresh is String ? nextRefresh : refreshToken,
+          user: user,
+        );
+      } else {
+        SessionManager.instance.accessToken = access;
+        SessionManager.instance.refreshToken =
+            nextRefresh is String ? nextRefresh : refreshToken;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    } finally {
+      _refreshing = false;
+    }
+  }
 
   Future<Map<String, dynamic>> post(
     String path, {

@@ -50,6 +50,9 @@ export class User extends BaseEntity {
   })
   status: UserStatus;
 
+  @Column({ default: 0 })
+  tokenVersion: number;
+
   @Column({ nullable: true })
   profileImage: string;
 

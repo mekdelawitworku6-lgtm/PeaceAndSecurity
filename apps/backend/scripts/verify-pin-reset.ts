@@ -7,13 +7,18 @@ import { OtpService } from "../src/modules/otp/otp.service";
 import { Otp } from "../src/modules/otp/entities/otp.entity";
 import { comparePassword } from "../src/common/utils/password.util";
 import {
+  OTPType,
   PINType,
   TokenType,
   UserRole,
   UserStatus,
+  VerificationStatus,
 } from "../src/common/enums/enums";
 
 process.env.OTP_SECRET = "verification-only-otp-secret-".repeat(2);
+process.env.JWT_ACCESS_SECRET = "jwt-access-secret-".repeat(2);
+process.env.JWT_REFRESH_SECRET = "jwt-refresh-secret-".repeat(2);
+process.env.JWT_SET_PASSWORD_SECRET = "jwt-set-password-secret-".repeat(2);
 process.env.JWT_PASSWORD_RESET_SECRET = "jwt-password-reset-secret-".repeat(2);
 process.env.JWT_REG_SECRET = "jwt-registration-secret-".repeat(2);
 
@@ -105,6 +110,11 @@ class EntityRepo {
     else this.rows[index] = row;
     return row;
   }
+
+  async increment(criteria: any, column: string, amount: number): Promise<void> {
+    const row = this.rows.find((item) => item.id === criteria.id);
+    if (row) row[column] = (row[column] ?? 0) + amount;
+  }
 }
 
 const patrolPhone = "+251911234567";
@@ -116,6 +126,7 @@ const patrol = {
   pin: "old-hash",
   isPinSet: true,
   status: UserStatus.ACTIVE,
+  tokenVersion: 0,
 };
 const citizen = {
   id: "citizen-1",
@@ -124,6 +135,7 @@ const citizen = {
   pin: "old-hash",
   isPinSet: true,
   status: UserStatus.ACTIVE,
+  tokenVersion: 0,
 };
 
 const otpRepo = new OtpRepo();
@@ -176,18 +188,37 @@ async function main() {
   assert.equal((await confirm(patrolReset.token, patrolReset.code)).success, true);
   assert.equal(patrol.isPinSet, true);
   assert.equal(await comparePassword("482915", patrol.pin), true);
+  assert.equal(patrol.tokenVersion, 1);
   const replay = await confirm(patrolReset.token, patrolReset.code);
   assert.equal(replay.success, false);
-  console.log("PASS: patrol RESET flow verifies OTP and sets new PIN once");
+  console.log("PASS: patrol RESET flow verifies OTP, sets new PIN once, bumps token version");
 
-  const patrolSetup = await request("patrol", PINType.SETUP);
-  const setupPayload: any = jwtService.verify(patrolSetup.token, {
-    secret: process.env.JWT_REG_SECRET,
+  const setupAttempt = await auth.requestPinReset(
+    patrolPhone,
+    "patrol",
+    PINType.SETUP,
+  );
+  assert.equal(setupAttempt.success, false);
+  assert.match(setupAttempt.message, /only supports PIN resets/);
+  console.log("PASS: public PIN-reset endpoint rejects SETUP requests");
+
+  const derived = await request("citizen", PINType.RESET);
+  const verified = await auth.verifyMobileOTP(
+    derived.token,
+    derived.code,
+    OTPType.REGISTRATION_OTP,
+  );
+  assert.equal(verified.success, true, verified.message);
+  const verifiedPayload: any = jwtService.verify(verified.data.setPinToken, {
+    secret: process.env.JWT_SET_PASSWORD_SECRET,
   });
-  assert.equal(setupPayload.type, TokenType.REGISTRATION);
-  assert.equal(setupPayload.pinType, PINType.SETUP);
-  assert.equal((await confirm(patrolSetup.token, patrolSetup.code)).success, true);
-  console.log("PASS: SETUP token works with /verify and /confirm");
+  assert.equal(verifiedPayload.sub, citizen.id);
+  assert.equal(verifiedPayload.phoneNumber, citizen.phoneNumber);
+  assert.equal(verifiedPayload.role, UserRole.CITIZEN);
+  assert.equal(verified.data.accessToken, undefined);
+  assert.equal(verified.data.refreshToken, undefined);
+  assert.equal(citizen.verificationStatus, VerificationStatus.VERIFIED);
+  console.log("PASS: OTP type comes from token and phone verification issues no session tokens");
 
   const citizenReset = await request("citizen", PINType.RESET);
   assert.equal((await confirm(citizenReset.token, citizenReset.code)).success, true);

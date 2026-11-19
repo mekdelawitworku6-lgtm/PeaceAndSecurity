@@ -41,6 +41,9 @@ export class Citizen extends BaseEntity {
   })
   status: UserStatus;
 
+  @Column({ default: 0 })
+  tokenVersion: number;
+
   @Column({ nullable: true })
   fcmToken: string;
 

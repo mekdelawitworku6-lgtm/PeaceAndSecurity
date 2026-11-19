@@ -85,12 +85,7 @@ export async function blacklistToken(token: string, ttlSeconds: number): Promise
 
 export async function isTokenBlacklisted(token: string): Promise<boolean> {
   if (!token) return false;
-  try {
-    const hash = hashToken(token);
-    const val = await redisGet(`bl:token:${hash}`);
-    return val !== null;
-  } catch (err) {
-    console.error("Redis token blacklist lookup failed:", err);
-    return false;
-  }
+  const hash = hashToken(token);
+  const val = await redisGet(`bl:token:${hash}`);
+  return val !== null;
 }

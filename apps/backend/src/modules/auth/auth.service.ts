@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import {
   Injectable,
   NotFoundException,
@@ -43,6 +44,7 @@ import {
   TokenType,
   UserRole,
   UserStatus,
+  VerificationStatus,
   SecurityEventType,
 } from "common/enums/enums";
 import { sendSMS } from "../../common/utils/sms-sender";
@@ -56,6 +58,7 @@ import { generateRandomCode } from "../../common/utils/generator";
 import { processUploads } from "../../common/utils/file-upload.util";
 import { AuditService } from "../audit/audit.service";
 import { RequestContext } from "../audit/request-context";
+import { BaseTokenPayload } from "../../common/interfaces/token";
 
 @Injectable()
 export class AuthService {
@@ -110,6 +113,73 @@ export class AuthService {
 
   private async comparePin(plain: string, hashed: string): Promise<boolean> {
     return comparePassword(plain, hashed);
+  }
+
+  private tokenPayload(user: any): BaseTokenPayload {
+    return {
+      sub: user.id,
+      phoneNumber: user.phoneNumber,
+      ...(user.email ? { email: user.email } : {}),
+      role: user.role,
+      tokenVersion: user.tokenVersion ?? 0,
+      jti: randomUUID(),
+    };
+  }
+
+  private async bumpTokenVersion(
+    repository: Repository<any>,
+    id: string,
+  ): Promise<number> {
+    const entity = await repository.findOne({ where: { id } });
+    const nextVersion = (entity?.tokenVersion ?? 0) + 1;
+    await repository.increment({ id }, "tokenVersion", 1);
+    return nextVersion;
+  }
+
+  private tokenTtlSeconds(token: string): number {
+    const decoded = this.jwtService.decode(token) as any;
+    const remaining = (decoded?.exp ?? 0) - Math.floor(Date.now() / 1000);
+    return remaining > 0 ? remaining : 0;
+  }
+
+  private verifyMobileToken(token: string): {
+    decoded: any;
+    otpType: OTPType;
+    pinType: PINType;
+  } {
+    const candidates = [
+      {
+        secret: process.env.JWT_REG_SECRET,
+        type: TokenType.REGISTRATION,
+        pinType: PINType.SETUP,
+        otpType: OTPType.REGISTRATION_OTP,
+      },
+      {
+        secret: process.env.JWT_PASSWORD_RESET_SECRET,
+        type: TokenType.PIN_RESET,
+        pinType: PINType.RESET,
+        otpType: OTPType.FORGOT_PIN_OTP,
+      },
+    ];
+
+    for (const candidate of candidates) {
+      try {
+        const decoded = verifyToken<any>(
+          this.jwtService,
+          token,
+          candidate.secret!,
+        );
+        if (decoded.type !== candidate.type) continue;
+        const pinType = decoded.pinType ?? candidate.pinType;
+        const otpType =
+          pinType === PINType.SETUP
+            ? OTPType.REGISTRATION_OTP
+            : OTPType.FORGOT_PIN_OTP;
+        return { decoded, otpType, pinType };
+      } catch (_) {}
+    }
+
+    throw new UnauthorizedException("Invalid or expired token");
   }
 
   private async checkLoginLockout(phone: string): Promise<void> {
@@ -232,11 +302,10 @@ export class AuthService {
         messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
-      const registrationToken = signRegistrationToken(this.jwtService, {
-        sub: saved.id,
-        phoneNumber: saved.phoneNumber,
-        role: UserRole.CITIZEN,
-      });
+      const registrationToken = signRegistrationToken(
+        this.jwtService,
+        this.tokenPayload(saved),
+      );
 
       await this.auditService.logSecurityEvent({
         eventType: SecurityEventType.OTP_REQUESTED,
@@ -318,11 +387,7 @@ export class AuthService {
 
       await this.clearLoginLockout(normalizedPhone);
 
-      const payload = {
-        sub: citizen.id,
-        phoneNumber: citizen.phoneNumber,
-        role: UserRole.CITIZEN,
-      };
+      const payload = this.tokenPayload(citizen);
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
 
@@ -416,11 +481,7 @@ export class AuthService {
 
       await this.clearLoginLockout(normalizedPhone);
 
-      const payload = {
-        sub: patrol.id,
-        phoneNumber: patrol.phoneNumber,
-        role: UserRole.PATROL,
-      };
+      const payload = this.tokenPayload(patrol);
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
 
@@ -488,6 +549,7 @@ export class AuthService {
         if (patrol.status === UserStatus.DISABLED || patrol.status === UserStatus.PENDING)
           patrol.status = UserStatus.ACTIVE;
         await this.patrolRepository.save(patrol);
+        await this.bumpTokenVersion(this.patrolRepository, patrol.id);
 
         if (patrol.phoneNumber) {
           const recipient = normalizeEtPhone(patrol.phoneNumber);
@@ -511,6 +573,7 @@ export class AuthService {
         if (citizen.status === UserStatus.DISABLED || citizen.status === UserStatus.PENDING)
           citizen.status = UserStatus.ACTIVE;
         await this.citizenRepository.save(citizen);
+        await this.bumpTokenVersion(this.citizenRepository, citizen.id);
 
         if (citizen.phoneNumber) {
           const recipient = normalizeEtPhone(citizen.phoneNumber);
@@ -558,6 +621,7 @@ export class AuthService {
         if (!ok) throw new UnauthorizedException("Current PIN is incorrect");
         patrol.pin = await this.hashPin(newPin);
         await this.patrolRepository.save(patrol);
+        await this.bumpTokenVersion(this.patrolRepository, patrol.id);
       } else if (role === UserRole.CITIZEN) {
         const citizen = await this.citizenRepository
           .createQueryBuilder("citizen")
@@ -571,6 +635,7 @@ export class AuthService {
         if (!ok) throw new UnauthorizedException("Current PIN is incorrect");
         citizen.pin = await this.hashPin(newPin);
         await this.citizenRepository.save(citizen);
+        await this.bumpTokenVersion(this.citizenRepository, citizen.id);
       } else {
         throw new BadRequestException(
           "PIN change is only available for Patrol and Citizen users",
@@ -600,8 +665,13 @@ export class AuthService {
       const normalizedPhone = normalizeEtPhone(phoneNumber);
       if (!normalizedPhone)
         throw new BadRequestException("Invalid Ethiopian phone number format");
+      if (pinType !== PINType.RESET)
+        throw new BadRequestException(
+          "This endpoint only supports PIN resets. Use phone verification to set a PIN.",
+        );
 
       let id: string;
+      let tokenVersion = 0;
 
       if (role === "patrol") {
         const patrol = await this.patrolRepository.findOne({
@@ -613,6 +683,7 @@ export class AuthService {
             "Account is disabled. Contact your administrator.",
           );
         id = patrol.id;
+        tokenVersion = patrol.tokenVersion ?? 0;
       } else {
         const citizen = await this.citizenRepository.findOne({
           where: { phoneNumber: normalizedPhone },
@@ -623,12 +694,10 @@ export class AuthService {
             "Account is disabled. Contact support.",
           );
         id = citizen.id;
+        tokenVersion = citizen.tokenVersion ?? 0;
       }
 
-      const otpType =
-        pinType === PINType.SETUP
-          ? OTPType.REGISTRATION_OTP
-          : OTPType.FORGOT_PIN_OTP;
+      const otpType = OTPType.FORGOT_PIN_OTP;
 
       const otp = await this.otpService.createOtp({
         userId: id,
@@ -637,37 +706,30 @@ export class AuthService {
       });
 
       await this.auditService.logSecurityEvent({
-        eventType: pinType === PINType.SETUP ? SecurityEventType.OTP_REQUESTED : SecurityEventType.PIN_RESET_REQUESTED,
+        eventType: SecurityEventType.PIN_RESET_REQUESTED,
         actorId: id,
         success: true,
         metadata: { role, pinType },
       });
 
-      const recipient = normalizedPhone;
-      const messageAction =
-        pinType === PINType.SETUP ? "verification" : "PIN reset";
-
       sendSMS({
-        recipient,
-        messageBody: `Your ${messageAction} code is ${otp.otpCode}. It expires in 2 minutes.`,
+        recipient: normalizedPhone,
+        messageBody: `Your PIN reset code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
-      const tokenSigner =
-        pinType === PINType.SETUP ? signRegistrationToken : signPinResetToken;
-
-      const resetToken = tokenSigner(this.jwtService, {
-        sub: id,
-        phoneNumber: normalizedPhone,
-        role: role === "patrol" ? UserRole.PATROL : UserRole.CITIZEN,
+      const resetToken = signPinResetToken(this.jwtService, {
+        ...this.tokenPayload({
+          id,
+          phoneNumber: normalizedPhone,
+          role: role === "patrol" ? UserRole.PATROL : UserRole.CITIZEN,
+        }),
+        tokenVersion,
         pinType,
       });
 
-      return successResponse(
-        `${pinType === PINType.SETUP ? "Verification" : "PIN reset"} OTP sent to your phone.`,
-        {
-          resetToken,
-        },
-      );
+      return successResponse("PIN reset OTP sent to your phone.", {
+        resetToken,
+      });
     } catch (error) {
       return errorResponse(
         error.message ?? "Failed to request PIN OTP",
@@ -685,26 +747,17 @@ export class AuthService {
     newPin: string,
   ): Promise<ServiceResponse> {
     try {
-      const hint = this.jwtService.decode(resetToken) as any;
-      const pinType: PINType = hint?.pinType ?? PINType.RESET;
-      const isSetup = pinType === PINType.SETUP;
-      const secret = isSetup
-        ? process.env.JWT_REG_SECRET
-        : process.env.JWT_PASSWORD_RESET_SECRET;
-      const expectedTokenType = isSetup
-        ? TokenType.REGISTRATION
-        : TokenType.PIN_RESET;
+      const { decoded, otpType, pinType } =
+        this.verifyMobileToken(resetToken);
+      const { sub: userId, role } = decoded;
+      const phoneNumber = normalizeEtPhone(decoded.phoneNumber);
+      if (!phoneNumber)
+        throw new BadRequestException("Invalid phone number in token");
 
-      const decoded = verifyToken<any>(this.jwtService, resetToken, secret!);
-      if (decoded.type !== expectedTokenType)
-        throw new UnauthorizedException("Invalid token type");
-
-      const { sub: userId, role, phoneNumber } = decoded;
-      const otpType = isSetup
-        ? OTPType.REGISTRATION_OTP
-        : OTPType.FORGOT_PIN_OTP;
-
-      await this.otpService.verifyOtp(userId, otpType, otpCode);
+      await this.otpService.verifyOtpWithCriteria(
+        [{ userId, phoneNumber, otpType }],
+        otpCode,
+      );
 
       const hashedPin = await this.hashPin(newPin);
 
@@ -717,6 +770,7 @@ export class AuthService {
         patrol.isPinSet = true;
         patrol.status = UserStatus.ACTIVE;
         await this.patrolRepository.save(patrol);
+        await this.bumpTokenVersion(this.patrolRepository, patrol.id);
       } else if (role === UserRole.CITIZEN) {
         const citizen = await this.citizenRepository.findOne({
           where: { id: userId, phoneNumber },
@@ -725,7 +779,9 @@ export class AuthService {
         citizen.pin = hashedPin;
         citizen.isPinSet = true;
         citizen.status = UserStatus.ACTIVE;
+        citizen.verificationStatus = VerificationStatus.VERIFIED;
         await this.citizenRepository.save(citizen);
+        await this.bumpTokenVersion(this.citizenRepository, citizen.id);
       } else {
         throw new BadRequestException("Invalid role in reset token");
       }
@@ -801,11 +857,10 @@ export class AuthService {
       if (email) user.isEmailVerified = true;
       await this.userRepository.save(user);
 
-      const setPasswordToken = signSetPasswordToken(this.jwtService, {
-        sub: userId,
-        phoneNumber: phone ?? undefined,
-        email: email ?? undefined,
-      });
+      const setPasswordToken = signSetPasswordToken(
+        this.jwtService,
+        this.tokenPayload(user),
+      );
 
       return successResponse("OTP verified successfully.", {
         setPasswordToken,
@@ -821,40 +876,44 @@ export class AuthService {
     otpType: OTPType,
   ): Promise<ServiceResponse> {
     try {
-      const secret =
-        otpType === OTPType.REGISTRATION_OTP
-          ? process.env.JWT_REG_SECRET
-          : process.env.JWT_PASSWORD_RESET_SECRET;
-
-      const expectedTokenType =
-        otpType === OTPType.REGISTRATION_OTP
-          ? TokenType.REGISTRATION
-          : TokenType.PIN_RESET;
-
-      const decoded = verifyToken<any>(this.jwtService, token, secret);
-
-      if (decoded.type !== expectedTokenType)
-        throw new UnauthorizedException("Invalid token type");
-
+      const { decoded, otpType } = this.verifyMobileToken(token);
       const role = decoded.role;
       if (role !== UserRole.PATROL && role !== UserRole.CITIZEN)
         throw new UnauthorizedException("Invalid role in token");
 
       const userId = decoded.sub;
-      const phone = decoded.phoneNumber;
+      const phone = normalizeEtPhone(decoded.phoneNumber);
+      if (!phone)
+        throw new BadRequestException("Invalid phone number in token");
 
-      await this.otpService.verifyOtp(userId, otpType, otpCode);
-
+      let tokenVersion = 0;
       if (role === UserRole.PATROL) {
         const patrol = await this.patrolRepository.findOne({
           where: { id: userId, phoneNumber: phone },
         });
         if (!patrol) throw new NotFoundException("Patrol officer not found");
+        tokenVersion = patrol.tokenVersion ?? 0;
       } else {
         const citizen = await this.citizenRepository.findOne({
           where: { id: userId, phoneNumber: phone },
         });
         if (!citizen) throw new NotFoundException("Citizen not found");
+        tokenVersion = citizen.tokenVersion ?? 0;
+      }
+
+      await this.otpService.verifyOtpWithCriteria(
+        [{ userId, phoneNumber: phone, otpType }],
+        otpCode,
+      );
+
+      if (role === UserRole.CITIZEN) {
+        const citizen = await this.citizenRepository.findOne({
+          where: { id: userId, phoneNumber: phone },
+        });
+        if (citizen) {
+          citizen.verificationStatus = VerificationStatus.VERIFIED;
+          await this.citizenRepository.save(citizen);
+        }
       }
 
       await this.auditService.logSecurityEvent({
@@ -864,44 +923,16 @@ export class AuthService {
         metadata: { otpType, role },
       });
 
-      const setPinToken = signSetPasswordToken(this.jwtService, {
-        sub: userId,
-        phoneNumber: phone,
-        role,
-      });
+      const setPinToken = signSetPasswordToken(
+        this.jwtService,
+        this.tokenPayload({
+          id: userId,
+          phoneNumber: phone,
+          role,
+        }),
+      );
 
-      // Also return access & refresh tokens if the user already has a PIN set
-      // (e.g., during PIN reset flow), so the frontend can skip set-pin step.
-      let accessToken: string | undefined;
-      let refreshToken: string | undefined;
-      if (role === UserRole.PATROL) {
-        const patrol = await this.patrolRepository
-          .createQueryBuilder("patrol")
-          .addSelect("patrol.pin")
-          .where("patrol.id = :id", { id: userId })
-          .getOne();
-        if (patrol?.isPinSet) {
-          const payload = { sub: patrol.id, phoneNumber: patrol.phoneNumber, role };
-          accessToken = signAccessToken(this.jwtService, payload);
-          refreshToken = signRefreshToken(this.jwtService, payload);
-        }
-      } else {
-        const citizen = await this.citizenRepository
-          .createQueryBuilder("citizen")
-          .addSelect("citizen.pin")
-          .where("citizen.id = :id", { id: userId })
-          .getOne();
-        if (citizen?.isPinSet) {
-          const payload = { sub: citizen.id, phoneNumber: citizen.phoneNumber, role };
-          accessToken = signAccessToken(this.jwtService, payload);
-          refreshToken = signRefreshToken(this.jwtService, payload);
-        }
-      }
-
-      return successResponse("OTP verified successfully.", {
-        setPinToken,
-        ...(accessToken ? { accessToken, refreshToken } : {}),
-      });
+      return successResponse("OTP verified successfully.", { setPinToken });
     } catch (error) {
       return errorResponse(error.message ?? "Failed to verify OTP", error);
     }
@@ -912,35 +943,24 @@ export class AuthService {
     otpType: OTPType,
   ): Promise<ServiceResponse> {
     try {
-      const secret =
-        otpType === OTPType.REGISTRATION_OTP
-          ? process.env.JWT_REG_SECRET
-          : process.env.JWT_PASSWORD_RESET_SECRET;
-
-      const expectedTokenType =
-        otpType === OTPType.REGISTRATION_OTP
-          ? TokenType.REGISTRATION
-          : TokenType.PIN_RESET;
-
-      const decoded = verifyToken<any>(this.jwtService, token, secret);
-
-      if (decoded.type !== expectedTokenType)
-        throw new UnauthorizedException("Invalid token type");
-
+      const { decoded, otpType: derivedOtpType } =
+        this.verifyMobileToken(token);
       const userId = decoded.sub;
-      const phone = decoded.phoneNumber;
+      const phone = normalizeEtPhone(decoded.phoneNumber);
+      if (!phone)
+        throw new BadRequestException("Invalid phone number in token");
 
       const otp = await this.otpService.createOtp({
         phoneNumber: phone,
         userId,
-        otpType,
+        otpType: derivedOtpType,
       });
 
       await this.auditService.logSecurityEvent({
         eventType: SecurityEventType.OTP_REQUESTED,
         actorId: userId,
         success: true,
-        metadata: { otpType, resent: true },
+        metadata: { otpType: derivedOtpType, resent: true },
       });
 
       sendSMS({
@@ -976,18 +996,26 @@ export class AuthService {
         throw new UnauthorizedException("Invalid role in token");
 
       const userId = decoded.sub;
-      const phone = decoded.phoneNumber;
+      const phone = normalizeEtPhone(decoded.phoneNumber);
+      if (!phone)
+        throw new BadRequestException("Invalid phone number in token");
       const hashedPin = await this.hashPin(pin);
 
       let savedUser: any;
+      let nextVersion: number;
       if (role === UserRole.PATROL) {
         const patrol = await this.patrolRepository.findOne({
           where: { id: userId, phoneNumber: phone },
         });
+        if (!patrol) throw new NotFoundException("Patrol officer not found");
         patrol.pin = hashedPin;
         patrol.isPinSet = true;
         patrol.status = UserStatus.ACTIVE;
         savedUser = await this.patrolRepository.save(patrol);
+        nextVersion = await this.bumpTokenVersion(
+          this.patrolRepository,
+          savedUser.id,
+        );
       } else {
         const citizen = await this.citizenRepository.findOne({
           where: { id: userId, phoneNumber: phone },
@@ -996,13 +1024,18 @@ export class AuthService {
         citizen.pin = hashedPin;
         citizen.isPinSet = true;
         citizen.status = UserStatus.ACTIVE;
+        citizen.verificationStatus = VerificationStatus.VERIFIED;
         savedUser = await this.citizenRepository.save(citizen);
+        nextVersion = await this.bumpTokenVersion(
+          this.citizenRepository,
+          savedUser.id,
+        );
       }
 
       const payload = {
-        sub: savedUser.id,
-        phoneNumber: savedUser.phoneNumber,
+        ...this.tokenPayload(savedUser),
         role,
+        tokenVersion: nextVersion,
       };
 
       const accessToken = signAccessToken(this.jwtService, payload);
@@ -1065,12 +1098,14 @@ export class AuthService {
       user.isEmailVerified = true;
       user.isPhoneVerified = true;
       const savedUser = await this.userRepository.save(user);
+      const nextVersion = await this.bumpTokenVersion(
+        this.userRepository,
+        savedUser.id,
+      );
 
       const payload = {
-        sub: savedUser.id,
-        phoneNumber: savedUser.phoneNumber,
-        email: savedUser.email,
-        role: savedUser.role,
+        ...this.tokenPayload(savedUser),
+        tokenVersion: nextVersion,
       };
 
       const accessToken = signAccessToken(this.jwtService, payload);
@@ -1141,9 +1176,8 @@ export class AuthService {
       }).catch(() => void 0);
 
       const resetToken = signPasswordResetToken(this.jwtService, {
-        sub: user.id,
+        ...this.tokenPayload(user),
         phoneNumber: normalizedPhone,
-        role: user.role,
       });
       return successResponse("Password reset OTP sent to your phone.", {
         resetToken,
@@ -1199,6 +1233,7 @@ export class AuthService {
       user.password = await hashPassword(newPassword);
       user.isPasswordSet = true;
       await this.userRepository.save(user);
+      await this.bumpTokenVersion(this.userRepository, user.id);
 
       await this.otpService.removeBulkOtps({
         userId,
@@ -1233,6 +1268,7 @@ export class AuthService {
 
       user.password = await hashPassword(newPassword);
       await this.userRepository.save(user);
+      await this.bumpTokenVersion(this.userRepository, user.id);
 
       await this.auditService.logSecurityEvent({
         eventType: SecurityEventType.PASSWORD_CHANGED,
@@ -1279,11 +1315,10 @@ export class AuthService {
           isPasswordSet: true,
         });
 
-      const resetToken = signSetPasswordToken(this.jwtService, {
-        sub: user.id,
-        phoneNumber: user.phoneNumber,
-        email: user.email,
-      });
+      const resetToken = signSetPasswordToken(
+        this.jwtService,
+        this.tokenPayload(user),
+      );
       return successResponse("Please set your password to continue", {
         isPasswordSet: false,
         resetToken,
@@ -1329,11 +1364,10 @@ export class AuthService {
         messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
-      const registrationToken = signRegistrationToken(this.jwtService, {
-        sub: patrol.id,
-        phoneNumber: normalizedPhone,
-        role: UserRole.PATROL,
-      });
+      const registrationToken = signRegistrationToken(
+        this.jwtService,
+        this.tokenPayload(patrol),
+      );
 
       return successResponse("Please verify your phone and set your PIN", {
         isPinSet: false,
@@ -1380,11 +1414,10 @@ export class AuthService {
         messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
       }).catch(() => void 0);
 
-      const registrationToken = signRegistrationToken(this.jwtService, {
-        sub: citizen.id,
-        phoneNumber: normalizedPhone,
-        role: UserRole.CITIZEN,
-      });
+      const registrationToken = signRegistrationToken(
+        this.jwtService,
+        this.tokenPayload(citizen),
+      );
 
       return successResponse("Please verify your phone and set your PIN", {
         isPinSet: false,
@@ -1459,10 +1492,10 @@ export class AuthService {
             messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
           }).catch(() => void 0);
 
-        const registrationToken = signRegistrationToken(this.jwtService, {
-          sub: user.id,
-          phoneNumber: user.phoneNumber,
-        });
+        const registrationToken = signRegistrationToken(
+          this.jwtService,
+          this.tokenPayload(user),
+        );
         return successResponse(
           "Verification required. We sent you a new OTP to complete registration.",
           {
@@ -1493,12 +1526,7 @@ export class AuthService {
         throw new UnauthorizedException("Invalid credentials");
       }
 
-      const payload = {
-        sub: user.id,
-        phoneNumber: user.phoneNumber,
-        email: user.email,
-        role: user.role,
-      };
+      const payload = this.tokenPayload(user);
       const accessToken = signAccessToken(this.jwtService, payload);
       const refreshToken = signRefreshToken(this.jwtService, payload);
 
@@ -1551,12 +1579,44 @@ export class AuthService {
       if (decoded.type !== TokenType.REFRESH)
         throw new UnauthorizedException("Invalid token type");
 
-      if (await isTokenBlacklisted(refreshToken))
-        throw new UnauthorizedException(
-          "Session has been terminated or token has been revoked",
+      const { sub, role } = decoded;
+      const tokenVersion = decoded.tokenVersion ?? 0;
+
+      const rotate = async (entity: any, entityRole: string) => {
+        if ((entity.tokenVersion ?? 0) !== tokenVersion)
+          throw new UnauthorizedException(
+            "Session has been terminated. Please sign in again.",
+          );
+
+        if (await isTokenBlacklisted(refreshToken))
+          throw new UnauthorizedException(
+            "Session has been terminated or token has been revoked",
+          );
+
+        await blacklistToken(
+          refreshToken,
+          this.tokenTtlSeconds(refreshToken),
         );
 
-      const { sub, role } = decoded;
+        const payload = this.tokenPayload(entity);
+        const accessToken = signAccessToken(this.jwtService, payload);
+        const nextRefreshToken = signRefreshToken(this.jwtService, {
+          ...this.tokenPayload(entity),
+          role: entityRole,
+        });
+
+        await this.auditService.logSecurityEvent({
+          eventType: SecurityEventType.TOKEN_REFRESH,
+          actorId: entity.id,
+          success: true,
+          metadata: { role: entityRole },
+        });
+
+        return successResponse("Token refreshed successfully", {
+          accessToken,
+          refreshToken: nextRefreshToken,
+        });
+      };
 
       if (role === UserRole.PATROL) {
         const patrol = await this.patrolRepository.findOne({
@@ -1566,20 +1626,7 @@ export class AuthService {
           throw new UnauthorizedException(
             "Patrol officer not found or inactive",
           );
-
-        const payload = {
-          sub: patrol.id,
-          phoneNumber: patrol.phoneNumber,
-          role: UserRole.PATROL,
-        };
-        const accessToken = signAccessToken(this.jwtService, payload);
-        await this.auditService.logSecurityEvent({
-          eventType: SecurityEventType.TOKEN_REFRESH,
-          actorId: patrol.id,
-          success: true,
-          metadata: { role: UserRole.PATROL },
-        });
-        return successResponse("Token refreshed successfully", { accessToken });
+        return await rotate(patrol, UserRole.PATROL);
       }
 
       if (role === UserRole.CITIZEN) {
@@ -1588,44 +1635,14 @@ export class AuthService {
         });
         if (!citizen)
           throw new UnauthorizedException("Citizen not found or inactive");
-
-        const payload = {
-          sub: citizen.id,
-          phoneNumber: citizen.phoneNumber,
-          role: UserRole.CITIZEN,
-        };
-        const accessToken = signAccessToken(this.jwtService, payload);
-        await this.auditService.logSecurityEvent({
-          eventType: SecurityEventType.TOKEN_REFRESH,
-          actorId: citizen.id,
-          success: true,
-          metadata: { role: UserRole.CITIZEN },
-        });
-        return successResponse("Token refreshed successfully", { accessToken });
+        return await rotate(citizen, UserRole.CITIZEN);
       }
 
-      // Dashboard user (admin roles)
       const user = await this.userRepository.findOne({
         where: { id: sub, status: UserStatus.ACTIVE },
       });
       if (!user) throw new UnauthorizedException("User not found or inactive");
-
-      const payload = {
-        sub: user.id,
-        phoneNumber: user.phoneNumber,
-        email: user.email,
-        role: user.role,
-      };
-      const accessToken = signAccessToken(this.jwtService, payload);
-
-      await this.auditService.logSecurityEvent({
-        eventType: SecurityEventType.TOKEN_REFRESH,
-        actorId: user.id,
-        success: true,
-        metadata: { role: user.role },
-      });
-
-      return successResponse("Token refreshed successfully", { accessToken });
+      return await rotate(user, user.role);
     } catch (error) {
       return errorResponse(error.message ?? "Token refresh failed", error);
     }
@@ -1642,28 +1659,28 @@ export class AuthService {
     try {
       if (accessToken) {
         try {
-          const decoded = this.jwtService.decode(accessToken) as any;
-          if (decoded && decoded.exp) {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = decoded.exp - now;
-            if (remaining > 0) {
-              await blacklistToken(accessToken, remaining);
-            }
-          }
+          verifyToken<any>(
+            this.jwtService,
+            accessToken,
+            process.env.JWT_ACCESS_SECRET,
+          );
+          await blacklistToken(
+            accessToken,
+            this.tokenTtlSeconds(accessToken),
+          );
         } catch (_) {}
       }
 
       if (refreshToken) {
-        try {
-          const decoded = this.jwtService.decode(refreshToken) as any;
-          if (decoded && decoded.exp) {
-            const now = Math.floor(Date.now() / 1000);
-            const remaining = decoded.exp - now;
-            if (remaining > 0) {
-              await blacklistToken(refreshToken, remaining);
-            }
-          }
-        } catch (_) {}
+        const decoded = verifyToken<any>(
+          this.jwtService,
+          refreshToken,
+          process.env.JWT_REFRESH_SECRET,
+        );
+        if (decoded.type !== TokenType.REFRESH)
+          throw new UnauthorizedException("Invalid refresh token");
+        await blacklistToken(refreshToken, this.tokenTtlSeconds(refreshToken));
+        user = user ?? { id: decoded.sub, role: decoded.role };
       }
 
       if (user?.id) {

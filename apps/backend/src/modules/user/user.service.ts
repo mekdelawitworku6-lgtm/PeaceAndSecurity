@@ -352,6 +352,7 @@ export class UserService {
         ? UserStatus.DISABLED
         : UserStatus.ACTIVE;
     const updated = await this.userRepository.save(user);
+    await this.userRepository.increment({ id }, "tokenVersion", 1);
 
     void this.auditService.logBusinessEvent({
       eventType: BusinessEventType.USER_STATUS_TOGGLED,
@@ -412,6 +413,7 @@ export class UserService {
     user.isPasswordSet = true;
     user.status = UserStatus.ACTIVE;
     await this.userRepository.save(user);
+    await this.userRepository.increment({ id: targetId }, "tokenVersion", 1);
 
     if (user.phoneNumber) {
       const recipient = normalizeEtPhone(user.phoneNumber);
