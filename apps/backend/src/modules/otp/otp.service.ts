@@ -1,5 +1,7 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
+import { Cron, CronExpression } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
+import { createHmac, randomInt, timingSafeEqual } from "crypto";
 
 import { Otp } from "./entities/otp.entity";
 import { CreateOtpDto } from "./dto/create-otp.dto";
@@ -8,9 +10,17 @@ import { OTPStatus, OTPType } from "common/enums/enums";
 import {
   Repository,
   LessThan,
+  In,
   FindOneOptions,
   FindOptionsWhere,
 } from "typeorm";
+
+const OTP_EXPIRY_MS = 2 * 60 * 1000;
+const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
+const OTP_MAX_ATTEMPTS = 3;
+const OTP_LOCKOUT_MS = 15 * 60 * 1000;
+const OTP_MAX_PER_HOUR = 5;
+const OTP_RETENTION_MS = 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class OtpService {
@@ -18,12 +28,30 @@ export class OtpService {
     @InjectRepository(Otp) private readonly otpRepository: Repository<Otp>,
   ) { }
 
+  private getSecret(): string {
+    const secret = process.env.OTP_SECRET;
+    if (!secret) {
+      throw new Error("OTP_SECRET is not configured");
+    }
+    return secret;
+  }
+
+  private hashOtp(code: string): Buffer {
+    return createHmac("sha256", this.getSecret()).update(code).digest();
+  }
+
+  private codesMatch(storedHash: string, code: string): boolean {
+    const expected = Buffer.from(storedHash, "hex");
+    const actual = this.hashOtp(code);
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  }
+
   private generateOtpCode(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return randomInt(100000, 1000000).toString();
   }
 
   private getExpiryTime(): Date {
-    return new Date(Date.now() + 2 * 60 * 1000);
+    return new Date(Date.now() + OTP_EXPIRY_MS);
   }
 
   async createOtp(dto: CreateOtpDto) {
@@ -38,20 +66,29 @@ export class OtpService {
       );
     }
 
-    // Rate limiting & Lockout: Check for existing requested/expired OTP
-    if (phone) {
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      const hourlyCount = await this.otpRepository
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+    const hourlyCounts = await Promise.all([
+      phone
+        ? this.otpRepository
+          .createQueryBuilder("otp")
+          .where("otp.phoneNumber = :phone", { phone })
+          .andWhere("otp.createdAt >= :oneHourAgo", { oneHourAgo })
+          .getCount()
+        : Promise.resolve(0),
+      this.otpRepository
         .createQueryBuilder("otp")
-        .where("otp.phoneNumber = :phone", { phone })
+        .where("otp.userId = :userId AND otp.otpType = :otpType", {
+          userId,
+          otpType,
+        })
         .andWhere("otp.createdAt >= :oneHourAgo", { oneHourAgo })
-        .getCount();
+        .getCount(),
+    ]);
 
-      if (hourlyCount >= 5) {
-        throw new BadRequestException(
-          "Too many OTP requests for this phone number. Please wait an hour before requesting more codes.",
-        );
-      }
+    if (hourlyCounts.some((count) => count >= OTP_MAX_PER_HOUR)) {
+      throw new BadRequestException(
+        "Too many OTP requests. Please wait an hour before requesting more codes.",
+      );
     }
 
     const existing = await this.otpRepository.findOne({
@@ -63,32 +100,34 @@ export class OtpService {
       const now = new Date();
       const diffSeconds = (now.getTime() - existing.createdAt.getTime()) / 1000;
 
-      // 1. Lockout check: If last OTP had too many failures, block for 15 minutes
-      if (existing.attemptCount >= 3) {
-        const lockDiffMinutes = (now.getTime() - existing.createdAt.getTime()) / (1000 * 60);
-        if (lockDiffMinutes < 15) {
-          throw new BadRequestException(`Too many failed attempts. Your account is temporarily locked for OTP requests. Please try again in ${Math.round(15 - lockDiffMinutes)} minutes.`);
+      if (existing.attemptCount >= OTP_MAX_ATTEMPTS) {
+        const lockDiffMs = now.getTime() - existing.createdAt.getTime();
+        if (lockDiffMs < OTP_LOCKOUT_MS) {
+          throw new BadRequestException(
+            `Too many failed attempts. Please try again in ${Math.ceil((OTP_LOCKOUT_MS - lockDiffMs) / 60000)} minutes.`,
+          );
         }
       }
 
-      // 2. Cooldown check: 60 seconds between resends
-      if (existing.status === OTPStatus.REQUESTED && diffSeconds < 60) {
-        throw new BadRequestException(`Please wait ${Math.round(60 - diffSeconds)} seconds before requesting a new OTP.`);
+      if (existing.status === OTPStatus.REQUESTED && diffSeconds < OTP_RESEND_COOLDOWN_MS / 1000) {
+        throw new BadRequestException(
+          `Please wait ${Math.ceil(OTP_RESEND_COOLDOWN_MS / 1000 - diffSeconds)} seconds before requesting a new OTP.`,
+        );
       }
 
-      // Mark old OTP as expired if we are about to create a new one
       if (existing.status === OTPStatus.REQUESTED) {
         existing.status = OTPStatus.EXPIRED;
         await this.otpRepository.save(existing);
       }
     }
 
+    const code = this.generateOtpCode();
     const otp = this.otpRepository.create({
       userId,
       otpType,
       email: email ?? null,
       phoneNumber: phone ?? null,
-      code: this.generateOtpCode(),
+      code: this.hashOtp(code).toString("hex"),
       status: OTPStatus.REQUESTED,
       attemptCount: 0,
       expiresAt: this.getExpiryTime(),
@@ -98,55 +137,81 @@ export class OtpService {
 
     return {
       message: "OTP sent successfully",
-      otpCode: otp.code,
+      otpCode: code,
       expiresAt: otp.expiresAt,
       channel: phone ? "PHONE" : "EMAIL",
     };
   }
 
   async verifyOtp(userId: string, otpType: OTPType, code: string): Promise<Otp> {
+    return this.verifyOtpWithCriteria({ userId, otpType }, code);
+  }
+
+  async verifyOtpWithCriteria(
+    criteria: Partial<Otp> | Partial<Otp>[],
+    code: string,
+  ): Promise<Otp> {
+    const where = Array.isArray(criteria)
+      ? criteria.map((entry) => ({ ...entry, status: OTPStatus.REQUESTED }))
+      : { ...criteria, status: OTPStatus.REQUESTED };
+
     const otp = await this.otpRepository.findOne({
-      where: { userId, otpType, status: OTPStatus.REQUESTED },
+      where: where as FindOptionsWhere<Otp> | FindOptionsWhere<Otp>[],
       order: { createdAt: "DESC" },
     });
 
     if (!otp) throw new BadRequestException("No active OTP found. Please request a new one.");
 
     if (otp.expiresAt && otp.expiresAt <= new Date()) {
-      otp.status = OTPStatus.EXPIRED;
-      await this.otpRepository.save(otp);
+      await this.expireOtp(otp);
       throw new BadRequestException("OTP has expired.");
     }
 
-    if (otp.attemptCount >= 3) {
-      otp.status = OTPStatus.EXPIRED;
-      await this.otpRepository.save(otp);
-      throw new BadRequestException("Too many failed attempts. Please request a new OTP.");
+    if (otp.attemptCount >= OTP_MAX_ATTEMPTS) {
+      await this.expireOtp(otp);
+      throw new BadRequestException(
+        "Too many failed attempts. Please request a new OTP.",
+      );
     }
 
-    if (otp.code !== code) {
+    if (!this.codesMatch(otp.code, code)) {
       otp.attemptCount += 1;
       await this.otpRepository.save(otp);
 
-      const remaining = 3 - otp.attemptCount;
+      const remaining = OTP_MAX_ATTEMPTS - otp.attemptCount;
       if (remaining <= 0) {
-        throw new BadRequestException("Too many failed attempts. Account locked for this session. Request a new OTP.");
+        await this.expireOtp(otp);
+        throw new BadRequestException(
+          "Too many failed attempts. Request a new OTP.",
+        );
       }
       throw new BadRequestException(`Invalid OTP code. ${remaining} attempts remaining.`);
     }
 
-    // Success
-    otp.status = OTPStatus.USED;
-    await this.otpRepository.save(otp);
+    await this.consumeOtp(otp);
     return otp;
   }
 
-  async removeBulkOtps(where: Partial<Otp>) {
-    await this.otpRepository.delete(where);
+  private async expireOtp(otp: Otp): Promise<void> {
+    otp.status = OTPStatus.EXPIRED;
+    await this.otpRepository.save(otp);
   }
 
-  async cleanupExpiredOtps() {
+  async consumeOtp(otp: Otp): Promise<void> {
+    if (otp.status !== OTPStatus.USED) {
+      otp.status = OTPStatus.USED;
+      await this.otpRepository.save(otp);
+    }
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async cleanupExpiredOtps(): Promise<void> {
+    const staleThreshold = new Date(Date.now() - OTP_RETENTION_MS);
     await this.otpRepository.delete({ expiresAt: LessThan(new Date()) });
+    await this.otpRepository.delete({
+      status: In([OTPStatus.USED, OTPStatus.EXPIRED]),
+      createdAt: LessThan(staleThreshold),
+    });
   }
 
   async findOneOtp(
@@ -165,6 +230,10 @@ export class OtpService {
     };
 
     return this.otpRepository.findOne(options);
+  }
+
+  async removeBulkOtps(where: Partial<Otp>) {
+    await this.otpRepository.delete(where);
   }
 
   async deleteOneOtpLatest(

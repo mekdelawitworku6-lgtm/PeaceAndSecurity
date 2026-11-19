@@ -258,7 +258,7 @@ export class AuthService {
         {
           registrationToken,
           isPinSet: false,
-          ...(process.env.NODE_ENV !== "production"
+          ...(process.env.NODE_ENV === "development"
             ? { devOtp: otp.otpCode }
             : {}),
         },
@@ -755,7 +755,7 @@ export class AuthService {
       const decoded = verifyToken<any>(
         this.jwtService,
         token,
-        process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET,
+        process.env.JWT_REG_SECRET,
       );
       if (decoded.type !== TokenType.REGISTRATION)
         throw new UnauthorizedException("Invalid token type");
@@ -775,20 +775,11 @@ export class AuthService {
       const user = await this.userRepository.findOne({ where: whereClauses });
       if (!user) throw new NotFoundException("User not found");
 
-      const base = {
-        userId,
-        otpType,
-        code: otpCode,
-        status: OTPStatus.REQUESTED as OTPStatus,
-      };
       const where: any[] = [];
-      if (phone) where.push({ ...base });
+      if (phone) where.push({ userId, phoneNumber: phone, otpType });
+      if (email) where.push({ userId, email, otpType });
 
-      const otp = await this.otpService.findOneOtp(where);
-      if (!otp) throw new NotFoundException("OTP not found");
-      if (otp.expiresAt && otp.expiresAt <= new Date())
-        throw new UnauthorizedException("OTP expired");
-      if (otp.code !== otpCode) throw new UnauthorizedException("Invalid OTP");
+      await this.otpService.verifyOtpWithCriteria(where, otpCode);
 
       await this.otpService.removeBulkOtps({
         userId,
@@ -833,7 +824,7 @@ export class AuthService {
     try {
       const secret =
         otpType === OTPType.REGISTRATION_OTP
-          ? process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET
+          ? process.env.JWT_REG_SECRET
           : process.env.JWT_PASSWORD_RESET_SECRET;
 
       const expectedTokenType =
@@ -924,7 +915,7 @@ export class AuthService {
     try {
       const secret =
         otpType === OTPType.REGISTRATION_OTP
-          ? process.env.JWT_REGISTRATION_SECRET || process.env.JWT_REG_SECRET
+          ? process.env.JWT_REG_SECRET
           : process.env.JWT_PASSWORD_RESET_SECRET;
 
       const expectedTokenType =
@@ -959,7 +950,7 @@ export class AuthService {
       }).catch(() => void 0);
 
       return successResponse("OTP resent successfully", {
-        ...(process.env.NODE_ENV !== "production"
+        ...(process.env.NODE_ENV === "development"
           ? { devOtp: otp.otpCode }
           : {}),
       });
@@ -1194,18 +1185,16 @@ export class AuthService {
       }
 
       // Verify OTP
-      const otp = await this.otpService.findOneOtp([
-        {
-          userId,
-          otpType: OTPType.FORGOT_PASSWORD_OTP,
-          code: otpCode,
-          status: OTPStatus.REQUESTED as OTPStatus,
-        },
-      ]);
-      if (!otp) throw new NotFoundException("OTP not found or already used");
-      if (otp.expiresAt && otp.expiresAt <= new Date())
-        throw new UnauthorizedException("OTP has expired");
-      if (otp.code !== otpCode) throw new UnauthorizedException("Invalid OTP");
+      await this.otpService.verifyOtpWithCriteria(
+        [
+          {
+            userId,
+            phoneNumber,
+            otpType: OTPType.FORGOT_PASSWORD_OTP,
+          },
+        ],
+        otpCode,
+      );
 
       const user = await this.userRepository.findOne({
         where: { id: userId, phoneNumber },

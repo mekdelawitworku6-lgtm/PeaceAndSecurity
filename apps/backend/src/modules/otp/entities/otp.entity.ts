@@ -28,7 +28,7 @@ export class Otp {
   @Column({ type: "uuid" })
   userId: string;
 
-  @Column({ type: "varchar", length: 6 })
+  @Column({ type: "varchar", length: 64 })
   code: string;
 
   @Index()
@@ -42,7 +42,7 @@ export class Otp {
   @Column({
     type: "timestamptz",
     nullable: true,
-    default: () => `CURRENT_TIMESTAMP + INTERVAL '5 minutes'`,
+    default: () => `CURRENT_TIMESTAMP + INTERVAL '2 minutes'`,
   })
   expiresAt: Date | null;
 

@@ -7,6 +7,7 @@ import { UserModule } from "./modules/user/user.module";
 import { ConfigService } from "@nestjs/config";
 import { SeederModule } from "database/seeds/seeder.module";
 import { DashboardModule } from "modules/dashboard/dashboard.module";
+import { envValidationSchema } from "./config/env.validation";
 
 import { ThrottlerModule } from "@nestjs/throttler";
 
@@ -29,7 +30,10 @@ import { WorkReportsModule } from "./modules/work-reports/work-reports.module";
 @Module({
   imports: [
     ScheduleModule.forRoot(),
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      validationSchema: envValidationSchema,
+    }),
     ThrottlerModule.forRoot([
       {
         ttl: 60000,

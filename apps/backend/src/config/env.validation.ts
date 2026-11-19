@@ -13,15 +13,17 @@ export const envValidationSchema = Joi.object({
   DB_NAME: Joi.string().required(),
   DB_SSL: Joi.boolean().default(false),
 
-  JWT_ACCESS_SECRET: Joi.string().required(),
+  OTP_SECRET: Joi.string().min(32).required(),
+
+  JWT_ACCESS_SECRET: Joi.string().min(32).required(),
   JWT_ACCESS_EXPIRES_IN: Joi.string().default("15m"),
-  JWT_REFRESH_SECRET: Joi.string().required(),
+  JWT_REFRESH_SECRET: Joi.string().min(32).required(),
   JWT_REFRESH_EXPIRES_IN: Joi.string().default("7d"),
-  JWT_REG_SECRET: Joi.string().required(),
+  JWT_REG_SECRET: Joi.string().min(32).required(),
   JWT_REG_EXPIRES_IN: Joi.string().default("10m"),
-  JWT_SET_PASSWORD_SECRET: Joi.string().required(),
+  JWT_SET_PASSWORD_SECRET: Joi.string().min(32).required(),
   JWT_SET_PASSWORD_EXPIRES_IN: Joi.string().default("10m"),
-  JWT_PASSWORD_RESET_SECRET: Joi.string().required(),
+  JWT_PASSWORD_RESET_SECRET: Joi.string().min(32).required(),
   JWT_PASSWORD_RESET_EXPIRES_IN: Joi.string().default("10m"),
 
   REDIS_HOST: Joi.string().optional(),
