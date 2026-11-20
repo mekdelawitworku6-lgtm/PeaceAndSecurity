@@ -241,6 +241,7 @@ export class AuthService {
       const normalizedPhone = normalizeEtPhone(phoneNumber);
       if (!normalizedPhone)
         throw new BadRequestException("Invalid Ethiopian phone number format");
+      if (!pin) throw new BadRequestException("PIN is required");
 
       const existing = await this.citizenRepository.findOne({
         where: { phoneNumber: normalizedPhone },
@@ -261,10 +262,7 @@ export class AuthService {
         profileImage = asset?.url;
       }
 
-      let hashedPin: string | null = null;
-      if (pin) {
-        hashedPin = await this.hashPin(pin);
-      }
+      const hashedPin = await this.hashPin(pin);
 
       let citizen = existing;
       if (!citizen) {
@@ -272,61 +270,63 @@ export class AuthService {
           fullName,
           userCode: generateRandomCode(8),
           phoneNumber: normalizedPhone,
-          status: UserStatus.DISABLED,
+          status: UserStatus.ACTIVE,
           pin: hashedPin,
-          isPinSet: false,
+          isPinSet: true,
+          verificationStatus: VerificationStatus.VERIFIED,
           profileImage,
           deviceId,
         });
       } else {
         citizen.fullName = fullName;
+        citizen.status = UserStatus.ACTIVE;
+        citizen.pin = hashedPin;
+        citizen.isPinSet = true;
+        citizen.verificationStatus = VerificationStatus.VERIFIED;
         if (profileImage) citizen.profileImage = profileImage;
         if (deviceId) citizen.deviceId = deviceId;
-        if (hashedPin) citizen.pin = hashedPin;
       }
 
       const saved = await this.citizenRepository.save(citizen);
 
-      // Attach anonymous reports submitted from this device before signup
       await this.attachGuestReports(saved.id, deviceId);
 
-      // Issue registration OTP to verify phone number ownership (CWE-287)
-      const otp = await this.otpService.createOtp({
-        phoneNumber: normalizedPhone,
-        userId: saved.id,
-        otpType: OTPType.REGISTRATION_OTP,
-      });
-
-      sendSMS({
-        recipient: normalizedPhone,
-        messageBody: `Your verification code is ${otp.otpCode}. It expires in 2 minutes.`,
-      }).catch(() => void 0);
-
-      const registrationToken = signRegistrationToken(
-        this.jwtService,
-        this.tokenPayload(saved),
+      const nextVersion = await this.bumpTokenVersion(
+        this.citizenRepository,
+        saved.id,
       );
+      const payload = {
+        ...this.tokenPayload(saved),
+        role: UserRole.CITIZEN,
+        tokenVersion: nextVersion,
+      };
+      const accessToken = signAccessToken(this.jwtService, payload);
+      const refreshToken = signRefreshToken(this.jwtService, payload);
 
       await this.auditService.logSecurityEvent({
-        eventType: SecurityEventType.OTP_REQUESTED,
+        eventType: SecurityEventType.LOGIN_SUCCESS,
         actorId: saved.id,
         actorName: saved.fullName,
         targetUserId: saved.id,
         targetUserName: saved.fullName,
         success: true,
-        metadata: { loginType: "CITIZEN_REGISTRATION", registrationPending: true },
+        metadata: { loginType: "CITIZEN_REGISTRATION" },
       });
 
-      return successResponse(
-        "Verification code sent to your phone. Please verify to complete registration.",
-        {
-          registrationToken,
-          isPinSet: false,
-          ...(process.env.NODE_ENV === "development"
-            ? { devOtp: otp.otpCode }
-            : {}),
+      return successResponse("Registration successful", {
+        accessToken,
+        refreshToken,
+        user: {
+          id: saved.id,
+          userCode: saved.userCode,
+          fullName: saved.fullName,
+          phoneNumber: saved.phoneNumber,
+          role: UserRole.CITIZEN,
+          profileImage: saved.profileImage,
+          status: saved.status,
+          createdAt: saved.createdAt,
         },
-      );
+      });
     } catch (error) {
       return errorResponse(
         error.message ?? "Citizen registration failed",

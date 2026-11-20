@@ -13,10 +13,9 @@ export class CitizenRegisterDto {
   })
   phoneNumber: string;
 
-  @ApiProperty({ example: "0000", description: "Temporary PIN (will be replaced after OTP verification)", required: false })
-  @IsOptional()
+  @ApiProperty({ example: "123456", description: "6-digit PIN" })
   @IsString()
-  pin?: string;
+  pin: string;
 
   @ApiProperty({ required: false, description: "Device identifier for linking guest reports" })
   @IsOptional()
