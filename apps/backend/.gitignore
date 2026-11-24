@@ -8,6 +8,7 @@
 !package.json
 !nest-cli.json
 !tsconfig*.json
+!railway.json
 
 # Ignore system files on macOS
 .DS_Store

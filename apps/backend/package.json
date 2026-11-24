@@ -12,6 +12,8 @@
     "db:run": "typeorm-ts-node-commonjs -d dist/database/data-source.js migration:run",
     "db:revert": "typeorm-ts-node-commonjs -d dist/database/data-source.js migration:revert",
     "db:seed": "ts-node -r tsconfig-paths/register src/database/seeds/seed-runner.ts",
+    "db:seed:demo": "ts-node -r tsconfig-paths/register src/database/seeds/demo-seed-runner.ts",
+    "db:seed:demo:prod": "node dist/database/seeds/demo-seed-runner.js",
     "seed:report-types": "ts-node -r tsconfig-paths/register seed-report-types.ts"
   },
   "dependencies": {

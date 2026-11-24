@@ -14,8 +14,10 @@ COPY . .
 
 ARG NEXT_PUBLIC_API_URL=
 ARG NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
+ARG NEXT_PUBLIC_DEMO_MODE=
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
 ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN pnpm run build
@@ -35,7 +37,7 @@ COPY --from=builder /app/node_modules ./node_modules
 
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./
+COPY --from=builder /app/next.config.js ./
 
 RUN mkdir -p /app/.next/cache && chown -R nextjs:nodejs /app/.next/cache
 
@@ -45,4 +47,4 @@ EXPOSE 4000
 ENV PORT=4000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "4000"]
+CMD ["sh", "-c", "node node_modules/next/dist/bin/next start -p ${PORT:-4000}"]

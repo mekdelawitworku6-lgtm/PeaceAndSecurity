@@ -108,6 +108,28 @@ export function LoginForm() {
         </h2>
       </div>
 
+      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+        <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-3 text-left text-xs text-slate-700">
+          <p className="font-semibold text-primary mb-1">Demo access</p>
+          <p>
+            Email <span className="font-mono font-semibold">admin@example.com</span>
+            {" · "}Password <span className="font-mono font-semibold">admin123</span>
+          </p>
+          <button
+            type="button"
+            className="mt-2 font-semibold text-primary hover:underline cursor-pointer"
+            onClick={() => {
+              setMethod("email");
+              setIdentifier("admin@example.com");
+              setPassword("admin123");
+              setErrors({});
+            }}
+          >
+            Fill demo credentials
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-xl text-sm mb-6 animate-in fade-in duration-300">
           <AlertCircle size={16} />

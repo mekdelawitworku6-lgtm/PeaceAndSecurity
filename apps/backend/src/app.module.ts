@@ -8,6 +8,7 @@ import { ConfigService } from "@nestjs/config";
 import { SeederModule } from "database/seeds/seeder.module";
 import { DashboardModule } from "modules/dashboard/dashboard.module";
 import { envValidationSchema } from "./config/env.validation";
+import { HealthController } from "./common/health.controller";
 
 import { ThrottlerModule } from "@nestjs/throttler";
 
@@ -50,6 +51,7 @@ import { WorkReportsModule } from "./modules/work-reports/work-reports.module";
           username: cfg.get<string>("DB_USERNAME") || "",
           password: String(cfg.get("DB_PASSWORD") || ""),
           database: cfg.get<string>("DB_NAME") || "",
+          ssl: cfg.get<boolean>("DB_SSL") ? { rejectUnauthorized: false } : false,
           autoLoadEntities: true,
           synchronize: true,
           subscribers: [AuditSubscriber],
@@ -85,6 +87,7 @@ import { WorkReportsModule } from "./modules/work-reports/work-reports.module";
     SettingsModule,
     WorkReportsModule,
   ],
+  controllers: [HealthController],
   providers: [],
   exports: [],
 })
