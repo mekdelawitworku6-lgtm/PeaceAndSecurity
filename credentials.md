@@ -1,5 +1,18 @@
 # Peace & Security - Seeded Test Credentials
 
+## Offline dashboard demo (no backend)
+
+Deploy only `apps/peace-and-security-dashboard` with `NEXT_PUBLIC_DEMO_MODE=true`. Sign in on the deployed URL with **any staff or viewer email below** and password `admin123`.
+
+| Use | Email | Password |
+|---|---|---|
+| Admin (full access) | `admin@example.com` | `admin123` |
+| Viewer (read-only) | `viewer.super@peace.gov.et` | `admin123` |
+
+The login page also has **Fill admin** and **Fill viewer** buttons. Patrol/citizen PINs below are for the mobile apps only and are not used by the offline dashboard.
+
+---
+
 ## Admin / Staff Roles (Dashboard & API)
 - **Login URL (Dashboard):** `http://localhost:8001`
 - **Login API:** `POST http://localhost:5001/api/auth/user/login`

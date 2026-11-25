@@ -34,7 +34,7 @@ You can deploy **only** `apps/peace-and-security-dashboard` and skip sections 1â
    | `NEXT_PUBLIC_DEMO_MODE` | `true` |
 
    Do **not** set `NEXT_PUBLIC_API_URL` for the offline demo. If no API URL is present, demo mode is enabled automatically.
-3. Deploy and open the generated URL. The login page shows demo credentials; click **Fill admin** (or **Fill viewer**) and sign in with password `admin123`.
+3. Deploy and open the generated URL. The login page shows demo credentials; click **Fill admin** (`admin@example.com`) or **Fill viewer** (`viewer.super@peace.gov.et`) and sign in with password `admin123`. Any staff/viewer email in `credentials.md` also works.
 4. Every page is backed by local fixtures: 8 reports, 3 chat conversations, 6 cameras with alerts, users, notifications, audit logs, settings, and analytics. Sockets are no-ops and no push-notification permission is requested.
 
 To return to the live API later, set `NEXT_PUBLIC_DEMO_MODE=false` and `NEXT_PUBLIC_API_URL=https://<api-domain>/api`, then redeploy.
