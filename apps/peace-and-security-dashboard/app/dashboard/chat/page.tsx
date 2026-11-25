@@ -36,8 +36,8 @@ import {
   X,
   ExternalLink,
 } from "lucide-react";
-import { io, Socket } from "socket.io-client";
-import { getApiBaseUrl } from "@/lib/api-config";
+import type { Socket } from "socket.io-client";
+import { getChatSocket } from "@/lib/socket";
 import { chatService } from "@/lib/services/chat-service";
 import { cn } from "@/lib/utils";
 
@@ -85,12 +85,7 @@ export default function ChatPage() {
     const token = localStorage.getItem("accessToken");
     if (!token) return;
 
-    const baseUrl = getApiBaseUrl().replace(/\/api\/?$/, "");
-    const wsUrl = `${baseUrl}/chat`;
-    const s = io(wsUrl, {
-      auth: { token },
-      transports: ["websocket"],
-    });
+    const s = getChatSocket(token);
 
     s.on("connect", () => console.log("Chat socket connected"));
     s.on("chat:message", (msg: any) => {

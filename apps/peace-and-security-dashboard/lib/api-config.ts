@@ -18,6 +18,10 @@ export const API_CONFIG = {
     TIMEOUT: 30000,
 } as const;
 
+export const DEMO_MODE =
+    process.env.NEXT_PUBLIC_DEMO_MODE === "true" ||
+    (process.env.NEXT_PUBLIC_DEMO_MODE !== "false" && !process.env.NEXT_PUBLIC_API_URL);
+
 // API Endpoints
 export const API_ENDPOINTS = {
     // ── Auth ──────────────────────────────────────────────────────────

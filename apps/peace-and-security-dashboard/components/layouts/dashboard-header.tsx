@@ -27,6 +27,7 @@ import { getImageUrl } from "@/lib/utils";
 import { useNotifications } from "@/app/context/notification-context";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import apiClient from "@/lib/api-client";
 
 export function DashboardHeader() {
   const { user, logout } = useAuth();
@@ -151,14 +152,12 @@ export function DashboardHeader() {
                       className="text-[10px] font-bold text-blue-500 hover:text-blue-600 hover:bg-blue-50 h-7 px-2 rounded-lg"
                       onClick={async (e) => {
                         e.preventDefault();
-                        // Import inside for dynamic use or just fetch
-                        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/notifications/test-notify`, {
-                          headers: {
-                            'Authorization': `Bearer ${JSON.parse(localStorage.getItem('user') || '{}').accessToken}`
-                          }
-                        });
-                        const data = await res.json();
-                        console.log("Test pushed:", data);
+                        try {
+                          const res = await apiClient.post("notifications/test-notify");
+                          console.log("Test pushed:", res.data);
+                        } catch {
+                          console.log("Test notification unavailable");
+                        }
                       }}
                     >
                       Send Test

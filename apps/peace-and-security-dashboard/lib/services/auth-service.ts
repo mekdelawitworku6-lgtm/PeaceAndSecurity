@@ -39,6 +39,8 @@ class AuthService {
     };
 
     localStorage.setItem('user', JSON.stringify(user));
+    localStorage.setItem('userId', user.id);
+    localStorage.setItem('fullName', user.fullName || user.email);
 
     return { user, accessToken, refreshToken };
   }
@@ -69,6 +71,8 @@ class AuthService {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('user');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('fullName');
     }
   }
 

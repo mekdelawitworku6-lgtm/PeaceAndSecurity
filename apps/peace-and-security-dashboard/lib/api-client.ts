@@ -1,5 +1,6 @@
 import axios, { AxiosInstance, AxiosError, InternalAxiosRequestConfig } from 'axios';
-import { API_CONFIG, API_ENDPOINTS } from './api-config';
+import { API_CONFIG, API_ENDPOINTS, DEMO_MODE } from './api-config';
+import { demoAdapter } from './demo/mock-adapter';
 import { toast } from 'sonner';
 
 // Create axios instance
@@ -9,6 +10,7 @@ const apiClient: AxiosInstance = axios.create({
     headers: {
         'Content-Type': 'application/json',
     },
+    ...(DEMO_MODE ? { adapter: demoAdapter } : {}),
 });
 
 // Request interceptor to add auth token
@@ -174,6 +176,8 @@ function handleLogout() {
     localStorage.removeItem('accessToken');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+    localStorage.removeItem('userId');
+    localStorage.removeItem('fullName');
 
     if (typeof window !== 'undefined' && window.location.pathname !== '/') {
         window.location.href = '/';

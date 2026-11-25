@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AlertCircle, Eye, EyeOff, ChevronDown, Mail, Phone } from "lucide-react";
 import { toast } from "sonner";
+import { DEMO_MODE } from "@/lib/api-config";
 
 const PHONE_PREFIX = "+251";
 
@@ -91,6 +92,14 @@ export function LoginForm() {
     }
   };
 
+  const fillDemoCredentials = (email: string) => {
+    setMethod("email");
+    setIdentifier(email);
+    setPassword("admin123");
+    setErrors({});
+    setError("");
+  };
+
   return (
     <AuthLayout>
       <div className="flex flex-col items-center text-center mb-8 animate-in fade-in duration-500">
@@ -108,25 +117,32 @@ export function LoginForm() {
         </h2>
       </div>
 
-      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && (
+      {DEMO_MODE && (
         <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 p-3 text-left text-xs text-slate-700">
-          <p className="font-semibold text-primary mb-1">Demo access</p>
+          <p className="font-semibold text-primary mb-1">Demo access — no backend needed</p>
           <p>
-            Email <span className="font-mono font-semibold">admin@example.com</span>
-            {" · "}Password <span className="font-mono font-semibold">admin123</span>
+            Admin <span className="font-mono font-semibold">admin@example.com</span>
+            {" · "}Viewer <span className="font-mono font-semibold">viewer.super@peace.gov.et</span>
           </p>
-          <button
-            type="button"
-            className="mt-2 font-semibold text-primary hover:underline cursor-pointer"
-            onClick={() => {
-              setMethod("email");
-              setIdentifier("admin@example.com");
-              setPassword("admin123");
-              setErrors({});
-            }}
-          >
-            Fill demo credentials
-          </button>
+          <p>
+            Password <span className="font-mono font-semibold">admin123</span>
+          </p>
+          <div className="mt-2 flex gap-4">
+            <button
+              type="button"
+              className="font-semibold text-primary hover:underline cursor-pointer"
+              onClick={() => fillDemoCredentials("admin@example.com")}
+            >
+              Fill admin
+            </button>
+            <button
+              type="button"
+              className="font-semibold text-primary hover:underline cursor-pointer"
+              onClick={() => fillDemoCredentials("viewer.super@peace.gov.et")}
+            >
+              Fill viewer
+            </button>
+          </div>
         </div>
       )}
 

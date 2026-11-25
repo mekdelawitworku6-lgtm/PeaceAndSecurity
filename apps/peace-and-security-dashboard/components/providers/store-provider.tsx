@@ -11,6 +11,7 @@ import {
   setUnreadCount,
 } from "@/lib/store/notificationSlice"
 import { getSocket } from "@/lib/socket"
+import { DEMO_MODE } from "@/lib/api-config"
 import { requestNotificationPermission, onMessageListener } from "@/lib/firebase"
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
@@ -80,15 +81,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         prevUserId = userId
         store.dispatch(loadNotifications())
 
-        requestNotificationPermission()
-          .then((token) => {
-            if (token) {
-              import("@/lib/api-client").then(({ default: apiClient }) => {
-                apiClient.post("/notifications/fcm-token", { token })
-              })
-            }
-          })
-          .catch(() => {})
+        if (!DEMO_MODE) {
+          requestNotificationPermission()
+            .then((token) => {
+              if (token) {
+                import("@/lib/api-client").then(({ default: apiClient }) => {
+                  apiClient.post("/notifications/fcm-token", { token })
+                })
+              }
+            })
+            .catch(() => {})
+        }
 
         socketCleanup?.()
         const socket = getSocket(user.id, user.role)
@@ -103,7 +106,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         socket.on("notification", onNotification)
         socket.on("unread_count", onUnreadCount)
 
-        onMessageListener()?.catch(() => {})
+        if (!DEMO_MODE) onMessageListener()?.catch(() => {})
 
         socketCleanup = () => {
           socket.off("notification", onNotification)

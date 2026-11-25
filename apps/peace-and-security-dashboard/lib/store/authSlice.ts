@@ -78,6 +78,8 @@ const authSlice = createSlice({
         localStorage.removeItem('accessToken')
         localStorage.removeItem('refreshToken')
         localStorage.removeItem('user')
+        localStorage.removeItem('userId')
+        localStorage.removeItem('fullName')
       }
     },
     loginWithData(state, action: PayloadAction<User>) {
