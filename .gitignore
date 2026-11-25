@@ -54,6 +54,7 @@ npm-debug.log
 *.jks
 *.keystore
 key.properties
+credentials.local.md
 
 # Firebase secrets (but not config JSONs needed for builds)
 **/android/app/google-services.json

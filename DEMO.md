@@ -37,6 +37,8 @@ You can deploy **only** `apps/peace-and-security-dashboard` and skip sections 1â
 3. Deploy and open the generated URL. The login page shows demo credentials; click **Fill admin** (`admin@example.com`) or **Fill viewer** (`viewer.super@peace.gov.et`) and sign in with password `admin123`. Any staff/viewer email in `credentials.md` also works.
 4. Every page is backed by local fixtures: 8 reports, 3 chat conversations, 6 cameras with alerts, users, notifications, audit logs, settings, and analytics. Sockets are no-ops and no push-notification permission is requested.
 
+Deploying to **Render**? Use the included blueprint `apps/peace-and-security-dashboard/render.yaml` or follow `RENDER.md`. A local-only credentials copy is kept in `credentials.local.md` (git-ignored).
+
 To return to the live API later, set `NEXT_PUBLIC_DEMO_MODE=false` and `NEXT_PUBLIC_API_URL=https://<api-domain>/api`, then redeploy.
 
 ---
