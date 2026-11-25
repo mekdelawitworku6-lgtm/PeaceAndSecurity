@@ -5,7 +5,7 @@ services:
     plan: free
     rootDir: apps/peace-and-security-dashboard
     healthCheckPath: /
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build
+    buildCommand: npx --yes pnpm@10.14.0 install --frozen-lockfile && npx --yes pnpm@10.14.0 build
     startCommand: ./node_modules/.bin/next start -p $PORT
     envVars:
       - key: NEXT_PUBLIC_DEMO_MODE

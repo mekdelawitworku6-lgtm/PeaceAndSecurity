@@ -18,7 +18,7 @@ No backend, database, Redis, or Firebase project is required. Only the dashboard
 2. Settings:
    - **Root Directory:** `apps/peace-and-security-dashboard`
    - **Runtime:** `Node`
-   - **Build Command:** `corepack enable && pnpm install --frozen-lockfile && pnpm build`
+   - **Build Command:** `npx --yes pnpm@10.14.0 install --frozen-lockfile && npx --yes pnpm@10.14.0 build`
    - **Start Command:** `./node_modules/.bin/next start -p $PORT`
    - **Health Check Path:** `/`
 3. Environment variables:
@@ -42,6 +42,7 @@ The login page has **Fill admin** and **Fill viewer** buttons. Any staff/viewer 
 ## Notes
 
 - The first build on Render can take several minutes because pnpm installs ~600 packages.
+- Do **not** use `corepack enable` on Render — it tries to modify `/usr/bin/pnpm` and fails with `EROFS: read-only file system`. The `npx pnpm@10.14.0` command above is the working alternative.
 - `NEXT_PUBLIC_*` variables are compiled into the browser bundle, so changing them requires a redeploy.
 - The free plan sleeps after inactivity; the first request after a sleep may take a few seconds.
 - Patrol/citizen PINs are not used by this dashboard demo.
