@@ -4,11 +4,11 @@ No backend, database, Redis, or Firebase project is required. Only the dashboard
 
 ## Option A — Blueprint (recommended)
 
-`apps/peace-and-security-dashboard/render.yaml` is included in the repo.
+`render.yaml` is at the **repository root** (this is where Render looks by default).
 
 1. Go to <https://dashboard.render.com> → **New** → **Blueprint**.
 2. Connect this GitHub repo: `mekdelawitworku6-lgtm/PeaceAndSecurity`.
-3. Render detects `apps/peace-and-security-dashboard/render.yaml` and creates the web service.
+3. Render detects the root `render.yaml` and creates the web service. Its `rootDir` points at `apps/peace-and-security-dashboard`.
 4. Deploy. The only environment variable it sets is `NEXT_PUBLIC_DEMO_MODE=true`.
 5. Open the generated `onrender.com` URL and sign in.
 
